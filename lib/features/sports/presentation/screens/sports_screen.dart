@@ -1,3 +1,4 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:youtube_downloader/core/constants/app_palette.dart';
@@ -9,6 +10,7 @@ import '../providers/sports_provider.dart';
 import 'sports_player_screen.dart';
 import 'league_screen.dart';
 import 'leagues_screen.dart';
+import '../../../../core/tv/tv_mode.dart';
 
 import '../../../home/presentation/widgets/football_showcase.dart';
 import 'package:cached_network_image/cached_network_image.dart';
@@ -22,6 +24,23 @@ class SportsScreen extends ConsumerStatefulWidget {
 
 class _SportsScreenState extends ConsumerState<SportsScreen> {
   final TextEditingController _searchController = TextEditingController();
+
+  int _calculateColumns(BuildContext context) {
+    final width = MediaQuery.of(context).size.width;
+    final isDesktop = Platform.isWindows || Platform.isMacOS || Platform.isLinux;
+    final isTv = ref.watch(tvModeProvider).valueOrNull ?? false;
+
+    if (isTv || isDesktop) {
+      if (width >= 1500) return 3;
+      if (width >= 600) return 2;
+      return 1;
+    }
+
+    // Mobile / Tablet / Web
+    if (width >= 1200) return 3;
+    if (width >= 650) return 2;
+    return 1;
+  }
 
   @override
   void dispose() {
@@ -532,11 +551,36 @@ class _SportsScreenState extends ConsumerState<SportsScreen> {
         );
       }
 
+      final columns = _calculateColumns(context);
+      if (columns <= 1) {
+        return ListView.builder(
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+          itemCount: liveList.length,
+          itemBuilder: (ctx, i) {
+            return _buildMatchCard(ctx, liveList[i], isDark, accentColor);
+          },
+        );
+      }
+
+      final rowCount = (liveList.length + columns - 1) ~/ columns;
       return ListView.builder(
         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-        itemCount: liveList.length,
-        itemBuilder: (ctx, i) {
-          return _buildMatchCard(ctx, liveList[i], isDark, accentColor);
+        itemCount: rowCount,
+        itemBuilder: (ctx, rowIndex) {
+          final rowStart = rowIndex * columns;
+          return Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              for (var c = 0; c < columns; c++) ...[
+                if (c > 0) const SizedBox(width: 12),
+                Expanded(
+                  child: (rowStart + c < liveList.length)
+                      ? _buildMatchCard(ctx, liveList[rowStart + c], isDark, accentColor)
+                      : const SizedBox.shrink(),
+                ),
+              ],
+            ],
+          );
         },
       );
     }
@@ -585,10 +629,12 @@ class _SportsScreenState extends ConsumerState<SportsScreen> {
                 );
               }
 
+              final width = MediaQuery.of(context).size.width;
+              final channelCols = width >= 1400 ? 5 : (width >= 1000 ? 4 : (width >= 600 ? 3 : 2));
               return GridView.builder(
                 padding: const EdgeInsets.all(14),
-                gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                  crossAxisCount: 2,
+                gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                  crossAxisCount: channelCols,
                   crossAxisSpacing: 12,
                   mainAxisSpacing: 12,
                   childAspectRatio: 1.05,
@@ -688,6 +734,8 @@ class _SportsScreenState extends ConsumerState<SportsScreen> {
       );
     }
 
+    final columns = _calculateColumns(context);
+
     return ListView.builder(
       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
       itemCount: filteredGroups.length,
@@ -758,7 +806,23 @@ class _SportsScreenState extends ConsumerState<SportsScreen> {
             ),
 
             // Matches inside this league
-            ...group.matches.map((m) => _buildMatchCard(ctx, m, isDark, accentColor)),
+            if (columns <= 1)
+              ...group.matches.map((m) => _buildMatchCard(ctx, m, isDark, accentColor))
+            else
+              for (var rowStart = 0; rowStart < group.matches.length; rowStart += columns)
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    for (var c = 0; c < columns; c++) ...[
+                      if (c > 0) const SizedBox(width: 12),
+                      Expanded(
+                        child: (rowStart + c < group.matches.length)
+                            ? _buildMatchCard(ctx, group.matches[rowStart + c], isDark, accentColor)
+                            : const SizedBox.shrink(),
+                      ),
+                    ],
+                  ],
+                ),
             const SizedBox(height: 8),
           ],
         );
@@ -881,16 +945,21 @@ class _SportsScreenState extends ConsumerState<SportsScreen> {
                         children: [
                           _buildLargeClubLogo(match.home.logo, isDark),
                           const SizedBox(height: 8),
-                          Text(
-                            match.home.name,
-                            textAlign: TextAlign.center,
-                            maxLines: 2,
-                            overflow: TextOverflow.ellipsis,
-                            style: TextStyle(
-                              fontSize: 13.5,
-                              fontWeight: FontWeight.bold,
-                              height: 1.25,
-                              color: isDark ? Colors.white : const Color(0xFF111827),
+                          SizedBox(
+                            height: 38,
+                            child: Center(
+                              child: Text(
+                                match.home.name,
+                                textAlign: TextAlign.center,
+                                maxLines: 2,
+                                overflow: TextOverflow.ellipsis,
+                                style: TextStyle(
+                                  fontSize: 13.5,
+                                  fontWeight: FontWeight.bold,
+                                  height: 1.25,
+                                  color: isDark ? Colors.white : const Color(0xFF111827),
+                                ),
+                              ),
                             ),
                           ),
                         ],
@@ -911,16 +980,21 @@ class _SportsScreenState extends ConsumerState<SportsScreen> {
                         children: [
                           _buildLargeClubLogo(match.away.logo, isDark),
                           const SizedBox(height: 8),
-                          Text(
-                            match.away.name,
-                            textAlign: TextAlign.center,
-                            maxLines: 2,
-                            overflow: TextOverflow.ellipsis,
-                            style: TextStyle(
-                              fontSize: 13.5,
-                              fontWeight: FontWeight.bold,
-                              height: 1.25,
-                              color: isDark ? Colors.white : const Color(0xFF111827),
+                          SizedBox(
+                            height: 38,
+                            child: Center(
+                              child: Text(
+                                match.away.name,
+                                textAlign: TextAlign.center,
+                                maxLines: 2,
+                                overflow: TextOverflow.ellipsis,
+                                style: TextStyle(
+                                  fontSize: 13.5,
+                                  fontWeight: FontWeight.bold,
+                                  height: 1.25,
+                                  color: isDark ? Colors.white : const Color(0xFF111827),
+                                ),
+                              ),
                             ),
                           ),
                         ],
