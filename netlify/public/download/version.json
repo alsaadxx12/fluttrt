@@ -1,11 +1,11 @@
 {
   "updateEnabled": true,
-  "versionCode": 27,
-  "versionName": "1.0.25",
-  "apkUrl": "https://cineball.netlify.app/download/app.apk?v=27",
-  "sha256": "979dd068c54d82762bdca1d35bef056dd7083f79b4e4fe4c2a20bfd3fe809943",
-  "sizeBytes": 30315693,
+  "versionCode": 28,
+  "versionName": "1.0.26",
+  "apkUrl": "https://cineball.netlify.app/download/app.apk?v=28",
+  "sha256": "16b6e839585eea484724776ee38ec63923a14a2a466aa66943777588b0ddd199",
+  "sizeBytes": 30334955,
   "forceUpdate": false,
   "minSupportedVersion": 1,
-  "notes": "ترتيب التلفاز مثل نسخة ويندوز"
+  "notes": "قسم مقاطع وإعلانات الأفلام"
 }

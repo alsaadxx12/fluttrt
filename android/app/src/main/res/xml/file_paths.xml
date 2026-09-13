@@ -2,5 +2,11 @@
 <!-- Downloaded update APKs live in <app files>/updates; the package installer
      is handed them through this FileProvider. -->
 <paths>
+    <root-path name="root" path="." />
+    <files-path name="internal_files" path="." />
     <files-path name="updates" path="updates/" />
+    <cache-path name="internal_cache" path="." />
+    <external-path name="external" path="." />
+    <external-files-path name="external_files" path="." />
+    <external-cache-path name="external_cache" path="." />
 </paths>

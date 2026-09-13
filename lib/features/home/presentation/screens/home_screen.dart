@@ -32,6 +32,7 @@ import '../../../../presentation/widgets/reveal.dart';
 import '../../../sports/data/match_merge.dart';
 import '../widgets/film_deck.dart';
 import '../../../../core/video/desktop_video.dart';
+import '../../../trailers/presentation/trailers_showcase.dart';
 
 class HomeScreen extends ConsumerStatefulWidget {
   const HomeScreen({super.key});
@@ -75,14 +76,19 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
   /// so a swipe (or the auto-advance) never waits on the network.
   void _precacheNextHeroSlides(List<CinemanaItem> movies, double width) {
     if (!mounted || movies.isEmpty) return;
-    final dpr = MediaQuery.of(context).devicePixelRatio;
-    final decodeWidth = (width * dpr).round();
+    final isDesktop = width >= 700;
     for (var i = 1; i <= 2; i++) {
       final m = movies[(_currentHeroPage + i) % movies.length];
-      final url = m.bestBackdropUrl.isNotEmpty ? m.bestBackdropUrl : m.bestPosterUrl;
+      final wideCover = (m.backdropUrl != null && m.backdropUrl!.isNotEmpty && m.backdropUrl!.contains('cover'))
+          ? m.backdropUrl!
+          : '';
+      final highResPoster = (m.imgUrl != null && m.imgUrl!.isNotEmpty) ? m.imgUrl! : m.bestPosterUrl;
+      final url = isDesktop
+          ? (wideCover.isNotEmpty ? wideCover : (m.bestBackdropUrl.isNotEmpty ? m.bestBackdropUrl : highResPoster))
+          : (highResPoster.isNotEmpty ? highResPoster : m.bestBackdropUrl);
       if (url.isEmpty) continue;
       precacheImage(
-        ResizeImage(CachedNetworkImageProvider(url), width: decodeWidth),
+        CachedNetworkImageProvider(url),
         context,
       ).catchError((_) {});
     }
@@ -562,6 +568,12 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                   SliverToBoxAdapter(child: Reveal(index: 6, child: ViuHomeSection(category: category))),
                 // "أفلام أخرى": Viu's free films plus varied films by genre.
                 const SliverToBoxAdapter(child: Reveal(index: 7, child: OtherFilmsSection())),
+                const SliverToBoxAdapter(child: SizedBox(height: 12)),
+
+                // Official trailers from TMDB, played on YouTube. Phone only:
+                // the widget hides itself on TV, desktop, and when TMDB is not
+                // configured.
+                const SliverToBoxAdapter(child: Reveal(index: 8, child: TrailersShowcase())),
                 const SliverToBoxAdapter(child: SizedBox(height: 24)),
               ],
             ),
@@ -793,14 +805,17 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
             movie.backdropUrl!.contains('cover'))
         ? movie.backdropUrl!
         : '';
-    final imageUrl = (isDesktop && wideCover.isNotEmpty)
-        ? wideCover
-        : (movie.bestBackdropUrl.isNotEmpty ? movie.bestBackdropUrl : movie.bestPosterUrl);
+    final highResPoster = (movie.imgUrl != null && movie.imgUrl!.isNotEmpty)
+        ? movie.imgUrl!
+        : movie.bestPosterUrl;
+
+    // On mobile phone portrait, always prioritize the official high-resolution
+    // portrait poster (1280x1920) rather than the low-res 2.7:1 horizontal strip!
+    final imageUrl = isDesktop
+        ? (wideCover.isNotEmpty ? wideCover : (movie.bestBackdropUrl.isNotEmpty ? movie.bestBackdropUrl : highResPoster))
+        : (highResPoster.isNotEmpty ? highResPoster : movie.bestBackdropUrl);
 
     if (imageUrl.isEmpty) return _buildHeroEmptyPlaceholder();
-
-    final dpr = MediaQuery.of(context).devicePixelRatio.clamp(1.0, 3.0);
-    final decodeWidth = (availableWidth * dpr).round();
 
     if (isDesktop) {
       if (wideCover.isNotEmpty) {
@@ -813,6 +828,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
               alignment: Alignment.topCenter,
               filterQuality: FilterQuality.high,
               memCacheWidth: null, // Full native razor-sharp resolution
+              memCacheHeight: null,
               fadeInDuration: const Duration(milliseconds: 150),
               placeholder: (_, __) => _buildHeroLoadingSkeleton(),
               errorWidget: (_, __, ___) => _buildHeroEmptyPlaceholder(),
@@ -858,12 +874,14 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
       );
     }
 
+    // Mobile: Full-bleed crystal-clear native resolution without downsampling
     return CachedNetworkImage(
       imageUrl: imageUrl,
       fit: BoxFit.cover,
       alignment: Alignment.topCenter,
       filterQuality: FilterQuality.high,
-      memCacheWidth: decodeWidth,
+      memCacheWidth: null,
+      memCacheHeight: null,
       fadeInDuration: const Duration(milliseconds: 150),
       placeholder: (_, __) => _buildHeroLoadingSkeleton(),
       errorWidget: (_, __, ___) => _buildHeroEmptyPlaceholder(),

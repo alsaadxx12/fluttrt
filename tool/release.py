@@ -128,7 +128,16 @@ def main():
         print('\ndry run: nothing was built, copied or published.')
         return
 
-    run(['flutter', 'build', 'apk', '--release'], 'build the signed release APK')
+    # TMDB read token, baked in at build time so the trailers section works
+    # for users. It is a free read-only key; kept out of source via the
+    # environment (set TMDB_TOKEN before releasing).
+    build_cmd = ['flutter', 'build', 'apk', '--release']
+    tmdb = os.environ.get('TMDB_TOKEN', '').strip()
+    if tmdb:
+        build_cmd.append('--dart-define=TMDB_TOKEN=' + tmdb)
+    else:
+        print('note: TMDB_TOKEN not set; the trailers section will be hidden in this build')
+    run(build_cmd, 'build the signed release APK')
 
     facts = apk_facts(APK_SRC)
     if facts:

@@ -53,6 +53,13 @@ android {
     buildTypes {
         release {
             signingConfig = keystorePropertiesFile.exists() ? signingConfigs.release : signingConfigs.debug
+            // Code shrinking is on, but it must obey proguard-rules.pro, which
+            // keeps FileProvider and the XML parser R8 was breaking (the crash
+            // when the self-updater installed an APK). Resource shrinking is
+            // left off so no drawable/xml the updater needs is stripped.
+            minifyEnabled true
+            shrinkResources false
+            proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
         }
     }
 }

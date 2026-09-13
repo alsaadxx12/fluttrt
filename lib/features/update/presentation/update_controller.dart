@@ -213,6 +213,11 @@ class UpdateController extends StateNotifier<UpdateState> {
         failure: e.failure,
         needsInstallPermission: e.failure == UpdateFailure.installPermissionDenied,
       );
+    } catch (e) {
+      state = state.copyWith(
+        status: UpdateStatus.error,
+        failure: UpdateFailure.installerFailed,
+      );
     }
   }
 
