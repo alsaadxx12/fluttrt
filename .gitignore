@@ -66,3 +66,7 @@ test_*.mp4
 test_*.webm
 CINEBALL_Mac.zip
 youtube_pro.apk
+
+# TMDB read token (free, but kept out of git)
+tmdb_token.txt
+tmdb.json

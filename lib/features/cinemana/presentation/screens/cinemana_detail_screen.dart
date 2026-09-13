@@ -5,6 +5,7 @@ import 'package:youtube_downloader/core/constants/app_colors.dart';
 import '../../data/models/cinemana_models.dart';
 import '../providers/cinemana_provider.dart';
 import 'cinemana_watch_screen.dart';
+import '../../../trailers/presentation/detail_trailer.dart';
 import 'package:youtube_downloader/presentation/widgets/favorite_toast.dart';
 
 class CinemanaDetailScreen extends ConsumerStatefulWidget {
@@ -355,6 +356,14 @@ class _CinemanaDetailScreenState extends ConsumerState<CinemanaDetailScreen> {
                       height: 1.5,
                       color: isDark ? const Color(0xFFD0D0D8) : const Color(0xFF475569),
                     ),
+                  ),
+
+                  // The title's own trailer, played in place. Phone only.
+                  DetailTrailer(
+                    title: item.enTitle.isNotEmpty ? item.enTitle : item.arTitle,
+                    year: item.year.isNotEmpty ? item.year : null,
+                    trailerUrl: item.trailerUrl,
+                    posterUrl: item.bestBackdropUrl.isNotEmpty ? item.bestBackdropUrl : item.bestPosterUrl,
                   ),
 
                   // Episodes section if series

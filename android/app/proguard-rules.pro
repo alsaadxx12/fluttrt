@@ -28,3 +28,11 @@
 -keep class com.alexmercerind.** { *; }
 -keep class media.kit.** { *; }
 -dontwarn media.kit.**
+
+# Flutter references Google Play Core split-install classes for dynamic feature
+# delivery, which this app does not use. They are absent, so tell R8 not to
+# fail on them rather than pulling in the whole Play Core library.
+-dontwarn com.google.android.play.core.**
+-keep class com.google.android.play.core.** { *; }
+-keep class io.flutter.app.FlutterPlayStoreSplitApplication { *; }
+-keep class io.flutter.embedding.android.FlutterPlayStoreSplitApplication { *; }

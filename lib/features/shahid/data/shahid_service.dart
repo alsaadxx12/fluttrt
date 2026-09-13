@@ -1,4 +1,5 @@
 import 'package:dio/dio.dart';
+import 'package:youtube_downloader/core/network/http_cache.dart';
 import 'package:flutter/foundation.dart' show debugPrint;
 
 import 'shahid_models.dart';
@@ -29,7 +30,7 @@ class ShahidService {
 
   ShahidService({Dio? dio})
       : _dio = dio ??
-            Dio(
+            createDio(
               BaseOptions(
                 baseUrl: 'https://api3.shahid.net/proxy/v2.1',
                 connectTimeout: const Duration(seconds: 12),

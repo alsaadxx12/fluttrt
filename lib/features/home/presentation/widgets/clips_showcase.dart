@@ -18,7 +18,8 @@ class HomeClip {
   const HomeClip({required this.videoId, required this.title, this.poster, this.year});
 
   /// YouTube's own still for the clip, used when the library has no artwork.
-  String get thumbnail => 'https://img.youtube.com/vi/$videoId/hqdefault.jpg';
+  String get thumbnail => 'https://img.youtube.com/vi/$videoId/maxresdefault.jpg';
+  String get fallbackThumbnail => 'https://img.youtube.com/vi/$videoId/hqdefault.jpg';
 }
 
 /// The id inside any of the shapes a YouTube link takes, or null when the
@@ -297,16 +298,27 @@ class _ClipCard extends StatelessWidget {
                     CachedNetworkImage(
                       imageUrl: clip.poster?.isNotEmpty == true ? clip.poster! : clip.thumbnail,
                       fit: BoxFit.cover,
+                      filterQuality: FilterQuality.high,
                       fadeInDuration: Duration.zero,
                       imageBuilder: (_, provider) => RevealImage(
-                        child: Image(image: provider, fit: BoxFit.cover, width: double.infinity, height: double.infinity),
+                        child: Image(
+                          image: provider,
+                          fit: BoxFit.cover,
+                          filterQuality: FilterQuality.high,
+                          width: double.infinity,
+                          height: double.infinity,
+                        ),
                       ),
                       placeholder: (_, __) => Shimmer(
                         base: p.skeleton,
                         highlight: p.isDark ? const Color(0xFF1E2636) : const Color(0xFFF4F7FC),
                         child: const SizedBox.expand(),
                       ),
-                      errorWidget: (_, __, ___) => CachedNetworkImage(imageUrl: clip.thumbnail, fit: BoxFit.cover),
+                      errorWidget: (_, __, ___) => CachedNetworkImage(
+                        imageUrl: clip.fallbackThumbnail,
+                        fit: BoxFit.cover,
+                        filterQuality: FilterQuality.high,
+                      ),
                     ),
                     // Keeps the play badge readable on any still.
                     const DecoratedBox(

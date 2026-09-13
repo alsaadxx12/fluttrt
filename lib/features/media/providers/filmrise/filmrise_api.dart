@@ -1,5 +1,6 @@
 import 'package:dio/dio.dart';
 
+import 'package:youtube_downloader/core/network/http_cache.dart';
 /// Which catalogue on the Future Today / FilmRise backend to read.
 ///
 /// The host is shared by several of their apps and the catalogue is chosen
@@ -101,7 +102,7 @@ class FilmRiseApi {
 
   FilmRiseApi({this.config = const FilmRiseConfig(), Dio? dio})
       : _dio = dio ??
-            Dio(BaseOptions(
+            createDio(BaseOptions(
               connectTimeout: const Duration(seconds: 10),
               receiveTimeout: const Duration(seconds: 20),
               headers: const {'User-Agent': 'okhttp/4.9.0'},

@@ -133,6 +133,12 @@ def main():
     # environment (set TMDB_TOKEN before releasing).
     build_cmd = ['flutter', 'build', 'apk', '--release']
     tmdb = os.environ.get('TMDB_TOKEN', '').strip()
+    if not tmdb:
+        # Fall back to the gitignored token file, so a normal release always
+        # bakes the trailers section in without anyone remembering to export it.
+        token_file = os.path.join(ROOT, 'tmdb_token.txt')
+        if os.path.exists(token_file):
+            tmdb = open(token_file, encoding='utf-8').read().strip()
     if tmdb:
         build_cmd.append('--dart-define=TMDB_TOKEN=' + tmdb)
     else:

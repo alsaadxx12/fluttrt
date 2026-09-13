@@ -1,10 +1,11 @@
 import 'package:dio/dio.dart';
+import 'package:youtube_downloader/core/network/http_cache.dart';
 import '../models/cinemana_models.dart';
 
 class KrmziService {
   KrmziService({Dio? dio})
       : _dio = dio ??
-            Dio(
+            createDio(
               BaseOptions(
                 baseUrl: 'https://krmzitv.app/wp-json/',
                 connectTimeout: const Duration(seconds: 12),

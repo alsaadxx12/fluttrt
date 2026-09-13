@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'package:dio/dio.dart';
+import 'package:youtube_downloader/core/network/http_cache.dart';
 import 'package:flutter/foundation.dart' show debugPrint;
 import '../models/sports_models.dart';
 
@@ -8,7 +9,7 @@ class SportsService {
 
   SportsService({Dio? dio})
       : _dio = dio ??
-            Dio(
+            createDio(
               BaseOptions(
                 baseUrl: 'https://api.auralocals.com/app',
                 connectTimeout: const Duration(seconds: 12),
@@ -38,7 +39,7 @@ class SportsService {
   Future<void> _loadYacineConfig() async {
     if (_yacinePanelUrl != null && _yacineApiKey != null) return;
     try {
-      final res = await Dio(BaseOptions(connectTimeout: const Duration(seconds: 8)))
+      final res = await createDio(BaseOptions(connectTimeout: const Duration(seconds: 8)))
           .get('https://raw.githubusercontent.com/merrooapps/blamadkholasat/main/ycntv/yacintvv4.json');
       if (res.statusCode == 200 && res.data is Map) {
         _yacinePanelUrl = res.data['PANEL_URL']?.toString();
@@ -338,7 +339,7 @@ class SportsService {
     try {
       await _loadYacineConfig();
       final url = '$_yacinePanelUrl/api/api.php?get_category_posts&api_key=$_yacineApiKey&id=13&page=1&count=50';
-      final res = await Dio(BaseOptions(
+      final res = await createDio(BaseOptions(
         connectTimeout: const Duration(seconds: 6),
         receiveTimeout: const Duration(seconds: 6),
         headers: {'User-Agent': 'okhttp/4.9.0'},
@@ -387,7 +388,7 @@ class SportsService {
 
   Future<bool> _isWebviewAvailable(String url) async {
     if (!url.startsWith('http')) return false;
-    final probe = Dio(BaseOptions(
+    final probe = createDio(BaseOptions(
       connectTimeout: const Duration(seconds: 4),
       receiveTimeout: const Duration(seconds: 4),
       validateStatus: (_) => true,
@@ -411,7 +412,7 @@ class SportsService {
   /// when it is not live right now (the channel page then has no video).
   Future<SportsChannel?> _youtubeLive(SportsChannel c) async {
     try {
-      final res = await Dio(BaseOptions(
+      final res = await createDio(BaseOptions(
         connectTimeout: const Duration(seconds: 6),
         receiveTimeout: const Duration(seconds: 8),
         responseType: ResponseType.plain,
@@ -447,7 +448,7 @@ class SportsService {
     if (!url.startsWith('http') || !url.contains('.m3u8')) return false;
     // A live playlist is a few KB; 3s is generous, and a dead host must not
     // hold the whole page back.
-    final probe = Dio(BaseOptions(
+    final probe = createDio(BaseOptions(
       connectTimeout: const Duration(seconds: 3),
       receiveTimeout: const Duration(seconds: 3),
       responseType: ResponseType.plain,
@@ -477,7 +478,7 @@ class SportsService {
   /// Fetch live matches directly from Cinamana & Vodu schedule
   Future<List<SportMatchItem>> fetchCinamanaMatches() async {
     try {
-      final dio = Dio(BaseOptions(
+      final dio = createDio(BaseOptions(
         connectTimeout: const Duration(seconds: 7),
         receiveTimeout: const Duration(seconds: 7),
         headers: {
@@ -844,7 +845,7 @@ class SportsService {
         albaplayerUrl = pageUrl;
       } else {
         // Fetch channel container page (e.g. https://pl.koralive1.cc/bein1)
-        final dio = Dio(BaseOptions(
+        final dio = createDio(BaseOptions(
           connectTimeout: const Duration(seconds: 8),
           receiveTimeout: const Duration(seconds: 8),
           headers: {
@@ -873,7 +874,7 @@ class SportsService {
         final cacheBuster = forceRefresh ? '&_t=${DateTime.now().millisecondsSinceEpoch}' : '';
         final fetchUrl = albaplayerUrl.contains('?') ? '$albaplayerUrl$cacheBuster' : '$albaplayerUrl?_t=${DateTime.now().millisecondsSinceEpoch}';
 
-        final albaDio = Dio(BaseOptions(
+        final albaDio = createDio(BaseOptions(
           connectTimeout: const Duration(seconds: 8),
           receiveTimeout: const Duration(seconds: 8),
           headers: {
@@ -937,7 +938,7 @@ class SportsService {
       if (match == null || match.isEmpty) return null;
 
       final hardUrl = 'https://yassirtv.com/hard/2908c7d4425d$p.html?match=$match';
-      final dio = Dio(BaseOptions(
+      final dio = createDio(BaseOptions(
         connectTimeout: const Duration(seconds: 12),
         receiveTimeout: const Duration(seconds: 12),
         headers: {
@@ -1023,7 +1024,7 @@ class SportsService {
       }
 
       // 2. Fetch game details from 365scores (Lineups, Events, Venue, Officials)
-      final gameDio = Dio(BaseOptions(
+      final gameDio = createDio(BaseOptions(
         connectTimeout: const Duration(seconds: 10),
         receiveTimeout: const Duration(seconds: 10),
         headers: {'User-Agent': 'Mozilla/5.0'},

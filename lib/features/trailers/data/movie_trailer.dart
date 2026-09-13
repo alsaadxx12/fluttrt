@@ -28,7 +28,9 @@ class MovieTrailer {
   String? get posterUrl => posterPath == null ? null : TmdbConfig.poster(posterPath!);
 
   /// YouTube's own still, used when TMDB has no backdrop.
-  String get youtubeThumb => 'https://img.youtube.com/vi/$youtubeId/hqdefault.jpg';
+  /// Uses maxresdefault for 4K / 1080p Ultra-HD resolution.
+  String get youtubeThumb => 'https://img.youtube.com/vi/$youtubeId/maxresdefault.jpg';
+  String get youtubeFallbackThumb => 'https://img.youtube.com/vi/$youtubeId/hqdefault.jpg';
 
   String get bestImage => backdropUrl ?? (youtubeId != null ? youtubeThumb : (posterUrl ?? ''));
 

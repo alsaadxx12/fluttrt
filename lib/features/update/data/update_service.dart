@@ -4,6 +4,7 @@ import 'dart:io';
 
 import 'package:crypto/crypto.dart';
 import 'package:dio/dio.dart';
+import 'package:youtube_downloader/core/network/http_cache.dart';
 import 'package:flutter/services.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 import 'package:path_provider/path_provider.dart';
@@ -45,7 +46,7 @@ class UpdateException implements Exception {
 class UpdateService {
   UpdateService({Dio? dio, MethodChannel? channel})
       : _dio = dio ??
-            Dio(BaseOptions(
+            createDio(BaseOptions(
               connectTimeout: const Duration(seconds: 12),
               receiveTimeout: const Duration(seconds: 30),
               headers: const {'User-Agent': 'CINEBALL-updater'},

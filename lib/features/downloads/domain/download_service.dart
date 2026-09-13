@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 import 'package:dio/dio.dart';
+import 'package:youtube_downloader/core/network/http_cache.dart';
 import 'package:flutter/foundation.dart';
 import 'package:youtube_explode_dart/youtube_explode_dart.dart';
 import '../data/models/download_task_model.dart';
@@ -740,7 +741,7 @@ class DownloadService {
     final sink = targetFile.openWrite(mode: FileMode.writeOnly);
     _activeFileSinks[taskId] = sink;
 
-    final dio = Dio(
+    final dio = createDio(
       BaseOptions(
         connectTimeout: const Duration(seconds: 15),
         receiveTimeout: const Duration(seconds: 30),

@@ -15,7 +15,7 @@ class TmdbConfig {
   static const String apiBase = 'https://api.themoviedb.org/3';
 
   /// TMDB serves images from a separate CDN; the path from the API is appended
-  /// to a size folder. w780 is a good balance for a phone backdrop.
-  static String backdrop(String path, {String size = 'w780'}) => 'https://image.tmdb.org/t/p/$size$path';
-  static String poster(String path, {String size = 'w500'}) => 'https://image.tmdb.org/t/p/$size$path';
+  /// to a size folder. 'original' delivers full uncompressed 4K master images.
+  static String backdrop(String path, {String size = 'original'}) => 'https://image.tmdb.org/t/p/$size$path';
+  static String poster(String path, {String size = 'original'}) => 'https://image.tmdb.org/t/p/$size$path';
 }

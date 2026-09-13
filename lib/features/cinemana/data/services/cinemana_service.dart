@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'dart:math' as math;
 import 'package:dio/dio.dart';
+import 'package:youtube_downloader/core/network/http_cache.dart';
 import '../cinemana_franchises.dart';
 import '../cinemana_subtitles.dart';
 import '../models/cinemana_models.dart';
@@ -13,7 +14,7 @@ class CinemanaService {
     KrmziService? krmziService,
     TurkishSerieService? turkishSerieService,
   })  : _dio = dio ??
-            Dio(
+            createDio(
               BaseOptions(
                 baseUrl: 'https://cinemana.shabakaty.com/api/android/',
                 connectTimeout: const Duration(seconds: 15),

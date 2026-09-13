@@ -1,5 +1,6 @@
 import 'package:dio/dio.dart';
 
+import 'package:youtube_downloader/core/network/http_cache.dart';
 /// One fixture of a competition as 365Scores lists it.
 class LeagueFixture {
   final int id; // 365Scores game id (= the app's match `sourceId`)
@@ -67,7 +68,7 @@ class LeagueRow {
 /// Fixtures and standings of one competition, from 365Scores (the source
 /// the app already uses for match data and crests).
 class LeagueService {
-  final Dio _dio = Dio(
+  final Dio _dio = createDio(
     BaseOptions(
       baseUrl: 'https://webws.365scores.com/web',
       connectTimeout: const Duration(seconds: 10),

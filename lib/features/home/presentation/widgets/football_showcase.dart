@@ -1,5 +1,6 @@
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:dio/dio.dart';
+import 'package:youtube_downloader/core/network/http_cache.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -298,7 +299,7 @@ class FootballStar {
 final footballStarsProvider = FutureProvider<List<FootballStar>>((ref) async {
   final ids = FootballStar.featured.map((s) => s.id).join(',');
   try {
-    final res = await Dio(BaseOptions(
+    final res = await createDio(BaseOptions(
       connectTimeout: const Duration(seconds: 8),
       receiveTimeout: const Duration(seconds: 10),
     )).get('https://webws.365scores.com/web/athletes/', queryParameters: {

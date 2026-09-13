@@ -4,6 +4,7 @@ import 'dart:math';
 
 import 'package:dio/dio.dart';
 
+import 'package:youtube_downloader/core/network/http_cache.dart';
 import '../../cinemana/data/cinemana_subtitles.dart';
 import 'viu_models.dart';
 
@@ -37,7 +38,7 @@ class ViuService {
     'ut': '0',
   };
 
-  final Dio _dio = Dio(
+  final Dio _dio = createDio(
     BaseOptions(
       baseUrl: _gateway,
       connectTimeout: const Duration(seconds: 15),

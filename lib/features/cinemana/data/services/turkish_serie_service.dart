@@ -1,10 +1,11 @@
 import 'package:dio/dio.dart';
+import 'package:youtube_downloader/core/network/http_cache.dart';
 import '../models/cinemana_models.dart';
 
 class TurkishSerieService {
   TurkishSerieService({Dio? dio})
       : _dio = dio ??
-            Dio(
+            createDio(
               BaseOptions(
                 baseUrl: 'https://turkishserie.com/',
                 connectTimeout: const Duration(seconds: 15),
