@@ -1,0 +1,11 @@
+# Same rules as netlify.toml (kept in both so either deploy style works).
+/download/version.json
+  Cache-Control: no-cache, no-store, must-revalidate
+  Pragma: no-cache
+  Expires: 0
+  Access-Control-Allow-Origin: *
+
+/download/app.apk
+  Content-Type: application/vnd.android.package-archive
+  Cache-Control: public, max-age=3600
+  Access-Control-Allow-Origin: *

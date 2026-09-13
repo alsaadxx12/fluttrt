@@ -1,0 +1,57 @@
+allprojects {
+    repositories {
+        google()
+        mavenCentral()
+    }
+}
+
+rootProject.buildDir = "../build"
+
+// Provide flutter-like properties for plugin library subprojects ONLY.
+subprojects {
+    if (project.name != 'app') {
+        project.ext {
+            set('flutter', [
+                compileSdkVersion: 34,
+                minSdkVersion    : 21,
+                targetSdkVersion : 34,
+                ndkVersion       : "25.1.8937393",
+                versionCode      : 1,
+                versionName      : "1.0.0"
+            ])
+        }
+    }
+}
+
+// Force all subprojects to use kotlin-stdlib matching our Kotlin compiler version.
+subprojects {
+    configurations.all {
+        resolutionStrategy {
+            force 'org.jetbrains.kotlin:kotlin-stdlib:2.0.20'
+            force 'org.jetbrains.kotlin:kotlin-stdlib-jdk7:2.0.20'
+            force 'org.jetbrains.kotlin:kotlin-stdlib-jdk8:2.0.20'
+        }
+    }
+}
+
+// Force all plugin subprojects to compile against SDK 34.
+// Some plugins (media_kit_video, flutter_plugin_android_lifecycle) set compileSdk
+// to 35/36 but their code doesn't implement the new abstract methods added in those SDK versions.
+subprojects {
+    afterEvaluate { project ->
+        if (project.hasProperty('android') && project.name != 'app') {
+            project.android.compileSdk = 34
+        }
+    }
+}
+
+subprojects {
+    project.buildDir = "${rootProject.buildDir}/${project.name}"
+}
+subprojects {
+    project.evaluationDependsOn(":app")
+}
+
+tasks.register("clean", Delete) {
+    delete rootProject.buildDir
+}

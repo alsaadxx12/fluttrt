@@ -1,0 +1,28 @@
+# Deploy this folder (netlify/) as the site root on Netlify:
+#   base = "netlify", publish = "public"
+# or drag-and-drop the `public` folder in the Netlify UI.
+[build]
+  publish = "public"
+
+# version.json must never be cached: the app reads it on every start and a
+# stale copy would hide a new release. The APK may be cached normally (its
+# URL carries ?v=<versionCode>, so a new release is a new URL anyway).
+[[headers]]
+  for = "/download/version.json"
+  [headers.values]
+    Cache-Control = "no-cache, no-store, must-revalidate"
+    Pragma = "no-cache"
+    Expires = "0"
+    Access-Control-Allow-Origin = "*"
+
+[[headers]]
+  for = "/download/app.apk"
+  [headers.values]
+    Content-Type = "application/vnd.android.package-archive"
+    Cache-Control = "public, max-age=3600"
+    Access-Control-Allow-Origin = "*"
+
+[[redirects]]
+  from = "/"
+  to = "/download/"
+  status = 302

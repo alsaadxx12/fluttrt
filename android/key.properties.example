@@ -1,0 +1,14 @@
+# Copy this file to android/key.properties and fill it in.
+# key.properties and the keystore are ignored by git - never commit them.
+#
+# Create the keystore ONCE and keep it forever (every release must be signed
+# with the same key, or Android refuses to install the update over the old
+# version):
+#
+#   keytool -genkey -v -keystore cineball-release.jks -keyalg RSA -keysize 2048 -validity 10000 -alias cineball
+#
+storePassword=CHANGE_ME
+keyPassword=CHANGE_ME
+keyAlias=cineball
+# Path relative to the android/app folder (or absolute).
+storeFile=../cineball-release.jks

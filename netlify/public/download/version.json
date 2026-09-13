@@ -1,0 +1,11 @@
+{
+  "updateEnabled": true,
+  "versionCode": 26,
+  "versionName": "1.0.24",
+  "apkUrl": "https://cineball.netlify.app/download/app.apk?v=26",
+  "sha256": "3af8f2fa71927c5062125296a6f4e29f959c5f5aed40f0dfbab315d7acb15eca",
+  "sizeBytes": 30318353,
+  "forceUpdate": false,
+  "minSupportedVersion": 1,
+  "notes": "تسريع جلب سلاسل الأفلام"
+}

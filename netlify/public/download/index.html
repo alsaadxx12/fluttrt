@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>CINEBALL - تحميل التطبيق</title>
+  <style>
+    :root { color-scheme: dark; }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0; min-height: 100vh; display: flex; align-items: center; justify-content: center;
+      background: radial-gradient(1200px 600px at 50% -10%, #2a0b10 0%, #07090e 60%);
+      color: #f8fafc; font-family: "Segoe UI", Tahoma, "Noto Sans Arabic", sans-serif;
+    }
+    .card {
+      width: min(440px, 92vw); padding: 32px 26px; border-radius: 24px; text-align: center;
+      background: #121724; border: 1px solid rgba(255,255,255,.08);
+    }
+    .logo { width: 108px; height: 108px; border-radius: 28px; box-shadow: 0 10px 40px rgba(229,9,20,.35); }
+    h1 { margin: 18px 0 4px; font-size: 28px; letter-spacing: 1px; }
+    .tag { color: #94a3b8; font-size: 14px; margin: 0 0 20px; }
+    .meta { display: flex; justify-content: center; gap: 18px; color: #cbd5e1; font-size: 13.5px; margin-bottom: 22px; }
+    .meta b { color: #fff; }
+    .btn {
+      display: block; width: 100%; padding: 14px; margin: 10px 0; border-radius: 14px; border: 0;
+      font-size: 16px; font-weight: 800; text-decoration: none; cursor: pointer;
+    }
+    .primary { background: #e50914; color: #fff; }
+    .secondary { background: rgba(255,255,255,.08); color: #fff; border: 1px solid rgba(255,255,255,.12); }
+    .notes { text-align: right; color: #cbd5e1; font-size: 13px; line-height: 1.7; margin-top: 18px; white-space: pre-line; }
+    .hint { color: #64748b; font-size: 12px; margin-top: 18px; line-height: 1.6; }
+  </style>
+</head>
+<body>
+  <main class="card">
+    <img class="logo" src="logo.png" alt="CINEBALL" onerror="this.style.display='none'">
+    <h1>CINEBALL</h1>
+    <p class="tag">سينما ومباريات بلا حدود</p>
+    <div class="meta">
+      <span>الإصدار: <b id="ver">…</b></span>
+      <span>الحجم: <b id="size">…</b></span>
+    </div>
+    <a class="btn primary" id="dl" href="app.apk">تحميل التطبيق</a>
+    <a class="btn secondary" id="dlLatest" href="app.apk">تحميل آخر إصدار</a>
+    <div class="notes" id="notes"></div>
+    <p class="hint">للأندرويد فقط. عند التثبيت الأول اسمح بتثبيت التطبيقات من هذا المصدر. التحديثات اللاحقة تصلك داخل التطبيق.</p>
+  </main>
+  <script>
+    (async () => {
+      const set = (id, v) => document.getElementById(id).textContent = v;
+      let v = null;
+      try {
+        const r = await fetch('version.json?t=' + Date.now(), { cache: 'no-store' });
+        v = await r.json();
+      } catch (e) {
+        set('ver', '-'); set('size', '-');
+        return;
+      }
+      set('ver', v.versionName + ' (' + v.versionCode + ')');
+      const link = v.apkUrl || 'app.apk';
+      document.getElementById('dl').href = link;
+      document.getElementById('dlLatest').href = link;
+      if (v.notes) set('notes', v.notes);
+      // The size is a bonus: never let it hide the version.
+      let bytes = v.sizeBytes;
+      if (!bytes) {
+        try {
+          const h = await fetch(link, { method: 'HEAD' });
+          bytes = Number(h.headers.get('content-length'));
+        } catch (e) { bytes = 0; }
+      }
+      set('size', bytes ? (bytes / 1048576).toFixed(1) + ' MB' : '-');
+    })();
+  </script>
+</body>
+</html>

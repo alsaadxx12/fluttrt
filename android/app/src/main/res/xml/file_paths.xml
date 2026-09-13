@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Downloaded update APKs live in <app files>/updates; the package installer
+     is handed them through this FileProvider. -->
+<paths>
+    <files-path name="updates" path="updates/" />
+</paths>

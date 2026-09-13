@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- The tile a television shows for the app on its home row. A television
+     asks for 320x180; a layer-list scales to whatever the launcher wants
+     without shipping a bitmap for every density. -->
+<layer-list xmlns:android="http://schemas.android.com/apk/res/android">
+    <item android:drawable="@color/splash_background"/>
+    <item
+        android:gravity="center"
+        android:drawable="@mipmap/ic_launcher"
+        android:width="96dp"
+        android:height="96dp"/>
+</layer-list>
