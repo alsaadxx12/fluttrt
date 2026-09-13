@@ -579,7 +579,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
             ),
           ),
 
-          // Fixed Pinned Top App Bar (Permanent header that stays at the top when scrolling)
+          // Fixed Pinned Top App Bar (Permanent compact header that stays at the top when scrolling)
           Positioned(
             top: 0,
             left: 0,
@@ -589,7 +589,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
               child: SafeArea(
                 bottom: false,
                 child: Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 4),
                   child: _buildFloatingTopBar(),
                 ),
               ),
@@ -600,7 +600,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
           if (_isSearchExpanded &&
               (_isSearchLoading || _searchResults.isNotEmpty || _searchController.text.trim().isNotEmpty))
             Positioned.fill(
-              top: MediaQuery.of(context).padding.top + 60,
+              top: MediaQuery.of(context).padding.top + 46,
               child: _buildSearchResultsView(),
             ),
 
@@ -635,7 +635,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
 
   /// The top bar: matches the page and sidebar background so everything is one seamless canvas.
   Color get _barColor => _p.bg;
-  static const double _heroTopRadius = 30;
+  static const double _heroTopRadius = 16;
 
   Widget _buildHeroSection(List<CinemanaItem> movies, bool isLoading) {
     return LayoutBuilder(
@@ -649,8 +649,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     double availableWidth,
   ) {
     final media = MediaQuery.of(context);
-    final artworkTop = media.padding.top + 52.0;
     final isDesktop = availableWidth > 680;
+    final artworkTop = media.padding.top + (isDesktop ? 34.0 : 38.0);
     // On Windows/Desktop, provide a generous, well-proportioned height (420-520px)
     // so the hero artwork has ample space, clear visibility, and doesn't get squeezed.
     final artworkHeight = isDesktop
@@ -930,7 +930,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     final isDesktop = Platform.isWindows || Platform.isLinux || Platform.isMacOS;
 
     final topBarContent = SizedBox(
-      height: 48,
+      height: 36,
       child: Stack(
         children: [
           // Base Top Bar (User Profile + Theme Toggle + Search Trigger + Caption Buttons + CINEBALL Logo)
@@ -950,7 +950,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                       mainScaffoldKey.currentState?.openDrawer();
                     },
                   ),
-                  const SizedBox(width: 10),
+                  const SizedBox(width: 8),
 
                   // Quick Theme Mode Toggle (Sun / Moon)
                   _buildTranslucentIconButton(
@@ -961,7 +961,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                           );
                     },
                   ),
-                  const SizedBox(width: 10),
+                  const SizedBox(width: 8),
 
                   // Search Trigger Button
                   _buildTranslucentIconButton(
@@ -971,11 +971,11 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
 
                   // On Desktop: Elegant integrated window controls (frameless, seamless)
                   if (isDesktop) ...[
-                    const SizedBox(width: 8),
+                    const SizedBox(width: 6),
                     Container(
-                      height: 22,
+                      height: 18,
                       width: 1,
-                      margin: const EdgeInsets.symmetric(horizontal: 4),
+                      margin: const EdgeInsets.symmetric(horizontal: 3),
                       color: isDark ? Colors.white12 : Colors.black12,
                     ),
                     const WindowCaptionButtons(),
@@ -997,10 +997,10 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
               duration: const Duration(milliseconds: 320),
               curve: Curves.easeOutCubic,
               width: _isSearchExpanded ? double.infinity : 0.0,
-              height: 48,
+              height: 36,
               decoration: BoxDecoration(
                 color: searchBarBg,
-                borderRadius: BorderRadius.circular(24),
+                borderRadius: BorderRadius.circular(18),
                 border: _isSearchExpanded ? searchBorder : null,
                 boxShadow: _isSearchExpanded
                     ? [
@@ -1014,7 +1014,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
               ),
               child: _isSearchExpanded
                   ? ClipRRect(
-                      borderRadius: BorderRadius.circular(24),
+                      borderRadius: BorderRadius.circular(18),
                       child: SingleChildScrollView(
                         scrollDirection: Axis.horizontal,
                         physics: const NeverScrollableScrollPhysics(),
@@ -1102,10 +1102,10 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
       color: Colors.transparent,
       child: InkWell(
         onTap: onTap,
-        borderRadius: BorderRadius.circular(18),
+        borderRadius: BorderRadius.circular(16),
         child: Container(
-          width: 36,
-          height: 36,
+          width: 32,
+          height: 32,
           decoration: BoxDecoration(
             shape: BoxShape.circle,
             color: _p.isDark ? Colors.white.withOpacity(0.16) : const Color(0x0D0F172A),
@@ -1114,14 +1114,14 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
           child: Icon(
             icon,
             color: _p.isDark ? Colors.white.withOpacity(0.95) : _p.icon,
-            size: 19,
+            size: 17,
           ),
         ),
       ),
     );
   }
 
-  // Enlarged, Professional CINEBALL Logo
+  // Compact, Professional CINEBALL Logo
   Widget _buildCineballLogo() {
     return Row(
       mainAxisSize: MainAxisSize.min,
@@ -1130,43 +1130,42 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
           'CINEBALL',
           style: TextStyle(
             color: _p.isDark ? Colors.white : _p.text,
-            fontSize: 16.5,
+            fontSize: 14.5,
             fontWeight: FontWeight.w900,
-            letterSpacing: 1.0,
-            // The red glow suits the dark bar; on the white one it would smudge.
-            shadows: _p.isDark ? const [Shadow(color: Color(0xFFE50914), blurRadius: 12)] : null,
+            letterSpacing: 0.8,
+            shadows: _p.isDark ? const [Shadow(color: Color(0xFFE50914), blurRadius: 10)] : null,
           ),
         ),
-        const SizedBox(width: 9),
+        const SizedBox(width: 7),
         Container(
-          width: 38,
-          height: 38,
+          width: 28,
+          height: 28,
           decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(12),
+            borderRadius: BorderRadius.circular(8),
             border: Border.all(
               color: const Color(0xFFFF4D5B).withOpacity(0.55),
-              width: 1.5,
+              width: 1.2,
             ),
             boxShadow: [
               BoxShadow(
                 color: const Color(0xFFE50914).withOpacity(0.35),
-                blurRadius: 10,
+                blurRadius: 8,
                 offset: const Offset(0, 2),
               ),
             ],
           ),
           child: ClipRRect(
-            borderRadius: BorderRadius.circular(10),
+            borderRadius: BorderRadius.circular(7),
             child: Image.asset(
               'assets/images/app_logo.png',
-              width: 38,
-              height: 38,
+              width: 28,
+              height: 28,
               fit: BoxFit.contain,
               errorBuilder: (_, __, ___) => Container(
-                width: 38,
-                height: 38,
+                width: 28,
+                height: 28,
                 color: const Color(0xFFE50914),
-                child: const Icon(Icons.movie_rounded, color: Colors.white, size: 22),
+                child: const Icon(Icons.movie_rounded, color: Colors.white, size: 16),
               ),
             ),
           ),
