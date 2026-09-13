@@ -364,6 +364,12 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                   ),
                 ),
 
+                const SliverToBoxAdapter(child: SizedBox(height: 24)),
+
+                // Official film trailers from TMDB, right after the matches.
+                // Phone only: hidden on TV, desktop, and when TMDB is unset.
+                const SliverToBoxAdapter(child: TrailersShowcase()),
+
                 const SliverToBoxAdapter(
                   child: SizedBox(height: 24),
                 ),
@@ -568,12 +574,6 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                   SliverToBoxAdapter(child: Reveal(index: 6, child: ViuHomeSection(category: category))),
                 // "أفلام أخرى": Viu's free films plus varied films by genre.
                 const SliverToBoxAdapter(child: Reveal(index: 7, child: OtherFilmsSection())),
-                const SliverToBoxAdapter(child: SizedBox(height: 12)),
-
-                // Official trailers from TMDB, played on YouTube. Phone only:
-                // the widget hides itself on TV, desktop, and when TMDB is not
-                // configured.
-                const SliverToBoxAdapter(child: Reveal(index: 8, child: TrailersShowcase())),
                 const SliverToBoxAdapter(child: SizedBox(height: 24)),
               ],
             ),
@@ -635,7 +635,6 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
 
   /// The top bar: matches the page and sidebar background so everything is one seamless canvas.
   Color get _barColor => _p.bg;
-  static const double _heroTopRadius = 16;
 
   Widget _buildHeroSection(List<CinemanaItem> movies, bool isLoading) {
     return LayoutBuilder(
@@ -650,7 +649,10 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
   ) {
     final media = MediaQuery.of(context);
     final isDesktop = availableWidth > 680;
-    final artworkTop = media.padding.top + (isDesktop ? 34.0 : 38.0);
+    // Pinned top bar: media.padding.top + 36px content + 10px padding = media.padding.top + 46.0
+    final topBarHeight = media.padding.top + 46.0;
+    // Clear 14px separation gap so the image container NEVER encroaches or hides behind the top bar:
+    final artworkTop = topBarHeight + 14.0;
     // On Windows/Desktop, provide a generous, well-proportioned height (420-520px)
     // so the hero artwork has ample space, clear visibility, and doesn't get squeezed.
     final artworkHeight = isDesktop
@@ -666,9 +668,6 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
 
     return Stack(
       children: [
-        // The bar's colour above the artwork, the page's colour below it.
-        Positioned.fill(child: _buildHeroSurround(artworkTop, artworkHeight)),
-
         // The Column is the only unpositioned child, so it sizes the Stack:
         // the hero is exactly as tall as the artwork plus its details.
         Column(
@@ -676,13 +675,12 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
           children: [
             SizedBox(height: artworkTop),
 
-            // Full-bleed artwork carousel with Tap-to-Pause, rounded at the top
-            // where it meets the bar.
+            // Artwork carousel with its own clean rounded corners, fully separated from the bar
             SizedBox(
               height: artworkHeight,
               width: double.infinity,
               child: ClipRRect(
-                borderRadius: const BorderRadius.vertical(top: Radius.circular(_heroTopRadius)),
+                borderRadius: BorderRadius.circular(18),
                 child: movies.isNotEmpty
                     ? GestureDetector(
                         onTap: () {
@@ -771,28 +769,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     );
   }
 
-  /// Paints the hero around the artwork: the bar's fixed colour above it
-  /// (and behind its rounded top corners), the page's own colour below.
-  Widget _buildHeroSurround(double artworkTop, double artworkHeight) {
-    final pageBg = _homeBg;
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        final height = constraints.maxHeight;
-        if (height <= 0) return ColoredBox(color: pageBg);
-        final barEnd = ((artworkTop + _heroTopRadius) / height).clamp(0.0, 1.0);
-        return DecoratedBox(
-          decoration: BoxDecoration(
-            gradient: LinearGradient(
-              begin: Alignment.topCenter,
-              end: Alignment.bottomCenter,
-              colors: [_barColor, _barColor, pageBg, pageBg],
-              stops: [0.0, barEnd, barEnd, 1.0],
-            ),
-          ),
-        );
-      },
-    );
-  }
+
 
   /// The home page's background - the colour the hero's fog fades into.
   Color get _homeBg => _p.bg;
