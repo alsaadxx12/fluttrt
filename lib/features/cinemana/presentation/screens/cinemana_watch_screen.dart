@@ -11,6 +11,7 @@ import '../../data/models/cinemana_models.dart';
 import '../providers/cinemana_provider.dart';
 import '../widgets/cinemana_player_view.dart';
 import 'package:youtube_downloader/core/video/desktop_video.dart';
+import 'package:window_manager/window_manager.dart';
 
 class CinemanaWatchScreen extends ConsumerStatefulWidget {
   final CinemanaItem item;
@@ -255,8 +256,13 @@ class _CinemanaWatchScreenState extends ConsumerState<CinemanaWatchScreen> {
     super.dispose();
   }
 
-  void _setFullscreen(bool fs) {
+  void _setFullscreen(bool fs) async {
     setState(() => _isFullscreen = fs);
+    if (isDesktopVideo) {
+      try {
+        await windowManager.setFullScreen(fs);
+      } catch (_) {}
+    }
     if (fs) {
       SystemChrome.setEnabledSystemUIMode(SystemUiMode.immersiveSticky);
       SystemChrome.setPreferredOrientations([
@@ -297,12 +303,13 @@ class _CinemanaWatchScreenState extends ConsumerState<CinemanaWatchScreen> {
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final isLandscape = MediaQuery.of(context).orientation == Orientation.landscape;
+    final isMobile = !isDesktopVideo;
+    final isLandscapeMobile = isMobile && MediaQuery.of(context).orientation == Orientation.landscape;
 
-    // Fullscreen (button, or the phone turned sideways).
-    if (_isFullscreen || isLandscape) {
+    // Fullscreen: only when explicitly toggled on desktop, or rotated on mobile
+    if (_isFullscreen || isLandscapeMobile) {
       return PopScope(
-        canPop: false,
+        canPop: !_isFullscreen,
         onPopInvokedWithResult: (didPop, _) {
           if (!didPop) _setFullscreen(false);
         },
@@ -629,6 +636,13 @@ class _CinemanaWatchScreenState extends ConsumerState<CinemanaWatchScreen> {
       onRetry: _errorMessage != null ? _loadStreamFiles : _retryPlayback,
       fullscreen: fullscreen,
       onToggleFullscreen: () => _setFullscreen(!fullscreen),
+      onBack: () {
+        if (_isFullscreen) {
+          _setFullscreen(false);
+        } else {
+          Navigator.of(context).maybePop();
+        }
+      },
       title: _currentTitle,
       cues: _hasSubs ? _subCues : null,
       subtitles: _subs,

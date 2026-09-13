@@ -55,7 +55,11 @@ void main() async {
       );
       windowManager.waitUntilReadyToShow(windowOptions, () async {
         try {
-          await windowManager.setTitleBarStyle(TitleBarStyle.hidden, windowButtonVisibility: false);
+          if (Platform.isMacOS) {
+            await windowManager.setTitleBarStyle(TitleBarStyle.hidden, windowButtonVisibility: true);
+          } else {
+            await windowManager.setTitleBarStyle(TitleBarStyle.hidden, windowButtonVisibility: false);
+          }
         } catch (_) {}
         await windowManager.show();
         await windowManager.focus();

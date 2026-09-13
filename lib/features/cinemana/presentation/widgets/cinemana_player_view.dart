@@ -86,6 +86,7 @@ class CinemanaPlayerView extends StatefulWidget {
   final List<CinemanaStreamFile> streams;
   final CinemanaStreamFile? selectedStream;
   final ValueChanged<CinemanaStreamFile> onQuality;
+  final VoidCallback? onBack;
 
   const CinemanaPlayerView({
     super.key,
@@ -102,6 +103,7 @@ class CinemanaPlayerView extends StatefulWidget {
     required this.streams,
     required this.selectedStream,
     required this.onQuality,
+    this.onBack,
   });
 
   @override
@@ -488,20 +490,22 @@ class _CinemanaPlayerViewState extends State<CinemanaPlayerView> {
           padding: const EdgeInsets.fromLTRB(6, 4, 6, 0),
           child: Row(
             children: [
-              if (widget.fullscreen) ...[
-                _roundButton(Icons.arrow_forward_rounded, widget.onToggleFullscreen, tip: 'رجوع'),
-                const SizedBox(width: 4),
-                Expanded(
-                  child: Text(
-                    widget.title,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(color: Colors.white, fontSize: 14, fontWeight: FontWeight.bold),
-                  ),
+              _roundButton(
+                Icons.arrow_back_rounded,
+                widget.onBack ?? () => Navigator.of(context).maybePop(),
+                size: 24,
+                tip: 'رجوع',
+              ),
+              const SizedBox(width: 6),
+              Expanded(
+                child: Text(
+                  widget.title,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(color: Colors.white, fontSize: 14, fontWeight: FontWeight.bold),
                 ),
-              ] else
-                const Spacer(),
-              if (hasSubs && widget.fullscreen) ...[
+              ),
+              if (hasSubs) ...[
                 _roundButton(
                   s.on ? Icons.closed_caption_rounded : Icons.closed_caption_disabled_rounded,
                   () => widget.onSubtitlesChanged(s.copyWith(on: !s.on)),
@@ -528,7 +532,13 @@ class _CinemanaPlayerViewState extends State<CinemanaPlayerView> {
                       tip: 'رفع الترجمة'),
                 ],
               ],
-              if (widget.fullscreen && widget.streams.length > 1) _qualityMenu(),
+              if (widget.streams.length > 1) _qualityMenu(),
+              _roundButton(
+                widget.fullscreen ? Icons.fullscreen_exit_rounded : Icons.fullscreen_rounded,
+                widget.onToggleFullscreen,
+                size: 24,
+                tip: widget.fullscreen ? 'خروج من ملء الشاشة' : 'ملء الشاشة',
+              ),
             ],
           ),
         ),
@@ -561,10 +571,38 @@ class _CinemanaPlayerViewState extends State<CinemanaPlayerView> {
         child: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            // Playback starts on its own; only seeking is offered.
-            _roundButton(Icons.replay_10_rounded, () => _seekBy(-10), size: 34, tip: 'رجوع 10 ثوانٍ'),
-            const SizedBox(width: 34),
-            _roundButton(Icons.forward_10_rounded, () => _seekBy(10), size: 34, tip: 'تقديم 10 ثوانٍ'),
+            _roundButton(Icons.replay_10_rounded, () => _seekBy(-10), size: 36, tip: 'رجوع 10 ثوانٍ'),
+            const SizedBox(width: 26),
+            ValueListenableBuilder<VideoPlayerValue>(
+              valueListenable: c,
+              builder: (_, v, __) {
+                final isPlaying = v.isPlaying;
+                return Material(
+                  color: Colors.black54,
+                  shape: const CircleBorder(),
+                  child: InkWell(
+                    customBorder: const CircleBorder(),
+                    onTap: () => _act(() {
+                      if (isPlaying) {
+                        c.pause();
+                      } else {
+                        c.play();
+                      }
+                    }),
+                    child: Padding(
+                      padding: const EdgeInsets.all(14),
+                      child: Icon(
+                        isPlaying ? Icons.pause_rounded : Icons.play_arrow_rounded,
+                        size: 44,
+                        color: Colors.white,
+                      ),
+                    ),
+                  ),
+                );
+              },
+            ),
+            const SizedBox(width: 26),
+            _roundButton(Icons.forward_10_rounded, () => _seekBy(10), size: 36, tip: 'تقديم 10 ثوانٍ'),
           ],
         ),
       ),
@@ -595,7 +633,20 @@ class _CinemanaPlayerViewState extends State<CinemanaPlayerView> {
               const timeStyle = TextStyle(color: Colors.white, fontSize: 11.5, fontWeight: FontWeight.w600);
               return Row(
                 children: [
-                  const SizedBox(width: 12),
+                  const SizedBox(width: 6),
+                  _roundButton(
+                    v.isPlaying ? Icons.pause_rounded : Icons.play_arrow_rounded,
+                    () => _act(() {
+                      if (v.isPlaying) {
+                        c.pause();
+                      } else {
+                        c.play();
+                      }
+                    }),
+                    size: 24,
+                    tip: v.isPlaying ? 'إيقاف مؤقت' : 'تشغيل',
+                  ),
+                  const SizedBox(width: 4),
                   Text(_clock(Duration(milliseconds: pos.round())), style: timeStyle),
                   Expanded(
                     child: SliderTheme(

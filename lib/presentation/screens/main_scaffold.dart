@@ -6,6 +6,7 @@ import '../widgets/app_drawer.dart';
 import '../widgets/app_header.dart';
 import '../widgets/app_sidebar.dart';
 import '../../features/watch/presentation/providers/watch_provider.dart';
+import '../../core/tv/tv_mode.dart';
 
 final GlobalKey<ScaffoldState> mainScaffoldKey = GlobalKey<ScaffoldState>();
 
@@ -39,7 +40,11 @@ class MainScaffold extends ConsumerWidget {
     }
 
     final selectedIndex = _calculateSelectedIndex(location);
-    final isMobile = MediaQuery.of(context).size.width < 700;
+    // A television always uses the wide, Windows-style layout with the side
+    // menu, whatever logical width it reports: a set-top box driven by a
+    // remote should never fall into the narrow, drawer-based phone layout.
+    final isTv = ref.watch(tvModeProvider).valueOrNull ?? false;
+    final isMobile = !isTv && MediaQuery.of(context).size.width < 700;
 
     void onDestinationSelected(int index) {
       switch (index) {

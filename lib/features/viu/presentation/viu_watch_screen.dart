@@ -14,6 +14,7 @@ import '../../cinemana/presentation/widgets/cinemana_player_view.dart';
 import '../data/viu_models.dart';
 import 'viu_providers.dart';
 import '../../../core/video/desktop_video.dart';
+import 'package:window_manager/window_manager.dart';
 
 /// A Viu series (or film): the player on top, its free episodes below.
 /// Plays in the app's own native player - no web page, no ads.
@@ -276,8 +277,13 @@ class _ViuWatchScreenState extends ConsumerState<ViuWatchScreen> {
     _saveSubsTimer = Timer(const Duration(milliseconds: 500), () => _subs.save());
   }
 
-  void _setFullscreen(bool fs) {
+  void _setFullscreen(bool fs) async {
     setState(() => _isFullscreen = fs);
+    if (isDesktopVideo) {
+      try {
+        await windowManager.setFullScreen(fs);
+      } catch (_) {}
+    }
     if (fs) {
       SystemChrome.setEnabledSystemUIMode(SystemUiMode.immersiveSticky);
       SystemChrome.setPreferredOrientations([DeviceOrientation.landscapeLeft, DeviceOrientation.landscapeRight]);
@@ -314,6 +320,13 @@ class _ViuWatchScreenState extends ConsumerState<ViuWatchScreen> {
       onRetry: _retry,
       fullscreen: fullscreen,
       onToggleFullscreen: () => _setFullscreen(!fullscreen),
+      onBack: () {
+        if (_isFullscreen) {
+          _setFullscreen(false);
+        } else {
+          Navigator.of(context).maybePop();
+        }
+      },
       title: _title,
       cues: _cues,
       subtitles: _subs,
@@ -376,12 +389,13 @@ class _ViuWatchScreenState extends ConsumerState<ViuWatchScreen> {
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final isLandscape = MediaQuery.of(context).orientation == Orientation.landscape;
+    final isMobile = !isDesktopVideo;
+    final isLandscapeMobile = isMobile && MediaQuery.of(context).orientation == Orientation.landscape;
     final started = _current != null;
 
-    if (started && (_isFullscreen || isLandscape)) {
+    if (started && (_isFullscreen || isLandscapeMobile)) {
       return PopScope(
-        canPop: false,
+        canPop: !_isFullscreen,
         onPopInvokedWithResult: (didPop, _) {
           if (!didPop) _setFullscreen(false);
         },
