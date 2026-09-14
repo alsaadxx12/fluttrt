@@ -3,7 +3,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:youtube_downloader/core/constants/app_palette.dart';
 import 'package:youtube_downloader/features/sports/presentation/widgets/match_score_line.dart';
-import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart' hide TextDirection;
 import '../../data/models/sports_models.dart';
 import '../providers/sports_provider.dart';
@@ -124,17 +123,13 @@ class _SportsScreenState extends ConsumerState<SportsScreen> {
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final selectedDay = ref.watch(sportsDayProvider);
-    final selectedTab = ref.watch(sportsTabProvider);
+    // This page shows only TODAY's matches, for every league — no day
+    // switching and no tabs (matches / live / channels / news).
+    const selectedDay = 'today';
+    const selectedTab = 0;
     final searchQuery = ref.watch(sportsSearchQueryProvider);
     final sportsState = ref.watch(sportsNotifierProvider(selectedDay));
     final sportsNotifier = ref.read(sportsNotifierProvider(selectedDay).notifier);
-
-    ref.listen<int>(sportsTabProvider, (previous, next) {
-      if (next == 1) {
-        ref.read(sportsDayProvider.notifier).state = 'today';
-      }
-    });
 
     // Resolve the streams of the matches that are live right now, before any
     // of them is tapped: the first one opened then starts with no round trip
@@ -155,60 +150,12 @@ class _SportsScreenState extends ConsumerState<SportsScreen> {
 
     return Scaffold(
       backgroundColor: isDark ? AppPalette.of(context).bg : AppPalette.of(context).bg,
-      appBar: AppBar(
-        backgroundColor: isDark ? const Color(0xFF111622) : Colors.white,
-        elevation: 0,
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back_rounded),
-          color: isDark ? Colors.white : Colors.black87,
-          onPressed: () {
-            if (context.canPop()) {
-              context.pop();
-            } else {
-              context.go('/');
-            }
-          },
-        ),
-        title: Row(
-          children: [
-            Container(
-              padding: const EdgeInsets.all(6),
-              decoration: BoxDecoration(
-                color: accentColor.withOpacity(0.15),
-                borderRadius: BorderRadius.circular(8),
-              ),
-              child: const Icon(
-                Icons.sports_soccer_rounded,
-                color: accentColor,
-                size: 20,
-              ),
-            ),
-            const SizedBox(width: 10),
-            Text(
-              'الرياضة والمباريات',
-              style: TextStyle(
-                fontSize: 18,
-                fontWeight: FontWeight.w900,
-                color: isDark ? Colors.white : const Color(0xFF111115),
-              ),
-            ),
-          ],
-        ),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.refresh_rounded),
-            color: isDark ? Colors.white70 : Colors.black54,
-            tooltip: 'تحديث',
-            onPressed: () => sportsNotifier.refresh(),
-          ),
-          const SizedBox(width: 4),
-        ],
-      ),
+      // No app bar: the top strip is the search field alone. Going back is
+      // the page's edge-swipe gesture (the route is a CupertinoPage), and the
+      // list refreshes by pulling down.
       body: Column(
         children: [
-          // Day & Tab Switchers Section
           Container(
-            padding: const EdgeInsets.fromLTRB(14, 10, 14, 12),
             decoration: BoxDecoration(
               color: isDark ? const Color(0xFF111622) : Colors.white,
               border: Border(
@@ -218,137 +165,69 @@ class _SportsScreenState extends ConsumerState<SportsScreen> {
                 ),
               ),
             ),
-            child: Column(
-              children: [
-                // Day Selector: الأمس, اليوم, الغد
-                Row(
-                  children: [
-                    _buildDayPill(
-                      label: 'أمس',
-                      dayKey: 'yesterday',
-                      isSelected: selectedDay == 'yesterday',
-                      onTap: () => ref.read(sportsDayProvider.notifier).state = 'yesterday',
-                      isDark: isDark,
-                      accentColor: accentColor,
-                    ),
-                    const SizedBox(width: 8),
-                    _buildDayPill(
-                      label: 'اليوم',
-                      dayKey: 'today',
-                      isSelected: selectedDay == 'today',
-                      onTap: () => ref.read(sportsDayProvider.notifier).state = 'today',
-                      isDark: isDark,
-                      accentColor: accentColor,
-                    ),
-                    const SizedBox(width: 8),
-                    _buildDayPill(
-                      label: 'غداً',
-                      dayKey: 'tomorrow',
-                      isSelected: selectedDay == 'tomorrow',
-                      onTap: () => ref.read(sportsDayProvider.notifier).state = 'tomorrow',
-                      isDark: isDark,
-                      accentColor: accentColor,
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 10),
-
-                // Main Section Tabs: المباريات, مباشر, القنوات, الأخبار
-                Row(
-                  children: [
-                    _buildTabButton(
-                      title: 'المباريات',
-                      icon: Icons.calendar_today_rounded,
-                      isSelected: selectedTab == 0,
-                      onTap: () => ref.read(sportsTabProvider.notifier).state = 0,
-                      isDark: isDark,
-                      accentColor: accentColor,
-                    ),
-                    const SizedBox(width: 6),
-                    _buildTabButton(
-                      title: 'مباشر',
-                      icon: Icons.sensors_rounded,
-                      badgeCount: sportsState.liveMatches.where((m) => m.isLive).length,
-                      isSelected: selectedTab == 1,
-                      onTap: () {
-                        ref.read(sportsDayProvider.notifier).state = 'today';
-                        ref.read(sportsTabProvider.notifier).state = 1;
-                      },
-                      isDark: isDark,
-                      accentColor: const Color(0xFFFF334B),
-                    ),
-                    const SizedBox(width: 6),
-                    _buildTabButton(
-                      title: 'القنوات',
-                      icon: Icons.live_tv_rounded,
-                      isSelected: selectedTab == 2,
-                      onTap: () => ref.read(sportsTabProvider.notifier).state = 2,
-                      isDark: isDark,
-                      accentColor: accentColor,
-                    ),
-                    const SizedBox(width: 6),
-                    _buildTabButton(
-                      title: 'الأخبار',
-                      icon: Icons.article_rounded,
-                      isSelected: selectedTab == 3,
-                      onTap: () => ref.read(sportsTabProvider.notifier).state = 3,
-                      isDark: isDark,
-                      accentColor: accentColor,
-                    ),
-                  ],
-                ),
-
-                // Search field (shown in matches and channels tabs)
-                if (selectedTab != 3) ...[
-                  const SizedBox(height: 10),
-                  Container(
-                    height: 40,
-                    decoration: BoxDecoration(
-                      color: isDark ? const Color(0xFF192030) : const Color(0xFFEEF1F6),
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    child: TextField(
-                      controller: _searchController,
-                      onChanged: (val) {
-                        ref.read(sportsSearchQueryProvider.notifier).state = val.trim();
-                      },
-                      style: TextStyle(
-                        fontSize: 13,
-                        color: isDark ? Colors.white : Colors.black87,
-                      ),
-                      decoration: InputDecoration(
-                        hintText: 'ابحث عن فريقك المفضل (ريال مدريد، ليفربول...)...',
-                        hintStyle: TextStyle(
-                          fontSize: 12,
-                          color: isDark ? Colors.white38 : Colors.black38,
-                        ),
-                        prefixIcon: const Icon(Icons.search_rounded, size: 18),
-                        prefixIconColor: isDark ? Colors.white38 : Colors.black38,
-                        suffixIcon: searchQuery.isNotEmpty
-                            ? IconButton(
-                                icon: const Icon(Icons.close_rounded, size: 16),
-                                onPressed: () {
-                                  _searchController.clear();
-                                  ref.read(sportsSearchQueryProvider.notifier).state = '';
-                                },
-                              )
-                            : null,
-                        border: InputBorder.none,
-                        contentPadding: const EdgeInsets.symmetric(vertical: 10),
-                      ),
-                    ),
+            child: SafeArea(
+              bottom: false,
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(14, 10, 14, 12),
+                // A pill search field with no hint text: just the icon, the
+                // typed team, and a clear button once something is typed.
+                child: Container(
+                  height: 46,
+                  decoration: BoxDecoration(
+                    color: isDark ? const Color(0xFF192030) : const Color(0xFFEEF1F6),
+                    borderRadius: BorderRadius.circular(24),
+                    border: Border.all(color: isDark ? const Color(0xFF26304A) : const Color(0xFFDDE3EC)),
                   ),
-                ],
-              ],
+                  child: Row(
+                    children: [
+                      const SizedBox(width: 14),
+                      Icon(Icons.search_rounded, size: 21, color: isDark ? Colors.white54 : Colors.black45),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: TextField(
+                          controller: _searchController,
+                          onChanged: (val) {
+                            ref.read(sportsSearchQueryProvider.notifier).state = val.trim();
+                          },
+                          textInputAction: TextInputAction.search,
+                          cursorColor: accentColor,
+                          style: TextStyle(
+                            fontSize: 14.5,
+                            fontWeight: FontWeight.w600,
+                            color: isDark ? Colors.white : Colors.black87,
+                          ),
+                          decoration: const InputDecoration(
+                            isCollapsed: true,
+                            border: InputBorder.none,
+                          ),
+                        ),
+                      ),
+                      if (searchQuery.isNotEmpty)
+                        InkWell(
+                          onTap: () {
+                            _searchController.clear();
+                            ref.read(sportsSearchQueryProvider.notifier).state = '';
+                          },
+                          borderRadius: BorderRadius.circular(20),
+                          child: Padding(
+                            padding: const EdgeInsets.all(10),
+                            child: Icon(Icons.close_rounded, size: 18, color: isDark ? Colors.white54 : Colors.black45),
+                          ),
+                        )
+                      else
+                        const SizedBox(width: 12),
+                    ],
+                  ),
+                ),
+              ),
             ),
           ),
 
           // Leagues strip: the day's leagues plus the way to all of them.
-          if (selectedTab == 0 || selectedTab == 1)
-            Padding(
-              padding: const EdgeInsets.fromLTRB(14, 6, 14, 2),
-              child: _buildLeaguesRow(context, sportsState, isDark),
-            ),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(14, 6, 14, 2),
+            child: _buildLeaguesRow(context, sportsState, isDark),
+          ),
 
           // Body Content
           Expanded(
@@ -836,7 +715,7 @@ class _SportsScreenState extends ConsumerState<SportsScreen> {
     bool isDark,
     Color accentColor,
   ) {
-    final hasStream = match.hasWatch || match.streamId != null;
+    final hasStream = match.hasWatch || match.streamId != null || match.isLive;
 
     return Container(
       margin: const EdgeInsets.symmetric(vertical: 6),
@@ -1339,111 +1218,6 @@ class _SportsScreenState extends ConsumerState<SportsScreen> {
             ),
           ),
         ],
-      ),
-    );
-  }
-
-  Widget _buildDayPill({
-    required String label,
-    required String dayKey,
-    required bool isSelected,
-    required VoidCallback onTap,
-    required bool isDark,
-    required Color accentColor,
-  }) {
-    return Expanded(
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(10),
-        child: AnimatedContainer(
-          duration: const Duration(milliseconds: 180),
-          padding: const EdgeInsets.symmetric(vertical: 8),
-          alignment: Alignment.center,
-          decoration: BoxDecoration(
-            color: isSelected
-                ? accentColor
-                : (isDark ? const Color(0xFF181F2F) : const Color(0xFFEEF1F6)),
-            borderRadius: BorderRadius.circular(10),
-          ),
-          child: Text(
-            label,
-            style: TextStyle(
-              fontSize: 13,
-              fontWeight: isSelected ? FontWeight.bold : FontWeight.w600,
-              color: isSelected
-                  ? Colors.black
-                  : (isDark ? Colors.white70 : Colors.black87),
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildTabButton({
-    required String title,
-    required IconData icon,
-    int? badgeCount,
-    required bool isSelected,
-    required VoidCallback onTap,
-    required bool isDark,
-    required Color accentColor,
-  }) {
-    return Expanded(
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(10),
-        child: AnimatedContainer(
-          duration: const Duration(milliseconds: 180),
-          padding: const EdgeInsets.symmetric(vertical: 7),
-          decoration: BoxDecoration(
-            color: isSelected
-                ? accentColor.withOpacity(isDark ? 0.2 : 0.12)
-                : Colors.transparent,
-            borderRadius: BorderRadius.circular(10),
-            border: Border.all(
-              color: isSelected ? accentColor : (isDark ? Colors.white10 : Colors.black12),
-              width: 1,
-            ),
-          ),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Icon(
-                icon,
-                size: 15,
-                color: isSelected ? accentColor : (isDark ? Colors.white54 : Colors.black54),
-              ),
-              const SizedBox(width: 5),
-              Text(
-                title,
-                style: TextStyle(
-                  fontSize: 11.5,
-                  fontWeight: isSelected ? FontWeight.bold : FontWeight.w600,
-                  color: isSelected ? accentColor : (isDark ? Colors.white70 : Colors.black87),
-                ),
-              ),
-              if (badgeCount != null && badgeCount > 0) ...[
-                const SizedBox(width: 4),
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1),
-                  decoration: BoxDecoration(
-                    color: const Color(0xFFFF334B),
-                    borderRadius: BorderRadius.circular(10),
-                  ),
-                  child: Text(
-                    '$badgeCount',
-                    style: const TextStyle(
-                      fontSize: 9.5,
-                      fontWeight: FontWeight.bold,
-                      color: Colors.white,
-                    ),
-                  ),
-                ),
-              ],
-            ],
-          ),
-        ),
       ),
     );
   }

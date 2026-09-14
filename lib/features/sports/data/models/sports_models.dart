@@ -49,8 +49,36 @@ class SportMatchItem {
     this.directUrl,
   });
 
-  bool get isLive => status.toLowerCase() == 'live' || status == 'in_progress';
-  bool get isEnded => status.toLowerCase() == 'ended' || status == 'finished';
+  /// In play right now. The main feed says `live`; a Cinamana-sourced match
+  /// is marked `مباشر`; other providers spell it in various ways. Compared
+  /// case-insensitively — the old check matched `in_progress` only in exact
+  /// lower case and never recognised `مباشر`.
+  bool get isLive {
+    final s = status.trim().toLowerCase();
+    // `مباشر` is deliberately NOT here: the channel feed stamps it on every
+    // match it lists a stream for, played or long finished, so it is a
+    // channel listing, not evidence the game is in play.
+    const liveWords = {'live', 'in_progress', 'inprogress', 'playing', '1h', '2h', 'ht', 'et', 'pen'};
+    if (!liveWords.contains(s)) return false;
+    // The feed is unreliable in both directions: it can leave a game marked
+    // live long after it ended, and it flags games as live hours before they
+    // kick off. A match is in play only between its kick-off (a few minutes'
+    // tolerance) and ~3 hours after it — no football match runs longer.
+    final ko = DateTime.tryParse(kickoffAt);
+    if (ko != null) {
+      final sinceKickoff = DateTime.now().toUtc().difference(ko.toUtc());
+      if (sinceKickoff < const Duration(minutes: -10)) return false; // not started yet
+      if (sinceKickoff > const Duration(hours: 3)) return false; // long over
+    }
+    return true;
+  }
+
+  /// Finished (full time), spelled any of the common ways.
+  bool get isEnded {
+    final s = status.trim().toLowerCase();
+    return const {'ended', 'finished', 'ft', 'full_time', 'fulltime', 'aet', 'complete', 'completed'}
+        .contains(s);
+  }
   bool get isScheduled => !isLive && !isEnded;
 
   String get displayBroadcaster {

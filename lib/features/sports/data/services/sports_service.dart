@@ -712,7 +712,7 @@ class SportsService {
             final primaryBroadcaster = cinamanaMatch?.broadcasterName ?? m.broadcasterName;
 
             return m.copyWith(
-              hasWatch: matchedStreamId != null || cinamanaMatch != null || m.hasWatch,
+              hasWatch: matchedStreamId != null || cinamanaMatch != null || m.hasWatch || m.isLive,
               streamId: matchedStreamId,
               directUrl: resolvedDirectUrl,
               broadcasters: resolvedBroadcasters,
@@ -970,6 +970,22 @@ class SportsService {
       }
     } catch (_) {}
     return null;
+  }
+
+  Future<List<String>> fetchMatchTvNetworks(int matchId) async {
+    try {
+      final res = await _dio.get('/match/');
+      if (res.statusCode == 200 && res.data is Map) {
+        final info = res.data['info'];
+        if (info is Map && info['tv_networks'] is List) {
+          return (info['tv_networks'] as List)
+              .map((n) => (n is Map ? n['name']?.toString() : n?.toString()) ?? '')
+              .where((name) => name.isNotEmpty)
+              .toList();
+        }
+      }
+    } catch (_) {}
+    return [];
   }
 
   Future<MatchDetailedInfo?> fetchMatchDetails(int matchId, {String? sourceId}) async {

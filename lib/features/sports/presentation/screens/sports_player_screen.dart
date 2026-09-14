@@ -661,6 +661,60 @@ class _SportsPlayerScreenState extends ConsumerState<SportsPlayerScreen> with Wi
     }
 
     if (channelList.isEmpty) {
+      // Auto fallback: Query TV networks from match details and match with available sports channels
+      try {
+        final tvNetworks = await sportsService.fetchMatchTvNetworks(match.id);
+        final allChannels = await sportsService.fetchSportsChannels();
+
+        // 1. Try matching tv_networks to known channels
+        for (final netName in tvNetworks) {
+          final cleanNet = netName.toLowerCase().replaceAll(' ', '').replaceAll('sports', 'sport');
+          final matched = allChannels.where((c) {
+            final cleanC = c.channelName.toLowerCase().replaceAll(' ', '').replaceAll('sports', 'sport');
+            return cleanC.contains(cleanNet) || cleanNet.contains(cleanC);
+          }).firstOrNull;
+
+          if (matched != null && !channelList.any((c) => c.streamUrl == matched.channelUrl)) {
+            channelList.add(
+              PlayerChannelItem(
+                id: 'tv_net_${matched.channelId}',
+                name: matched.channelName,
+                logo: matched.channelImage,
+                streamUrl: matched.channelUrl,
+                subtitle: 'القناة الناقلة للمباراة',
+                isWebStream: matched.channelType == 'WEBVIEW' || !matched.channelUrl.contains('.m3u8'),
+              ),
+            );
+          }
+        }
+
+        // 2. Add available top sports channels as live fallback options
+        final sportsChannels = allChannels.where((c) =>
+          c.channelName.toLowerCase().contains('bein') ||
+          c.channelName.toLowerCase().contains('ad premium') ||
+          c.categoryName.contains('رياض')
+        ).toList();
+
+        for (final sc in sportsChannels) {
+          if (!channelList.any((c) => c.streamUrl == sc.channelUrl)) {
+            channelList.add(
+              PlayerChannelItem(
+                id: 'sports_fallback_${sc.channelId}',
+                name: sc.channelName,
+                logo: sc.channelImage,
+                streamUrl: sc.channelUrl,
+                subtitle: 'بث مباشر',
+                isWebStream: sc.channelType == 'WEBVIEW' || !sc.channelUrl.contains('.m3u8'),
+              ),
+            );
+          }
+        }
+      } catch (e) {
+        debugPrint('[SPORTS_PLAYER] Fallback channels error: ');
+      }
+    }
+
+    if (channelList.isEmpty) {
       channelList.add(
         PlayerChannelItem(
           id: 'ch_empty',

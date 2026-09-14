@@ -37,8 +37,16 @@ class MatchMerge {
       directUrl: into.directUrl ?? extra.directUrl,
       broadcasters: channels,
       broadcasterName: into.broadcasterName ?? extra.broadcasterName,
-      // A feed that has it live is more current than one that does not.
-      status: into.isLive ? into.status : (extra.isLive ? extra.status : into.status),
+      // A concrete "ended" from either feed wins: a match cannot be live once
+      // it is over, and a channel feed can keep yesterday's game marked live.
+      // Only then does a live status beat a scheduled one.
+      status: into.isEnded
+          ? into.status
+          : extra.isEnded
+              ? extra.status
+              : into.isLive
+                  ? into.status
+                  : (extra.isLive ? extra.status : into.status),
       homeScore: into.homeScore ?? extra.homeScore,
       awayScore: into.awayScore ?? extra.awayScore,
     );
