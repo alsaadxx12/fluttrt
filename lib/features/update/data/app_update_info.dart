@@ -94,7 +94,7 @@ class AppUpdateInfo {
     if (!updateEnabled) return false;
     final cur = currentCode >= 1000 ? (currentCode % 1000) : currentCode;
     final srv = versionCode >= 1000 ? (versionCode % 1000) : versionCode;
-    return srv > cur || versionCode > currentCode;
+    return srv > cur;
   }
 
   /// The user may not go on with [currentCode] installed.
@@ -103,7 +103,7 @@ class AppUpdateInfo {
     if (minSupportedVersion <= 0) return false;
     final cur = currentCode >= 1000 ? (currentCode % 1000) : currentCode;
     final minVer = minSupportedVersion >= 1000 ? (minSupportedVersion % 1000) : minSupportedVersion;
-    return cur < minVer || currentCode < minSupportedVersion;
+    return cur < minVer;
   }
 
   /// The APK link is https and on one of [allowedHosts].

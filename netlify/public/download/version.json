@@ -1,15 +1,15 @@
 {
   "updateEnabled": true,
-  "versionCode": 2082,
+  "versionCode": 2083,
   "versionName": "1.0.80",
-  "apkUrl": "https://cineball.netlify.app/download/app.apk?v=82",
-  "apkUrlArm64": "https://cineball.netlify.app/download/app-arm64-v8a-release.apk?v=82",
-  "apkUrlArm32": "https://cineball.netlify.app/download/app-armeabi-v7a-release.apk?v=82",
-  "sha256": "0b39e932323b9f51c2db2d474efc66b8de438a79f412bb2d7c783ed5cbcef88b",
-  "sha256Arm64": "0b39e932323b9f51c2db2d474efc66b8de438a79f412bb2d7c783ed5cbcef88b",
-  "sha256Arm32": "2b60fbf7a4d102200520f7be8aeacc50c60f6860cde1a47e771b2d6b148d6f4e",
-  "sizeBytes": 19292791,
+  "apkUrl": "https://cineball.netlify.app/download/app.apk?v=83",
+  "apkUrlArm64": "https://cineball.netlify.app/download/app-arm64-v8a-release.apk?v=83",
+  "apkUrlArm32": "https://cineball.netlify.app/download/app-armeabi-v7a-release.apk?v=83",
+  "sha256": "5aa3cefedf8f6ba0b81e1939fd048d90d2d7da4fd830ea5dee0183e257bef413",
+  "sha256Arm64": "5aa3cefedf8f6ba0b81e1939fd048d90d2d7da4fd830ea5dee0183e257bef413",
+  "sha256Arm32": "e3dd4e6819557b4c968b7d2496d99e0ccd6d5c7b1ad6bddb80c5710fe4036da1",
+  "sizeBytes": 19282885,
   "forceUpdate": false,
   "minSupportedVersion": 1,
-  "notes": "توحيد مصدر المباريات وبطاقات البث المباشر حصرياً مع مزود البث، وضمان تطابق المباريات 100% مع سيرفرات البث الحقيقية وحل مشكلة رسالة انتهاء البث."
+  "notes": "إصلاح التحقق من التحديث ومنع تكرار ظهور نافذة التحديث بعد التثبيت، مع توحيد مصدر المباريات والبث المباشر."
 }
