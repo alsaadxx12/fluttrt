@@ -742,8 +742,8 @@ class _SportsPlayerScreenState extends ConsumerState<SportsPlayerScreen> with Wi
     final direct = widget.directUrl ?? match.directUrl;
     final sportsService = ref.read(sportsServiceProvider);
 
-    // Kora x90 Streaming Sources
-    if (direct != null && direct.contains('korax90.co')) {
+    // Kora x90 Streaming Sources (Authoritative source)
+    if (direct != null && (direct.contains('korax90.co') || direct.contains('boomstreaming.com'))) {
       try {
         final koraServers = await sportsService.resolveKoraX90Servers(direct);
         for (int i = 0; i < koraServers.length; i++) {
@@ -771,69 +771,22 @@ class _SportsPlayerScreenState extends ConsumerState<SportsPlayerScreen> with Wi
       }
     }
 
-    // SIR TV Exclusive Streaming Sources (Fallback / Alternative)
     if (channelList.isEmpty) {
-      String? yasirChannelKey;
-      final bNameLower = (match.broadcasterName ?? '').toLowerCase();
-      final dUrlLower = (match.directUrl ?? '').toLowerCase();
-      final allHints = '$bNameLower $dUrlLower';
-
-      if (allHints.contains('1') || allHints.contains('bein1') || allHints.contains('max 1')) {
-        yasirChannelKey = 'bein1';
-      } else if (allHints.contains('2') || allHints.contains('bein2') || allHints.contains('max 2')) {
-        yasirChannelKey = 'bein2';
-      } else if (allHints.contains('3') || allHints.contains('bein3') || allHints.contains('max 3')) {
-        yasirChannelKey = 'bein3';
-      } else if (allHints.contains('4') || allHints.contains('bein4') || allHints.contains('max 4')) {
-        yasirChannelKey = 'bein4';
-      } else if (allHints.contains('5') || allHints.contains('bein5') || allHints.contains('max 5')) {
-        yasirChannelKey = 'bein5';
-      } else if (allHints.contains('6') || allHints.contains('bein6') || allHints.contains('max 6')) {
-        yasirChannelKey = 'bein6';
-      } else {
-        yasirChannelKey = 'bein1';
+      if (mounted) {
+        setState(() {
+          _channels = [];
+          _loadingChannels = false;
+          _isLoadingStream = false;
+          if (match.isEnded || match.status == 'finished') {
+            _streamErrorMessage = 'انتهت هذه المباراة، ولا يتوفر بث مباشر حالياً.';
+          } else if (match.status == 'scheduled') {
+            _streamErrorMessage = 'لم تبدأ المباراة بعد. سيبدأ البث المباشر قبل انطلاق المباراة.';
+          } else {
+            _streamErrorMessage = 'سيرفرات البث المباشر غير متاحة حالياً، يرجى إعادة المحاولة لاحقاً.';
+          }
+        });
       }
-
-      final yasirUrl = 'https://yassirtv.com/hard/2908c7d4425d87350.html?match=$yasirChannelKey';
-      channelList.add(
-        PlayerChannelItem(
-          id: 'source_sirtv_main_$yasirChannelKey',
-          name: 'سيرفر البث الرئيسي HD',
-          isAppSource: true,
-          streamUrl: yasirUrl,
-          subtitle: match.broadcasterName != null &&
-                  match.broadcasterName!.isNotEmpty &&
-                  match.broadcasterName != 'غير معروف'
-              ? 'بث ${match.broadcasterName} بجودة عالية'
-              : 'سيرفر البث الرسمي HD',
-          isWebStream: false,
-        ),
-      );
-
-      if (direct != null && direct.isNotEmpty && direct != yasirUrl && !channelList.any((c) => c.streamUrl == direct)) {
-        channelList.add(
-          PlayerChannelItem(
-            id: 'source_sirtv_match_feed',
-            name: 'بث بديل HD',
-            isAppSource: true,
-            streamUrl: direct,
-            subtitle: 'بث إضافي للمباراة',
-            isWebStream: false,
-          ),
-        );
-      }
-    }
-
-    if (channelList.isEmpty) {
-      channelList.add(
-        PlayerChannelItem(
-          id: 'ch_empty',
-          name: match.displayBroadcaster.isNotEmpty ? match.displayBroadcaster : 'البث المباشر',
-          streamUrl: direct,
-          subtitle: 'بث مباشر',
-          isWebStream: false,
-        ),
-      );
+      return;
     }
 
     final initial = channelList.firstWhere(

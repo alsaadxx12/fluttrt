@@ -429,125 +429,11 @@ class SportsService {
 
   Future<List<LeagueGroup>> fetchMatches({String day = 'today'}) async {
     try {
-      final matchesFuture = _dio.get(
-        '/matches',
-        queryParameters: {'day': day},
-      ).catchError((_) => Response(requestOptions: RequestOptions(path: '')));
+      // Unify match fetching to the EXACT source that broadcasts the streams: Kora x90 (korax90.co)
+      final baseGroups = await fetchKoraX90Matches(day: day);
+      if (baseGroups.isEmpty) return [];
 
-      final channelsFuture = _dio.get(
-        '/channels',
-        queryParameters: {'day': day},
-      ).catchError((_) => Response(requestOptions: RequestOptions(path: '')));
-
-      final cinamanaFuture = (day == 'today')
-          ? fetchCinamanaMatches()
-          : Future.value(<SportMatchItem>[]);
-
-      final sirTvFuture = fetchSirTvMatches(day: day);
-
-      final results = await Future.wait([matchesFuture, channelsFuture, cinamanaFuture, sirTvFuture]);
-      final matchesRes = results[0] as Response;
-      final channelsRes = results[1] as Response;
-      final cinamanaMatches = results[2] as List<SportMatchItem>;
-      final sirTvGroups = results[3] as List<LeagueGroup>;
-
-      final sirTvMatches = <SportMatchItem>[for (final g in sirTvGroups) ...g.matches];
-
-      // Map Source 1 (The App's Original Stream Source) by match_id, source_id, and team names
-      final streamIdMap = <int, int>{};
-      final sourceIdStreamMap = <String, int>{};
-      final teamKeyStreamMap = <String, int>{};
-
-      if (channelsRes.statusCode == 200 && channelsRes.data is Map<String, dynamic>) {
-        final liveList = channelsRes.data['live_now'] as List? ?? [];
-        for (final m in liveList) {
-          if (m is Map) {
-            final mId = int.tryParse(m['match_id']?.toString() ?? '') ?? int.tryParse(m['id']?.toString() ?? '');
-            final sId = int.tryParse(m['stream_id']?.toString() ?? '') ?? int.tryParse(m['id']?.toString() ?? '');
-            final srcId = m['source_id']?.toString();
-            if (mId != null && sId != null) {
-              streamIdMap[mId] = sId;
-            }
-            if (srcId != null && srcId.isNotEmpty && sId != null) {
-              sourceIdStreamMap[srcId] = sId;
-            }
-            final h = (m['home'] ?? '').toString();
-            final a = (m['away'] ?? '').toString();
-            if (h.isNotEmpty && a.isNotEmpty && sId != null) {
-              teamKeyStreamMap['${_cleanTeamName(h)}_${_cleanTeamName(a)}'] = sId;
-            }
-          }
-        }
-      }
-
-      final List<LeagueGroup> parsedGroups = [];
-
-      if (matchesRes.statusCode == 200 && matchesRes.data is Map<String, dynamic>) {
-        final groups = matchesRes.data['groups'] as List? ?? [];
-        for (final g in groups) {
-          final lg = LeagueGroup.fromJson(g as Map<String, dynamic>);
-          final updatedMatches = lg.matches.map((m) {
-            final teamKey = '${_cleanTeamName(m.home.name)}_${_cleanTeamName(m.away.name)}';
-            // Source 1 Stream ID from original backend
-            final matchedStreamId = streamIdMap[m.id] ??
-                (m.sourceId != null ? sourceIdStreamMap[m.sourceId] : null) ??
-                teamKeyStreamMap[teamKey] ??
-                m.streamId;
-
-            // Look up Cinamana stream
-            final cinamanaMatch = cinamanaMatches.where((c) {
-              return teamsMatch(c.home.name, m.home.name) && teamsMatch(c.away.name, m.away.name);
-            }).firstOrNull;
-
-            // Look up Sir TV stream
-            final sirMatch = sirTvMatches.where((s) {
-              return teamsMatch(s.home.name, m.home.name) && teamsMatch(s.away.name, m.away.name);
-            }).firstOrNull;
-
-            // Priority of direct streaming URL: Sir TV > Cinamana > original
-            final resolvedDirectUrl = sirMatch?.directUrl ?? cinamanaMatch?.directUrl ?? m.directUrl;
-            final resolvedBroadcasters = sirMatch != null && sirMatch.broadcasters.isNotEmpty
-                ? sirMatch.broadcasters
-                : (cinamanaMatch != null && cinamanaMatch.broadcasters.isNotEmpty
-                    ? cinamanaMatch.broadcasters
-                    : m.broadcasters);
-            final primaryBroadcaster = sirMatch?.broadcasterName ?? cinamanaMatch?.broadcasterName ?? m.broadcasterName;
-
-            final hasPlayableStream = matchedStreamId != null ||
-                (resolvedDirectUrl != null && resolvedDirectUrl.isNotEmpty) ||
-                m.hasWatch ||
-                m.isLive;
-
-            return m.copyWith(
-              hasWatch: hasPlayableStream,
-              streamId: matchedStreamId,
-              directUrl: resolvedDirectUrl,
-              broadcasters: resolvedBroadcasters,
-              broadcasterName: primaryBroadcaster,
-            );
-          }).toList();
-
-          if (updatedMatches.isNotEmpty) {
-            parsedGroups.add(LeagueGroup(
-              leagueId: lg.leagueId,
-              cid: lg.cid,
-              league: lg.league,
-              logo: lg.logo,
-              matches: updatedMatches,
-            ));
-          }
-        }
-      }
-
-      // If backend /matches returned groups, use them as authoritative!
-      List<LeagueGroup> baseGroups = parsedGroups;
-
-      // Fallback if backend returned empty: use Sir TV groups
-      if (baseGroups.isEmpty) {
-        baseGroups = sirTvGroups;
-      }
-
-      // Enrich with 365Scores for scores on today / yesterday
+      // Enrich with 365Scores for real-time scores / live timer if available
       List<LeagueGroup> enrichedGroups = baseGroups;
       if (day == 'yesterday' || day == 'today') {
         try {
@@ -569,7 +455,9 @@ class SportsService {
               }).toList();
               return LeagueGroup(
                 leagueId: g.leagueId,
+                cid: g.cid,
                 league: g.league,
+                logo: g.logo,
                 matches: updatedMatches,
               );
             }).toList();
@@ -582,7 +470,9 @@ class SportsService {
       if (day == 'tomorrow') {
         return enrichedGroups.map((g) => LeagueGroup(
           leagueId: g.leagueId,
+          cid: g.cid,
           league: g.league,
+          logo: g.logo,
           matches: g.matches.map((m) => m.copyWith(
             status: 'scheduled',
             hasWatch: false,
@@ -591,7 +481,9 @@ class SportsService {
       } else if (day == 'yesterday') {
         return enrichedGroups.map((g) => LeagueGroup(
           leagueId: g.leagueId,
+          cid: g.cid,
           league: g.league,
+          logo: g.logo,
           matches: g.matches.map((m) => m.copyWith(
             status: 'finished',
             hasWatch: false,
@@ -602,8 +494,7 @@ class SportsService {
       return enrichedGroups;
     } catch (e) {
       debugPrint('[SPORTS] fetchMatches error: $e');
-      final sirFallback = await fetchSirTvMatches(day: day);
-      return sirFallback;
+      return [];
     }
   }
 
@@ -817,7 +708,11 @@ class SportsService {
 
         // Parse status
         String status = 'scheduled';
-        if (badgeClass.contains('status-live') || badgeText.contains('مباشر')) {
+        if (day == 'yesterday') {
+          status = 'finished';
+        } else if (day == 'tomorrow') {
+          status = 'scheduled';
+        } else if (badgeClass.contains('status-live') || badgeText.contains('مباشر')) {
           status = 'live';
         } else if (badgeClass.contains('status-ended') || badgeText.contains('انتهت')) {
           status = 'finished';
@@ -869,6 +764,7 @@ class SportsService {
         if (groupLeague.isEmpty) groupLeague = rawLeague;
 
         final isMatchLive = status == 'live';
+        final hasWatch = isMatchLive || (link.isNotEmpty && status != 'finished');
         final item = SportMatchItem(
           id: matchId,
           kickoffAt: kickoffAt,
@@ -877,11 +773,11 @@ class SportsService {
           away: TeamInfo(name: awayName, logo: awayLogo.isNotEmpty ? awayLogo : null),
           homeScore: homeScore,
           awayScore: awayScore,
-          hasWatch: isMatchLive,
+          hasWatch: hasWatch,
           league: rawLeague,
           directUrl: link,
           broadcasterName: 'بث Kora x90 HD',
-          broadcasters: isMatchLive
+          broadcasters: link.isNotEmpty
               ? [
                   BroadcastChannel(
                     id: matchId,

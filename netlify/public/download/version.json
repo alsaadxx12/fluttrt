@@ -1,15 +1,15 @@
 {
   "updateEnabled": true,
-  "versionCode": 2081,
-  "versionName": "1.0.79",
-  "apkUrl": "https://cineball.netlify.app/download/app.apk?v=81",
-  "apkUrlArm64": "https://cineball.netlify.app/download/app-arm64-v8a-release.apk?v=81",
-  "apkUrlArm32": "https://cineball.netlify.app/download/app-armeabi-v7a-release.apk?v=81",
+  "versionCode": 2082,
+  "versionName": "1.0.80",
+  "apkUrl": "https://cineball.netlify.app/download/app.apk?v=82",
+  "apkUrlArm64": "https://cineball.netlify.app/download/app-arm64-v8a-release.apk?v=82",
+  "apkUrlArm32": "https://cineball.netlify.app/download/app-armeabi-v7a-release.apk?v=82",
   "sha256": "0b39e932323b9f51c2db2d474efc66b8de438a79f412bb2d7c783ed5cbcef88b",
   "sha256Arm64": "0b39e932323b9f51c2db2d474efc66b8de438a79f412bb2d7c783ed5cbcef88b",
   "sha256Arm32": "2b60fbf7a4d102200520f7be8aeacc50c60f6860cde1a47e771b2d6b148d6f4e",
   "sizeBytes": 19292791,
   "forceUpdate": false,
   "minSupportedVersion": 1,
-  "notes": "إضافة زر التحقق من وجود تحديث بالقائمة الجانبية، مع إظهار نافذة التحديث فوراً وتحديثات شاملة لسرعة التصفح وانسيابية الحركة"
+  "notes": "توحيد مصدر المباريات وبطاقات البث المباشر حصرياً مع مزود البث، وضمان تطابق المباريات 100% مع سيرفرات البث الحقيقية وحل مشكلة رسالة انتهاء البث."
 }
