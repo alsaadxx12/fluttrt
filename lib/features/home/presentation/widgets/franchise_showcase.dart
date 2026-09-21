@@ -686,55 +686,85 @@ class _FranchiseFilmTileState extends State<FranchiseFilmTile> {
                 ),
               ),
 
-              // 3. Top Number Badge (سلسلة بالترتيب e.g. 1, 2, 3)
+              // 3. Top Season / Part Badge (بطاقة الموسم النظيفة)
               PositionedDirectional(
                 top: 8,
                 start: 8,
                 child: Container(
-                  width: 26,
-                  height: 26,
-                  alignment: Alignment.center,
+                  padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
                   decoration: BoxDecoration(
-                    color: const Color(0xFFE50914),
-                    shape: BoxShape.circle,
+                    color: film.isSeries ? const Color(0xFF2563EB) : const Color(0xFFE50914),
+                    borderRadius: BorderRadius.circular(6),
                     boxShadow: [
                       BoxShadow(
                         color: Colors.black.withOpacity(0.45),
-                        blurRadius: 5,
+                        blurRadius: 6,
                         offset: const Offset(0, 2),
                       ),
                     ],
                   ),
-                  child: Text(
-                    '$number',
-                    style: const TextStyle(
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(
+                        film.isSeries ? Icons.tv_rounded : Icons.movie_rounded,
+                        color: Colors.white,
+                        size: 11,
+                      ),
+                      const SizedBox(width: 4),
+                      Text(
+                        film.isSeries ? 'الموسم $number' : 'الجزء $number',
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 10,
+                          fontWeight: FontWeight.w900,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+
+              // Top End: HD / Quality Badge
+              PositionedDirectional(
+                top: 8,
+                end: 8,
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 2),
+                  decoration: BoxDecoration(
+                    color: Colors.black.withOpacity(0.7),
+                    borderRadius: BorderRadius.circular(4),
+                    border: Border.all(color: Colors.white24, width: 0.8),
+                  ),
+                  child: const Text(
+                    'HD',
+                    style: TextStyle(
                       color: Colors.white,
-                      fontSize: 12.5,
+                      fontSize: 8.5,
                       fontWeight: FontWeight.w900,
                     ),
                   ),
                 ),
               ),
 
-              // Top End: Type Badge if series
-              if (film.isSeries)
-                PositionedDirectional(
-                  top: 8,
-                  end: 8,
+              // Center Play button on hover
+              if (_isHovered)
+                Center(
                   child: Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                    width: 44,
+                    height: 44,
                     decoration: BoxDecoration(
-                      color: const Color(0xFF2563EB).withOpacity(0.9),
-                      borderRadius: BorderRadius.circular(6),
+                      color: const Color(0xFFE50914).withOpacity(0.92),
+                      shape: BoxShape.circle,
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withOpacity(0.4),
+                          blurRadius: 10,
+                          offset: const Offset(0, 3),
+                        ),
+                      ],
                     ),
-                    child: const Text(
-                      'مسلسل',
-                      style: TextStyle(
-                        color: Colors.white,
-                        fontSize: 9.5,
-                        fontWeight: FontWeight.w800,
-                      ),
-                    ),
+                    child: const Icon(Icons.play_arrow_rounded, color: Colors.white, size: 28),
                   ),
                 ),
 

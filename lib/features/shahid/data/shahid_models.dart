@@ -28,6 +28,9 @@ class ShahidItem {
   /// Resolved HLS address for a live channel (free, unencrypted ones only).
   final String? streamUrl;
 
+  final int episodeCount;
+  final int seasonCount;
+
   const ShahidItem({
     required this.id,
     required this.title,
@@ -40,9 +43,11 @@ class ShahidItem {
     this.isFree = false,
     this.genres = const [],
     this.streamUrl,
+    this.episodeCount = 0,
+    this.seasonCount = 0,
   });
 
-  ShahidItem copyWith({String? streamUrl}) => ShahidItem(
+  ShahidItem copyWith({String? streamUrl, bool? isFree}) => ShahidItem(
         id: id,
         title: title,
         productType: productType,
@@ -51,9 +56,11 @@ class ShahidItem {
         landscapeTemplate: landscapeTemplate,
         logoTemplate: logoTemplate,
         thumbnailTemplate: thumbnailTemplate,
-        isFree: isFree,
+        isFree: isFree ?? this.isFree,
         genres: genres,
         streamUrl: streamUrl ?? this.streamUrl,
+        episodeCount: episodeCount,
+        seasonCount: seasonCount,
       );
 
   bool get isLive => productType == 'LIVESTREAM';
@@ -94,6 +101,8 @@ class ShahidItem {
 
   factory ShahidItem.fromJson(Map<String, dynamic> json) {
     final image = json['image'] is Map ? json['image'] as Map : const {};
+    final actualSeason = json['actualSeason'] is Map ? json['actualSeason'] as Map : null;
+
     String? str(dynamic v) {
       final s = v?.toString();
       return (s == null || s.isEmpty) ? null : s;
@@ -112,17 +121,56 @@ class ShahidItem {
 
     final productUrl = json['productUrl'] is Map ? json['productUrl'] as Map : const {};
 
+    final int avodEpisodes = json['numberOfAvodEpisodeForShow'] is int
+        ? json['numberOfAvodEpisodeForShow'] as int
+        : (int.tryParse('${json['numberOfAvodEpisodeForShow']}') ?? 0);
+    final int avodSeasons = json['numberOfAvodSeasons'] is int
+        ? json['numberOfAvodSeasons'] as int
+        : (int.tryParse('${json['numberOfAvodSeasons']}') ?? 0);
+    final int seasonAvodEpisodes = actualSeason != null && actualSeason['numberOfAVODEpisodes'] != null
+        ? (actualSeason['numberOfAVODEpisodes'] is int
+            ? actualSeason['numberOfAVODEpisodes'] as int
+            : int.tryParse('${actualSeason['numberOfAVODEpisodes']}') ?? 0)
+        : 0;
+
+    final bool isFreeAvod = plans.contains('AVOD') ||
+        json['showOriginallyAVOD'] == true ||
+        avodEpisodes > 0 ||
+        avodSeasons > 0 ||
+        seasonAvodEpisodes > 0 ||
+        actualSeason?['firstEpisodeFree'] == true;
+
+    final int episodes = json['numberOfEpisodes'] is int
+        ? json['numberOfEpisodes'] as int
+        : (actualSeason != null && actualSeason['numberOfEpisodes'] is int
+            ? actualSeason['numberOfEpisodes'] as int
+            : int.tryParse('${json['numberOfEpisodes'] ?? actualSeason?['numberOfEpisodes']}') ?? 0);
+
+    final int seasons = json['numberOfSeasons'] is int
+        ? json['numberOfSeasons'] as int
+        : (int.tryParse('${json['numberOfSeasons']}') ?? 0);
+
+    final poster = str(image['posterClean']) ??
+        str(image['posterImage']) ??
+        str(actualSeason?['posterImage']);
+    final landscape = str(image['landscapeClean']) ??
+        str(image['thumbnailImage']) ??
+        str(json['thumbnailImage']);
+    final logo = str(json['logoTitleImage']) ?? str(actualSeason?['logoTitleImage']);
+
     return ShahidItem(
       id: json['id'] is int ? json['id'] as int : int.tryParse('${json['id']}') ?? 0,
       title: json['title']?.toString() ?? '',
       productType: json['productType']?.toString() ?? '',
       pageUrl: productUrl['url']?.toString() ?? '',
-      posterTemplate: str(image['posterClean']) ?? str(image['posterImage']),
-      landscapeTemplate: str(image['landscapeClean']) ?? str(image['thumbnailImage']),
-      logoTemplate: str(json['logoTitleImage']),
-      thumbnailTemplate: str(image['thumbnailImage']),
-      isFree: plans.contains('AVOD'),
+      posterTemplate: poster,
+      landscapeTemplate: landscape,
+      logoTemplate: logo,
+      thumbnailTemplate: str(image['thumbnailImage']) ?? str(json['thumbnailImage']),
+      isFree: isFreeAvod,
       genres: genres,
+      episodeCount: episodes,
+      seasonCount: seasons,
     );
   }
 }

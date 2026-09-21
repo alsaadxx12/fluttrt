@@ -848,6 +848,23 @@ class FilmFranchise {
 
     // ---------------------------------------------------------------- anime
   FilmFranchise(
+    id: 'demon-slayer',
+    name: 'قاتل الشياطين',
+    section: FranchiseSection.anime,
+    queries: ['Demon Slayer', 'Kimetsu no Yaiba', 'قاتل الشياطيين'],
+    entries: [
+      FranchiseEntry(2019, ['Kimetsu no Yaiba', 'Demon Slayer: Kimetsu no Yaiba', 'قاتل الشياطيين'], kind: FranchiseKind.series),
+      FranchiseEntry(2020, ['Kimetsu no Yaiba Movie: Mugen Ressha-hen', 'Demon Slayer: Kimetsu no Yaiba - The Movie: Mugen Train', 'Demon Slayer: Mugen Train']),
+      FranchiseEntry(2021, ['The Demon Slayer: Kimetsu no Yaiba Mugen Train Arc TV', 'Demon Slayer: Kimetsu no Yaiba Mugen Train Arc', 'Kimetsu no Yaiba: Mugen Ressha-hen'], kind: FranchiseKind.series),
+      FranchiseEntry(2021, ['Demon Slayer: Kimetsu no Yaiba Entertainment District Arc', 'Kimetsu no Yaiba: Yuukaku-hen', 'Demon Slayer Season 2'], kind: FranchiseKind.series),
+      FranchiseEntry(2023, ['Demon Slayer: Kimetsu no Yaiba - To the Swordsmith Village', 'Kimetsu no Yaiba: Katanakaji no Sato-hen']),
+      FranchiseEntry(2023, ['Demon Slayer: Kimetsu no Yaiba Swordsmith Village Arc', 'Kimetsu no Yaiba Season 3'], kind: FranchiseKind.series),
+      FranchiseEntry(2024, ['Demon Slayer: Kimetsu no Yaiba - To the Hashira Training', 'Kimetsu no Yaiba: Hashira Geiko-hen']),
+      FranchiseEntry(2024, ['Demon Slayer: Kimetsu no Yaiba Hashira Training Arc', 'Kimetsu no Yaiba Season 4'], kind: FranchiseKind.series),
+      FranchiseEntry(2025, ['Demon Slayer: Kimetsu no Yaiba - The Movie: Infinity Castle - Part 1: Akaza Returns', 'Demon Slayer: Kimetsu no Yaiba - The Movie: Infinity Castle']),
+    ],
+  ),
+  FilmFranchise(
     id: 'naruto',
     name: 'ناروتو',
     section: FranchiseSection.anime,

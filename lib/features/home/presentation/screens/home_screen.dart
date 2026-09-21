@@ -40,6 +40,8 @@ import '../../../trailers/presentation/trailers_showcase.dart';
 import 'package:youtube_downloader/core/scroll/app_scroll_physics.dart';
 import 'package:youtube_downloader/features/update/presentation/update_controller.dart';
 import 'package:youtube_downloader/features/subscription/presentation/providers/subscription_provider.dart';
+import 'package:youtube_downloader/features/shahid/data/shahid_service.dart';
+import 'package:youtube_downloader/features/shahid/presentation/shahid_widgets.dart';
 
 class HomeScreen extends ConsumerStatefulWidget {
   const HomeScreen({super.key});
@@ -632,6 +634,28 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                           isLoading: true,
                         ),
                         error: (_, __) => const SizedBox.shrink(),
+                      ),
+                    ),
+
+                    const SizedBox(height: 24),
+
+                    // مسلسلات عربية من منصة شاهد (MBC Shahid)
+                    const RepaintBoundary(
+                      child: ShahidHomeSection(
+                        rowId: ShahidRows.freeArabicSeries,
+                        title: 'مسلسلات عربية (شاهد)',
+                        badge: 'شاهد مجاني',
+                      ),
+                    ),
+
+                    const SizedBox(height: 24),
+
+                    // مسلسلات شاهد المجانية الأكثر رواجاً
+                    const RepaintBoundary(
+                      child: ShahidHomeSection(
+                        rowId: ShahidRows.freeTrendsSeries,
+                        title: 'مسلسلات شاهد المجانية',
+                        badge: 'شاهد VIP مجاني',
                       ),
                     ),
 
