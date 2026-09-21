@@ -49,42 +49,71 @@ class SportMatchItem {
     this.directUrl,
   });
 
-  /// In play right now. The main feed says `live`; a Cinamana-sourced match
-  /// is marked `مباشر`; other providers spell it in various ways. Compared
-  /// case-insensitively — the old check matched `in_progress` only in exact
-  /// lower case and never recognised `مباشر`.
-  bool get isLive {
+  /// Over: the feed says finished (spelled any of the common Arabic or English ways),
+  /// or the kick-off was more than ~115 minutes ago (or 105 min with scores present).
+  bool get isEnded {
     final s = status.trim().toLowerCase();
-    // `مباشر` is deliberately NOT here: the channel feed stamps it on every
-    // match it lists a stream for, played or long finished, so it is a
-    // channel listing, not evidence the game is in play.
-    const liveWords = {'live', 'in_progress', 'inprogress', 'playing', '1h', '2h', 'ht', 'et', 'pen'};
-    if (!liveWords.contains(s)) return false;
-    // The feed is unreliable in both directions: it can leave a game marked
-    // live long after it ended, and it flags games as live hours before they
-    // kick off. A match is in play only between its kick-off (a few minutes'
-    // tolerance) and ~3 hours after it — no football match runs longer.
+    if (s.contains('انتهت') ||
+        s.contains('منتهي') ||
+        s.contains('نهائي') ||
+        s.contains('نهاية') ||
+        s == 'ft' ||
+        const {
+          'ended',
+          'finished',
+          'ft',
+          'full_time',
+          'fulltime',
+          'aet',
+          'complete',
+          'completed'
+        }.contains(s)) {
+      return true;
+    }
+    final ko = DateTime.tryParse(kickoffAt);
+    if (ko != null) {
+      final sinceKickoff = DateTime.now().toUtc().difference(ko.toUtc());
+      // Match kicked off >= 105 mins ago with scores recorded => ended
+      if (sinceKickoff >= const Duration(minutes: 105) &&
+          homeScore != null &&
+          awayScore != null) {
+        return true;
+      }
+      // Match kicked off >= 115 mins ago (90m + 15m break + injury time) => ended
+      if (sinceKickoff >= const Duration(minutes: 115)) {
+        return true;
+      }
+    }
+    return false;
+  }
+
+  /// In play right now.
+  bool get isLive {
+    if (isEnded) return false;
+    final s = status.trim().toLowerCase();
+    const liveWords = {
+      'live',
+      'in_progress',
+      'inprogress',
+      'playing',
+      '1h',
+      '2h',
+      'ht',
+      'et',
+      'pen'
+    };
+    if (!liveWords.contains(s) && !s.contains('مباشر') && !s.contains('جاري')) {
+      return false;
+    }
     final ko = DateTime.tryParse(kickoffAt);
     if (ko != null) {
       final sinceKickoff = DateTime.now().toUtc().difference(ko.toUtc());
       if (sinceKickoff < const Duration(minutes: -10)) return false; // not started yet
-      if (sinceKickoff > const Duration(hours: 3)) return false; // long over
+      if (sinceKickoff >= const Duration(minutes: 125)) return false; // over
     }
     return true;
   }
 
-  /// Over: the feed says finished (spelled any of the common ways), or the
-  /// kick-off was more than ~3 hours ago. A feed that never flips the status
-  /// leaves a finished game looking upcoming, with a play button that only
-  /// yields a "match ended" notice — so time decides when the status does not.
-  bool get isEnded {
-    final s = status.trim().toLowerCase();
-    if (const {'ended', 'finished', 'ft', 'full_time', 'fulltime', 'aet', 'complete', 'completed'}.contains(s)) {
-      return true;
-    }
-    final ko = DateTime.tryParse(kickoffAt);
-    return ko != null && DateTime.now().toUtc().difference(ko.toUtc()) > const Duration(hours: 3);
-  }
   bool get isScheduled => !isLive && !isEnded;
 
   @override

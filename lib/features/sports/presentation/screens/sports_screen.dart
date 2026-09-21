@@ -983,7 +983,7 @@ class _SportsScreenState extends ConsumerState<SportsScreen> {
     // Sections: "in play now", then one per kick-off time, then ended.
     final sections = <({String title, bool live, List<SportMatchItem> matches})>[];
     if (selectedDay == 'today') {
-      final live = ordered.where((m) => m.isLive || m.status == 'live').toList();
+      final live = ordered.where((m) => m.isLive).toList();
       if (live.isNotEmpty) sections.add((title: 'جارية الآن', live: true, matches: live));
     }
 
@@ -991,7 +991,7 @@ class _SportsScreenState extends ConsumerState<SportsScreen> {
         ? ordered
         : ((selectedDay == 'yesterday')
             ? <SportMatchItem>[]
-            : ordered.where((m) => !m.isLive && m.status != 'live' && !m.isEnded && m.status != 'finished' && m.status != 'ended').toList());
+            : ordered.where((m) => m.isScheduled).toList());
     String? currentTime;
     for (final m in upcoming) {
       final t = _formatKickoff(m.kickoffAt);
@@ -1006,7 +1006,7 @@ class _SportsScreenState extends ConsumerState<SportsScreen> {
         ? ordered
         : ((selectedDay == 'tomorrow')
             ? <SportMatchItem>[]
-            : ordered.where((m) => m.isEnded || m.status == 'finished' || m.status == 'ended').toList());
+            : ordered.where((m) => m.isEnded).toList());
     if (ended.isNotEmpty) {
       sections.add((title: 'المباريات المنتهية', live: false, matches: ended));
     }
@@ -1098,9 +1098,8 @@ class _SportsScreenState extends ConsumerState<SportsScreen> {
     bool isDark,
     Color accentColor,
   ) {
-    final isLive = match.isLive || match.status == 'live';
-    final isEnded = match.isEnded || match.status == 'finished' || match.status == 'ended';
-    final isUpcoming = !isLive && !isEnded;
+    final isLive = match.isLive;
+    final isUpcoming = match.isScheduled;
 
     return Container(
       margin: const EdgeInsets.symmetric(vertical: 6),
@@ -1643,7 +1642,7 @@ class _SportsScreenState extends ConsumerState<SportsScreen> {
       );
     }
 
-    if (match.isEnded || match.status == 'finished' || match.status == 'ended') {
+    if (match.isEnded) {
       return Container(
         padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
         decoration: BoxDecoration(

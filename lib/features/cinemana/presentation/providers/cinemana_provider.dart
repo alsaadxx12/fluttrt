@@ -5,6 +5,7 @@ import 'package:youtube_downloader/core/network/http_cache.dart';
 import '../../data/models/cinemana_models.dart';
 import '../../data/services/cinemana_service.dart';
 import '../../data/services/cinemana_favorites_service.dart';
+import '../../../auth/presentation/providers/auth_provider.dart';
 
 final cinemanaServiceProvider = Provider<CinemanaService>((ref) {
   return CinemanaService();
@@ -49,6 +50,8 @@ class CinemanaFavoritesNotifier extends StateNotifier<List<CinemanaItem>> {
 final cinemanaFavoritesProvider =
     StateNotifierProvider<CinemanaFavoritesNotifier, List<CinemanaItem>>((ref) {
   final service = ref.watch(cinemanaFavoritesServiceProvider);
+  // Re-initialize whenever current user changes (login / logout / account switch)
+  ref.watch(currentUserProvider);
   return CinemanaFavoritesNotifier(service);
 });
 
