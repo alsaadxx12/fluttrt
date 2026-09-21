@@ -10,9 +10,6 @@ class SubscriptionPlan {
   final int days;
   final int price;
   final String priceText;
-  final String? badge;
-  final bool isPopular;
-  final bool isBestValue;
 
   const SubscriptionPlan({
     required this.id,
@@ -22,9 +19,6 @@ class SubscriptionPlan {
     required this.days,
     required this.price,
     required this.priceText,
-    this.badge,
-    this.isPopular = false,
-    this.isBestValue = false,
   });
 
   static const List<SubscriptionPlan> defaultPlans = [
@@ -34,9 +28,8 @@ class SubscriptionPlan {
       durationText: '30 يوماً',
       months: 1,
       days: 30,
-      price: 5000,
-      priceText: '5,000 دينار',
-      badge: 'الأساسية',
+      price: 4000,
+      priceText: '4,000 دينار',
     ),
     SubscriptionPlan(
       id: '2m',
@@ -44,9 +37,8 @@ class SubscriptionPlan {
       durationText: '60 يوماً',
       months: 2,
       days: 60,
-      price: 9000,
-      priceText: '9,000 دينار',
-      badge: 'توفير 1,000 د.ع',
+      price: 7000,
+      priceText: '7,000 دينار',
     ),
     SubscriptionPlan(
       id: '3m',
@@ -56,8 +48,6 @@ class SubscriptionPlan {
       days: 90,
       price: 14000,
       priceText: '14,000 دينار',
-      badge: 'الأكثر طلباً ⭐',
-      isPopular: true,
     ),
     SubscriptionPlan(
       id: '6m',
@@ -67,18 +57,15 @@ class SubscriptionPlan {
       days: 180,
       price: 29000,
       priceText: '29,000 دينار',
-      badge: 'نصف سنوي',
     ),
     SubscriptionPlan(
       id: '12m',
-      title: '12 شهر',
+      title: 'سنة',
       durationText: 'سنة كاملة (365 يوماً)',
       months: 12,
       days: 365,
-      price: 49000,
-      priceText: '49,000 دينار',
-      badge: 'أفضل قيمة 👑',
-      isBestValue: true,
+      price: 53000,
+      priceText: '53,000 دينار',
     ),
   ];
 

@@ -9,6 +9,7 @@ import '../../../../core/constants/app_palette.dart';
 import '../../../../core/constants/app_theme.dart';
 import '../../data/models/subscription_plan.dart';
 import '../providers/subscription_provider.dart';
+import '../widgets/subscription_plan_card.dart';
 
 class SportsActivationScreen extends ConsumerStatefulWidget {
   const SportsActivationScreen({super.key});
@@ -342,7 +343,7 @@ class _SportsActivationScreenState
                       return false;
                     },
                     child: SizedBox(
-                      height: 114,
+                      height: 172,
                       child: ListView.separated(
                         controller: _marqueeScrollController,
                         scrollDirection: Axis.horizontal,
@@ -352,113 +353,27 @@ class _SportsActivationScreenState
                           final plan = SubscriptionPlan.defaultPlans[
                               idx % SubscriptionPlan.defaultPlans.length];
                           final isSelected = _selectedPlan.id == plan.id;
-                          return InkWell(
+                          return SubscriptionPlanCard(
+                            plan: plan,
+                            isSelected: isSelected,
+                            isDark: isDark,
+                            width: 136,
                             onTap: () {
                               _pauseMarquee();
                               setState(() {
                                 _selectedPlan = plan;
                               });
                             },
-                            borderRadius: BorderRadius.circular(12),
-                            child: AnimatedContainer(
-                              duration: const Duration(milliseconds: 200),
-                              width: 116,
-                              padding: const EdgeInsets.all(8),
-                              decoration: BoxDecoration(
-                                color: isSelected
-                                    ? (isDark
-                                        ? AppColors.primary.withOpacity(0.2)
-                                        : const Color(0xFFFEF2F2))
-                                    : (isDark
-                                        ? Colors.white.withOpacity(0.04)
-                                        : const Color(0xFFF9FAFB)),
-                                borderRadius: BorderRadius.circular(12),
-                                border: Border.all(
-                                  color: isSelected
-                                      ? AppColors.primary
-                                      : (isDark
-                                          ? Colors.white.withOpacity(0.1)
-                                          : Colors.black.withOpacity(0.08)),
-                                  width: isSelected ? 1.8 : 1,
-                                ),
-                              ),
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                mainAxisAlignment:
-                                    MainAxisAlignment.spaceBetween,
-                                children: [
-                                  Row(
-                                    mainAxisAlignment:
-                                        MainAxisAlignment.spaceBetween,
-                                    children: [
-                                      Expanded(
-                                        child: Text(
-                                          plan.title,
-                                          style: TextStyle(
-                                            fontSize: 13,
-                                            fontWeight: FontWeight.w900,
-                                            color: isSelected
-                                                ? AppColors.primary
-                                                : (isDark
-                                                    ? Colors.white
-                                                    : Colors.black87),
-                                          ),
-                                          maxLines: 1,
-                                          overflow: TextOverflow.ellipsis,
-                                        ),
-                                      ),
-                                      if (isSelected)
-                                        const Icon(
-                                          Icons.check_circle_rounded,
-                                          color: AppColors.primary,
-                                          size: 14,
-                                        ),
-                                    ],
-                                  ),
-                                  if (plan.badge != null)
-                                    Container(
-                                      padding: const EdgeInsets.symmetric(
-                                          horizontal: 5, vertical: 1),
-                                      decoration: BoxDecoration(
-                                        color: plan.isBestValue
-                                            ? const Color(0xFFFFD700)
-                                            : (plan.isPopular
-                                                ? AppColors.primary
-                                                : (isDark
-                                                    ? Colors.white.withOpacity(0.12)
-                                                    : Colors.grey.shade200)),
-                                        borderRadius: BorderRadius.circular(4),
-                                      ),
-                                      child: Text(
-                                        plan.badge!,
-                                        style: TextStyle(
-                                          fontSize: 8.5,
-                                          fontWeight: FontWeight.bold,
-                                          color: plan.isBestValue
-                                              ? Colors.black87
-                                              : (plan.isPopular
-                                                  ? Colors.white
-                                                  : (isDark
-                                                      ? Colors.white70
-                                                      : Colors.black87)),
-                                        ),
-                                      ),
-                                    )
-                                  else
-                                    const SizedBox(height: 10),
-                                  Text(
-                                    plan.priceText,
-                                    style: TextStyle(
-                                      fontSize: 12.5,
-                                      fontWeight: FontWeight.w900,
-                                      color: isSelected
-                                          ? AppColors.primary
-                                          : (isDark ? Colors.white : Colors.black87),
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
+                            onWhatsApp: () {
+                              _pauseMarquee();
+                              setState(() {
+                                _selectedPlan = plan;
+                              });
+                              SubscriptionPlan.openWhatsAppSales(
+                                plan: plan,
+                                context: context,
+                              );
+                            },
                           );
                         },
                       ),

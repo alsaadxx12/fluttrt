@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 import '../../../../core/constants/app_colors.dart';
 import '../../../subscription/data/models/subscription_plan.dart';
 import '../../../subscription/presentation/providers/subscription_provider.dart';
+import '../../../subscription/presentation/widgets/subscription_plan_card.dart';
 
 class SubscriptionPlansShowcase extends ConsumerWidget {
   const SubscriptionPlansShowcase({super.key});
@@ -118,15 +119,24 @@ class SubscriptionPlansShowcase extends ConsumerWidget {
 
           // Horizontal scroll of plan cards
           SizedBox(
-            height: 195,
+            height: 172,
             child: ListView.separated(
               padding: const EdgeInsets.symmetric(horizontal: 16),
               scrollDirection: Axis.horizontal,
               itemCount: SubscriptionPlan.defaultPlans.length,
-              separatorBuilder: (_, __) => const SizedBox(width: 12),
+              separatorBuilder: (_, __) => const SizedBox(width: 10),
               itemBuilder: (context, index) {
                 final plan = SubscriptionPlan.defaultPlans[index];
-                return _PlanCard(plan: plan, isDark: isDark);
+                return SubscriptionPlanCard(
+                  plan: plan,
+                  isDark: isDark,
+                  width: 136,
+                  onWhatsApp: () => SubscriptionPlan.openWhatsAppSales(
+                    plan: plan,
+                    context: context,
+                  ),
+                  onTap: () => context.push('/sports-activation'),
+                );
               },
             ),
           ),
@@ -165,186 +175,6 @@ class SubscriptionPlansShowcase extends ConsumerWidget {
               ),
             ),
           ],
-        ],
-      ),
-    );
-  }
-}
-
-class _PlanCard extends StatelessWidget {
-  final SubscriptionPlan plan;
-  final bool isDark;
-
-  const _PlanCard({required this.plan, required this.isDark});
-
-  @override
-  Widget build(BuildContext context) {
-    final borderColor = plan.isBestValue
-        ? const Color(0xFFFFD700).withOpacity(0.7)
-        : plan.isPopular
-            ? AppColors.primary.withOpacity(0.6)
-            : (isDark
-                ? Colors.white.withOpacity(0.12)
-                : Colors.black.withOpacity(0.08));
-
-    final cardBg = isDark ? AppColors.darkCard : Colors.white;
-
-    return Container(
-      width: 155,
-      decoration: BoxDecoration(
-        color: cardBg,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(
-            color: borderColor,
-            width: plan.isPopular || plan.isBestValue ? 1.8 : 1),
-        boxShadow: [
-          BoxShadow(
-            color: plan.isPopular
-                ? AppColors.primary.withOpacity(0.15)
-                : plan.isBestValue
-                    ? const Color(0xFFFFD700).withOpacity(0.12)
-                    : Colors.black.withOpacity(0.05),
-            blurRadius: 10,
-            offset: const Offset(0, 4),
-          ),
-        ],
-      ),
-      child: Stack(
-        children: [
-          Padding(
-            padding: const EdgeInsets.all(12),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                // Plan title
-                Row(
-                  children: [
-                    Expanded(
-                      child: Text(
-                        plan.title,
-                        style: TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.w900,
-                          color: isDark ? Colors.white : Colors.black87,
-                        ),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                    ),
-                  ],
-                ),
-
-                const SizedBox(height: 2),
-                Text(
-                  plan.durationText,
-                  style: TextStyle(
-                    fontSize: 11,
-                    fontWeight: FontWeight.w600,
-                    color: isDark ? Colors.white54 : Colors.black45,
-                  ),
-                ),
-
-                const Spacer(),
-
-                // Price display
-                Container(
-                  padding:
-                      const EdgeInsets.symmetric(vertical: 6, horizontal: 8),
-                  decoration: BoxDecoration(
-                    color: isDark
-                        ? Colors.white.withOpacity(0.05)
-                        : const Color(0xFFF3F4F6),
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        plan.priceText,
-                        style: TextStyle(
-                          fontSize: 14,
-                          fontWeight: FontWeight.w900,
-                          color: plan.isPopular
-                              ? AppColors.primary
-                              : (isDark ? Colors.white : Colors.black87),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-
-                const SizedBox(height: 10),
-
-                // WhatsApp Action Button
-                SizedBox(
-                  height: 34,
-                  child: ElevatedButton(
-                    onPressed: () =>
-                        SubscriptionPlan.openWhatsAppSales(
-                          plan: plan,
-                          context: context,
-                        ),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: const Color(0xFF25D366),
-                      foregroundColor: Colors.white,
-                      padding: EdgeInsets.zero,
-                      elevation: 0,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(10),
-                      ),
-                    ),
-                    child: const Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Icon(Icons.chat_bubble_outline_rounded, size: 14),
-                        SizedBox(width: 4),
-                        Text(
-                          'طلب الكود',
-                          style: TextStyle(
-                            fontSize: 12,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ),
-
-          // Top Badge
-          if (plan.badge != null)
-            Positioned(
-              top: 8,
-              left: 8,
-              child: Container(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                decoration: BoxDecoration(
-                  color: plan.isBestValue
-                      ? const Color(0xFFFFD700)
-                      : (plan.isPopular
-                          ? AppColors.primary
-                          : (isDark
-                              ? Colors.white.withOpacity(0.15)
-                              : Colors.grey.shade300)),
-                  borderRadius: BorderRadius.circular(6),
-                ),
-                child: Text(
-                  plan.badge!,
-                  style: TextStyle(
-                    fontSize: 9,
-                    fontWeight: FontWeight.w900,
-                    color: plan.isBestValue
-                        ? Colors.black87
-                        : (plan.isPopular
-                            ? Colors.white
-                            : (isDark ? Colors.white70 : Colors.black87)),
-                  ),
-                ),
-              ),
-            ),
         ],
       ),
     );
