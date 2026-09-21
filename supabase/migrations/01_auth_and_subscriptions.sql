@@ -24,6 +24,7 @@ CREATE TABLE IF NOT EXISTS public.profiles (
 -- ============================================================================
 CREATE TABLE IF NOT EXISTS public.activation_codes (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  code text,
   code_hash text UNIQUE NOT NULL,
   duration_days integer NOT NULL CHECK (duration_days > 0),
   status text NOT NULL DEFAULT 'active' CHECK (status IN ('active', 'disabled', 'expired', 'fully_used')),
@@ -389,13 +390,9 @@ $$;
 GRANT EXECUTE ON FUNCTION public.get_user_sports_subscription() TO authenticated;
 
 -- ============================================================================
--- 10. Admin Helper to Generate Test Activation Codes
+-- 10. Standard 1-Month Single-Use Activation Code Functions
 -- ============================================================================
-CREATE OR REPLACE FUNCTION public.create_activation_code_raw(
-  p_code text,
-  p_duration_days integer DEFAULT 30,
-  p_max_uses integer DEFAULT 1
-)
+CREATE OR REPLACE FUNCTION public.create_monthly_code(p_code text)
 RETURNS text
 LANGUAGE plpgsql
 SECURITY DEFINER
@@ -407,20 +404,51 @@ BEGIN
   v_clean := upper(regexp_replace(p_code, '[\s\-_]+', '', 'g'));
   v_hash := encode(digest(v_clean, 'sha256'), 'hex');
 
-  INSERT INTO public.activation_codes (code_hash, duration_days, max_uses, status)
-  VALUES (v_hash, p_duration_days, p_max_uses, 'active')
+  INSERT INTO public.activation_codes (code, code_hash, duration_days, max_uses, status, used_count)
+  VALUES (upper(trim(p_code)), v_hash, 30, 1, 'active', 0)
   ON CONFLICT (code_hash) DO UPDATE
-  SET duration_days = EXCLUDED.duration_days,
-      max_uses = EXCLUDED.max_uses,
+  SET code = EXCLUDED.code,
+      duration_days = 30,
+      max_uses = 1,
       status = 'active',
       used_count = 0;
 
-  RETURN 'Code created successfully: ' || upper(p_code);
+  RETURN 'تم إنشاء كود شهري: ' || upper(trim(p_code));
 END;
 $$;
 
--- Seed Sample Testing Codes
-SELECT public.create_activation_code_raw('CINE-7K4M-92PX', 30, 1);
-SELECT public.create_activation_code_raw('CINE-ABCD-8291', 30, 1);
-SELECT public.create_activation_code_raw('CINE-RENEW-30D', 30, 1);
-SELECT public.create_activation_code_raw('CINE-MULTI-TEST', 30, 10);
+-- Generate multiple random 1-month codes (Single-use, 30 days)
+CREATE OR REPLACE FUNCTION public.generate_monthly_codes(p_count integer DEFAULT 5)
+RETURNS TABLE(activation_code text)
+LANGUAGE plpgsql
+SECURITY DEFINER
+AS $$
+DECLARE
+  i integer;
+  j integer;
+  v_hash text;
+  v_chars text := '23456789ABCDEFGHJKLMNPQRSTUVWXYZ';
+  v_part1 text;
+  v_part2 text;
+  v_code text;
+BEGIN
+  FOR i IN 1..p_count LOOP
+    v_part1 := '';
+    v_part2 := '';
+    FOR j IN 1..4 LOOP
+      v_part1 := v_part1 || substr(v_chars, floor(random() * length(v_chars) + 1)::int, 1);
+      v_part2 := v_part2 || substr(v_chars, floor(random() * length(v_chars) + 1)::int, 1);
+    END LOOP;
+
+    v_code := 'CINE-' || v_part1 || '-' || v_part2;
+    v_hash := encode(digest(upper(regexp_replace(v_code, '[\s\-_]+', '', 'g')), 'sha256'), 'hex');
+
+    INSERT INTO public.activation_codes (code, code_hash, duration_days, max_uses, status, used_count)
+    VALUES (v_code, v_hash, 30, 1, 'active', 0)
+    ON CONFLICT (code_hash) DO NOTHING;
+
+    activation_code := v_code;
+    RETURN NEXT;
+  END LOOP;
+END;
+$$;

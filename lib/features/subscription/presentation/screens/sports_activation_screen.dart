@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart' as intl;
+import 'package:url_launcher/url_launcher.dart';
 import '../../../../core/constants/app_colors.dart';
 import '../../../../core/constants/app_palette.dart';
 import '../../../../core/constants/app_theme.dart';
@@ -38,6 +39,20 @@ class _SportsActivationScreenState
         });
       }
     } catch (_) {}
+  }
+
+  Future<void> _openWhatsApp() async {
+    const phone = '9647714289278';
+    final message = Uri.encodeComponent(
+        'مرحباً، أود الحصول على كود تفعيل لقسم المباريات في تطبيق CineBall.');
+    final url = Uri.parse('https://wa.me/$phone?text=$message');
+    try {
+      if (await canLaunchUrl(url)) {
+        await launchUrl(url, mode: LaunchMode.externalApplication);
+      }
+    } catch (e) {
+      debugPrint('WhatsApp launch error: $e');
+    }
   }
 
   Future<void> _handleActivation() async {
@@ -290,19 +305,44 @@ class _SportsActivationScreenState
                       color: isDark ? Colors.white : const Color(0xFF111827),
                     ),
                   ),
-                  const SizedBox(height: 8),
-                  Text(
-                    'أدخل كود التفعيل الخاص بك للوصول إلى البث المباشر وجدول المباريات والنتائج الحية.',
-                    textAlign: TextAlign.center,
-                    style: TextStyle(
-                      fontSize: 13.5,
-                      height: 1.4,
+                  const SizedBox(height: 12),
+                  Container(
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                    decoration: BoxDecoration(
                       color: isDark
-                          ? AppColors.darkTextSecondary
-                          : AppColors.lightTextSecondary,
+                          ? AppColors.primary.withOpacity(0.12)
+                          : const Color(0xFFFEF2F2),
+                      borderRadius:
+                          BorderRadius.circular(AppTheme.borderRadius),
+                      border: Border.all(
+                        color: AppColors.primary.withOpacity(0.35),
+                        width: 1.2,
+                      ),
+                    ),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        const Icon(
+                          Icons.local_offer_rounded,
+                          color: AppColors.primary,
+                          size: 18,
+                        ),
+                        const SizedBox(width: 8),
+                        Text(
+                          'سعر الاشتراك الشهري 5 آلاف دينار فقط',
+                          style: TextStyle(
+                            fontSize: 14,
+                            fontWeight: FontWeight.w800,
+                            color: isDark
+                                ? Colors.white
+                                : const Color(0xFF991B1B),
+                          ),
+                        ),
+                      ],
                     ),
                   ),
-                  const SizedBox(height: 28),
+                  const SizedBox(height: 24),
 
                   // Error Banner
                   if (_errorMessage != null) ...[
@@ -445,17 +485,56 @@ class _SportsActivationScreenState
                             ),
                     ),
                   ),
-                  const SizedBox(height: 20),
+                  const SizedBox(height: 22),
 
-                  // Helper footer
-                  Text(
-                    'لديك كود تفعيل؟ أدخله أعلاه لفتح القسم.',
-                    textAlign: TextAlign.center,
-                    style: TextStyle(
-                      fontSize: 12.5,
-                      color: isDark
-                          ? AppColors.darkTextSecondary
-                          : AppColors.lightTextSecondary,
+                  // Divider with "أو"
+                  Row(
+                    children: [
+                      Expanded(child: Divider(color: palette.border)),
+                      Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 12),
+                        child: Text(
+                          'أو',
+                          style: TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w600,
+                            color: isDark
+                                ? AppColors.darkTextSecondary
+                                : AppColors.lightTextSecondary,
+                          ),
+                        ),
+                      ),
+                      Expanded(child: Divider(color: palette.border)),
+                    ],
+                  ),
+                  const SizedBox(height: 18),
+
+                  // WhatsApp Contact Button
+                  SizedBox(
+                    height: 48,
+                    child: ElevatedButton.icon(
+                      onPressed: _openWhatsApp,
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: const Color(0xFF25D366),
+                        foregroundColor: Colors.white,
+                        elevation: 0,
+                        shape: RoundedRectangleBorder(
+                          borderRadius:
+                              BorderRadius.circular(AppTheme.borderRadius),
+                        ),
+                      ),
+                      icon: const Icon(
+                        Icons.chat_bubble_rounded,
+                        size: 19,
+                        color: Colors.white,
+                      ),
+                      label: const Text(
+                        'طلب كود التفعيل عبر واتساب',
+                        style: TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w800,
+                        ),
+                      ),
                     ),
                   ),
                 ],

@@ -1,11 +1,11 @@
 {
   "updateEnabled": true,
-  "versionCode": 69,
-  "versionName": "1.0.67",
-  "apkUrl": "https://cineball.netlify.app/download/app.apk?v=69",
-  "sha256": "f7e19173a933b6a01adc985cfb385a7edf362e470e6baaaca09ed00b7c181f7a",
-  "sizeBytes": 57123947,
+  "versionCode": 70,
+  "versionName": "1.0.68",
+  "apkUrl": "https://cineball.netlify.app/download/app.apk?v=70",
+  "sha256": "75247edf2130fd7bf5538fd34fa0c73bbb56079645c55570a71e914633a8e166",
+  "sizeBytes": 57121425,
   "forceUpdate": false,
   "minSupportedVersion": 1,
-  "notes": "إضافة نظام تسجيل الدخول وتفعيل اشتراك المباريات"
+  "notes": "تحديث صفحة كود التفعيل: إضافة السعر وزر واتساب للمبيعات"
 }
