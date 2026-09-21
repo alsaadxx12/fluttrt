@@ -7,6 +7,7 @@ import 'package:youtube_downloader/core/network/image_cache.dart';
 
 import '../../../../core/constants/app_palette.dart';
 import '../../../cinemana/data/cinemana_franchises.dart';
+import '../../../cinemana/data/dynamic_franchises.dart';
 import '../../../cinemana/data/models/cinemana_models.dart';
 import '../../../cinemana/presentation/providers/cinemana_provider.dart';
 import '../../../cinemana/presentation/screens/cinemana_detail_screen.dart';
@@ -247,7 +248,7 @@ class _FranchiseCard extends ConsumerWidget {
     final async = ref.watch(franchiseFilmsProvider(franchise.id));
     final films = async.valueOrNull ?? const <CinemanaItem>[];
     // Nothing of this series on Cinemana: no card.
-    if (async.hasValue && films.isEmpty) return const SizedBox.shrink();
+    if (async.hasValue && films.length < DynamicFranchise.minParts) return const SizedBox.shrink();
 
     final partsCountLabel = films.isNotEmpty
         ? FilmFranchise.countLabel(films)
@@ -283,7 +284,7 @@ class _FranchiseCard extends ConsumerWidget {
           children: [
             // A soft tint in the lead poster's own colour behind the posters,
             // fading into the card.
-            if (films.isNotEmpty) PosterTint(url: films.last.cardImageUrl, card: p.card, isDark: p.isDark),
+            if (films.isNotEmpty) PosterTint(url: films.first.cardImageUrl, card: p.card, isDark: p.isDark),
             Column(
               children: [
                 Expanded(
@@ -403,10 +404,10 @@ class PosterFan extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final dpr = MediaQuery.of(context).devicePixelRatio;
-    // Newest first: the latest release is the front poster, the two behind it
-    // are earlier films in the series.
-    final latest = films.last;
-    final behind = <CinemanaItem>{films.first, films[films.length ~/ 2]}
+    // The list arrives newest first, so the latest release is its head: that
+    // is the front poster, and the two behind it are earlier films.
+    final latest = films.first;
+    final behind = <CinemanaItem>{films.last, films[films.length ~/ 2]}
         .where((f) => f.id != latest.id)
         .toList();
     final picks = <CinemanaItem>[latest, ...behind];
@@ -572,7 +573,7 @@ class FranchiseScreen extends ConsumerWidget {
           children: [
             Text('سلسلة ${franchise.name}', style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w900)),
             if (films.isNotEmpty)
-              Text('${FilmFranchise.countLabel(films)} بالترتيب',
+              Text('${FilmFranchise.countLabel(films)} · الأحدث أولاً',
                   style: TextStyle(fontSize: 11.5, color: p.textMuted, fontWeight: FontWeight.w600)),
           ],
         ),
@@ -596,7 +597,8 @@ class FranchiseScreen extends ConsumerWidget {
                         childAspectRatio: 0.67, // Standard 2:3 poster aspect ratio
                       ),
                       itemCount: films.length,
-                      itemBuilder: (context, i) => FranchiseFilmTile(film: films[i], number: i + 1),
+                      itemBuilder: (context, i) =>
+                          FranchiseFilmTile(film: films[i], number: films.length - i),
                     );
                   },
                 ),
@@ -640,7 +642,7 @@ class _FranchiseFilmTileState extends State<FranchiseFilmTile> {
             color: p.card,
             borderRadius: BorderRadius.circular(14),
             border: _isHovered
-                ? Border.all(color: const Color(0xFFE50914), width: 1.5)
+                ? Border.all(color: Colors.white.withOpacity(0.2), width: 1.2)
                 : null,
           ),
           clipBehavior: Clip.antiAlias,

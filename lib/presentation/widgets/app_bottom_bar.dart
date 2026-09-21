@@ -46,7 +46,7 @@ class AppBottomBar extends StatelessWidget {
               children: [
                 Expanded(
                   child: _BarItem(
-                    icon: homeActive ? Icons.home_rounded : Icons.home_outlined,
+                    icon: Icons.home_rounded,
                     label: 'الرئيسية',
                     active: homeActive,
                     inactiveColor: inactive,
@@ -62,7 +62,7 @@ class AppBottomBar extends StatelessWidget {
                 ),
                 Expanded(
                   child: _BarItem(
-                    icon: listActive ? Icons.bookmarks_rounded : Icons.bookmarks_outlined,
+                    icon: Icons.bookmark_rounded,
                     label: 'قائمتي',
                     active: listActive,
                     inactiveColor: inactive,
@@ -86,7 +86,7 @@ TextStyle _labelStyle(Color color) => TextStyle(
       height: 1.2,
     );
 
-/// An icon over its label; red when active.
+/// An icon over its label; pure white filled icon with distinct active label.
 class _BarItem extends StatelessWidget {
   const _BarItem({
     required this.icon,
@@ -104,7 +104,6 @@ class _BarItem extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final color = active ? AppColors.primary : inactiveColor;
     return Semantics(
       button: true,
       selected: active,
@@ -114,9 +113,9 @@ class _BarItem extends StatelessWidget {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(icon, size: 26, color: color),
+            Icon(icon, size: 26, color: Colors.white),
             const SizedBox(height: 3),
-            Text(label, maxLines: 1, style: _labelStyle(color)),
+            Text(label, maxLines: 1, style: _labelStyle(active ? AppColors.primary : const Color(0xFF94A3B8))),
           ],
         ),
       ),

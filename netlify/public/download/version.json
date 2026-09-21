@@ -1,15 +1,15 @@
 {
   "updateEnabled": true,
-  "versionCode": 2094,
-  "versionName": "1.0.88",
-  "apkUrl": "https://cineball.netlify.app/download/app.apk?v=94",
-  "apkUrlArm64": "https://cineball.netlify.app/download/app-arm64-v8a-release.apk?v=94",
-  "apkUrlArm32": "https://cineball.netlify.app/download/app-armeabi-v7a-release.apk?v=94",
-  "sha256": "1c8113acec15e18f8ab7b7345ebdd308b7909618ad88b45d3c7cd94ee4b6a646",
-  "sha256Arm64": "1c8113acec15e18f8ab7b7345ebdd308b7909618ad88b45d3c7cd94ee4b6a646",
-  "sha256Arm32": "1614134d709969f4dff00eec03e9b1b034577ecc57a474499e548f12f877d2e0",
-  "sizeBytes": 19824214,
+  "versionCode": 2096,
+  "versionName": "1.0.90",
+  "apkUrl": "https://cineball.netlify.app/download/app.apk?v=96",
+  "apkUrlArm64": "https://cineball.netlify.app/download/app-arm64-v8a-release.apk?v=96",
+  "apkUrlArm32": "https://cineball.netlify.app/download/app-armeabi-v7a-release.apk?v=96",
+  "sha256": "2d829d4a77b727ae6da0722e84082ad6ca40b1611ebc468628d7262714bf8a56",
+  "sha256Arm64": "2d829d4a77b727ae6da0722e84082ad6ca40b1611ebc468628d7262714bf8a56",
+  "sha256Arm32": "dd6cf01affe10518924af4909f66ca54fa448d207481ffa84c713f5ab05836eb",
+  "sizeBytes": 19821652,
   "forceUpdate": false,
   "minSupportedVersion": 1,
-  "notes": "تطبيق المظهر الأسود الداكن الشامل وإزالة إطار الشعار وتقليل الفراغ العلوي وتحديث الأيقونات"
+  "notes": "تطبيق اللون الأسود الداكن على الحقول، تحويل الأيقونات إلى بيضاء ممتلئة، إيقاف تحريك الهيدر التلقائي، إزالة الإطارات الحمراء من البطاقات، وتثبيت سواد الشريط العلوي عند النزول"
 }

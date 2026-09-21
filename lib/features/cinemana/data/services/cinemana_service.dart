@@ -1104,7 +1104,13 @@ class CinemanaService {
     final concurrency = math.min(6, jobs.length);
     await Future.wait(List.generate(concurrency, (_) => worker()));
 
-    final picked = franchise.pick(allResults);
+    final picked = franchise.pick(allResults)
+      ..sort((a, b) {
+        final yA = int.tryParse(a.year) ?? -1;
+        final yB = int.tryParse(b.year) ?? -1;
+        if (yA != yB) return yB.compareTo(yA); // newest release first
+        return a.displayTitle.compareTo(b.displayTitle);
+      });
     if (picked.isNotEmpty) {
       _franchiseMemoryCache[franchise.id] = picked;
     }
@@ -1137,10 +1143,12 @@ class CinemanaService {
       final list = uniqueItems.values.toList();
 
       // Sort chronologically (by release year ascending, then title)
+      // Newest release first; an unparsable year sorts last rather than
+      // leading the series.
       list.sort((a, b) {
-        final yA = int.tryParse(a.year) ?? 9999;
-        final yB = int.tryParse(b.year) ?? 9999;
-        if (yA != yB) return yA.compareTo(yB);
+        final yA = int.tryParse(a.year) ?? -1;
+        final yB = int.tryParse(b.year) ?? -1;
+        if (yA != yB) return yB.compareTo(yA);
         return a.displayTitle.compareTo(b.displayTitle);
       });
 

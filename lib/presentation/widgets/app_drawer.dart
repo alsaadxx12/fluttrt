@@ -500,13 +500,10 @@ class _DrawerItem extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    final iconColor = isSelected
-        ? AppColors.primary
-        : (isDark ? const Color(0xFFCBD5E1) : const Color(0xFF334155));
+    const iconColor = Colors.white;
     final labelColor = isSelected
         ? AppColors.primary
-        : (isDark ? Colors.white : const Color(0xFF1E293B));
+        : Colors.white;
 
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 1),

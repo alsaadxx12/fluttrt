@@ -219,7 +219,7 @@ class _FilmCard extends StatelessWidget {
         decoration: BoxDecoration(
           color: p.card,
           borderRadius: BorderRadius.circular(18),
-          border: Border.all(color: const Color(0xFFE50914).withOpacity(0.4)),
+          border: Border.all(color: Colors.white.withOpacity(0.08)),
         ),
         clipBehavior: Clip.antiAlias,
         child: Stack(

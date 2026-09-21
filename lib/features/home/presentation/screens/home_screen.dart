@@ -55,8 +55,6 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
   // The slide on screen. A notifier rather than setState: only the dots and
   // the details listen, so a slide change never rebuilds the whole page.
   final ValueNotifier<int> _heroPage = ValueNotifier<int>(0);
-  // False while another page or branch covers this one; the hero then holds.
-  bool _routeActive = true;
   // What the last precache covered, so a rebuild alone never re-warms it.
   int _precachedPage = -1;
   List<CinemanaItem>? _precachedList;
@@ -65,11 +63,6 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
   // Starts the lower rows' feeds once the top of the page has settled.
   Timer? _prefetchTimer;
 
-  // Number of slides the hero is actually rendering, kept in sync from build so
-  // the auto-slide timer advances over the same list the user sees.
-  int _heroSlideCount = 0;
-  // Colours lifted from the top and bottom rows of the banner on screen, used
-  // to paint the hero around the artwork instead of a cropped copy of it.
   Timer? _heroAutoSlideTimer;
   bool _isAutoSlidePaused = false;
   bool _isSearchExpanded = false;
@@ -117,13 +110,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     }
   }
 
-  @override
-  void didChangeDependencies() {
-    super.didChangeDependencies();
-    // TickerMode is off while this page sits behind another route or an
-    // inactive branch; the hero must not advance out of sight.
-    _routeActive = TickerMode.of(context);
-  }
+
 
   /// The wide cover art for [m], or '' when Cinemana has none.
   static String _heroWideCover(CinemanaItem m) =>
@@ -187,17 +174,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
 
   void _startAutoSlideTimer() {
     _heroAutoSlideTimer?.cancel();
-    _heroAutoSlideTimer = Timer.periodic(const Duration(seconds: 8), (timer) {
-      if (!mounted || !_routeActive || _isAutoSlidePaused || !_heroPageController.hasClients) return;
-      final total = _heroSlideCount;
-      if (total <= 1) return;
-      final nextPage = (_heroPage.value + 1) % total;
-      _heroPageController.animateToPage(
-        nextPage,
-        duration: const Duration(milliseconds: 600),
-        curve: Curves.easeInOutCubic,
-      );
-    });
+    // Auto-slide animation disabled per user request
   }
 
   @override
@@ -720,7 +697,6 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                           error: (_, __) =>
                               (featuredAsync.valueOrNull ?? const <CinemanaItem>[]).take(20).toList(),
                         );
-                        _heroSlideCount = heroMovies.length;
                         // The flat skeleton stays until there is something to
                         // show - also while the featured fallback is still on
                         // its way after the banner feed failed - so nothing
@@ -763,14 +739,12 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
               valueListenable: _barScrolled,
               builder: (context, scrolled, child) => Container(
                 decoration: BoxDecoration(
-                  color: scrolled
-                      ? (_p.isDark ? const Color(0xFF0F172A).withOpacity(0.96) : Colors.white.withOpacity(0.96))
-                      : _barColor,
+                  color: const Color(0xFF04060A),
                   boxShadow: scrolled
-                      ? const [BoxShadow(color: Color(0x14000000), blurRadius: 10, offset: Offset(0, 3))]
+                      ? const [BoxShadow(color: Color(0x33000000), blurRadius: 10, offset: Offset(0, 3))]
                       : null,
                   border: scrolled
-                      ? Border(bottom: BorderSide(color: _p.isDark ? Colors.white10 : Colors.black.withOpacity(0.06), width: 0.8))
+                      ? Border(bottom: BorderSide(color: Colors.white.withOpacity(0.08), width: 0.8))
                       : null,
                 ),
                 child: child,
@@ -821,9 +795,6 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
   /// so bar and picture read as one moulded piece.
 
   AppPalette get _p => AppPalette.of(context);
-
-  /// The top bar: matches the page and sidebar background so everything is one seamless canvas.
-  Color get _barColor => _p.bg;
 
   /// True once the page has scrolled past the top; the bar blurs and lifts.
   final ValueNotifier<bool> _barScrolled = ValueNotifier<bool>(false);
@@ -1654,7 +1625,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
             ),
 
             // Play Icon
-            const Icon(Icons.play_circle_fill_rounded, color: Color(0xFFE50914), size: 28),
+            const Icon(Icons.play_circle_fill_rounded, color: Colors.white, size: 28),
           ],
         ),
       ),
@@ -1704,7 +1675,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                 ),
                 const SizedBox(width: 8),
               ] else ...[
-                const Icon(Icons.sports_soccer_rounded, color: Color(0xFFE50914), size: 19),
+                const Icon(Icons.sports_soccer_rounded, color: Colors.white, size: 19),
                 const SizedBox(width: 8),
               ],
 
@@ -1832,8 +1803,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
           color: _p.isDark ? const Color(0xFF101522) : _p.card,
           borderRadius: BorderRadius.circular(18),
           border: Border.all(
-            color: match.isLive ? const Color(0xFFFF2A4A).withOpacity(0.55) : const Color(0xFFE50914).withOpacity(0.25),
-            width: 1.2,
+            color: Colors.white.withOpacity(0.08),
+            width: 1.0,
           ),
         ),
         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
@@ -2122,7 +2093,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                           ),
                         ),
                         SizedBox(width: 2),
-                        Icon(Icons.chevron_left_rounded, size: 17, color: Color(0xFFE50914)),
+                        Icon(Icons.chevron_left_rounded, size: 17, color: Colors.white),
                       ],
                     ),
                   ),
@@ -2386,7 +2357,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                           ),
                         ),
                         SizedBox(width: 2),
-                        Icon(Icons.chevron_left_rounded, size: 18, color: Color(0xFFE50914)),
+                        Icon(Icons.chevron_left_rounded, size: 18, color: Colors.white),
                       ],
                     ),
                   ),

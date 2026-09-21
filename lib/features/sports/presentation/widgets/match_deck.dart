@@ -207,7 +207,7 @@ class _MatchCard extends StatelessWidget {
         decoration: BoxDecoration(
           color: p.card,
           borderRadius: BorderRadius.circular(18),
-          border: Border.all(color: const Color(0xFFE50914).withOpacity(0.4)),
+          border: Border.all(color: Colors.white.withOpacity(0.08)),
           boxShadow: const [BoxShadow(color: Color(0x59000000), blurRadius: 22, offset: Offset(0, 8))],
         ),
         child: Column(

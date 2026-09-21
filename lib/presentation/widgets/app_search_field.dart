@@ -109,16 +109,14 @@ class _AppSearchFieldState extends State<AppSearchField> {
   Widget build(BuildContext context) {
     final p = AppPalette.of(context);
     final isDark = p.isDark;
-    final fill = isDark ? const Color(0xFF111726).withOpacity(0.96) : Colors.white;
-    final border = isDark
-        ? Border.all(color: Colors.white.withOpacity(0.12), width: 0.8)
-        : Border.all(color: widget.soft ? const Color(0xFFEDF0F5) : p.border, width: 1.0);
+    const fill = Color(0xFF070A10);
+    final border = Border.all(color: Colors.white.withOpacity(0.08), width: 0.8);
     final tall = widget.height >= 46;
     final glyph = tall ? 22.0 : 20.0;
     final textSize = tall ? 14.5 : 14.0;
-    final textColor = isDark ? Colors.white : const Color(0xFF0F172A);
+    const textColor = Colors.white;
     final hintColor = isDark ? Colors.white38 : const Color(0xFF94A3B8);
-    final closeColor = isDark ? Colors.white70 : const Color(0xFF64748B);
+    const closeColor = Colors.white;
     const accent = Color(0xFFE50914);
     final controller = _controller;
 
@@ -128,14 +126,12 @@ class _AppSearchFieldState extends State<AppSearchField> {
         color: fill,
         borderRadius: BorderRadius.circular(widget.height / 2),
         border: border,
-        boxShadow: widget.soft && !isDark
-            ? const [BoxShadow(color: Color(0x0A0F172A), blurRadius: 10, offset: Offset(0, 3))]
-            : null,
+        boxShadow: null,
       ),
       padding: EdgeInsetsDirectional.only(start: tall ? 14 : 12, end: 4),
       child: Row(
         children: [
-          Icon(Icons.search_rounded, color: accent, size: glyph),
+          Icon(Icons.search_rounded, color: Colors.white, size: glyph),
           SizedBox(width: tall ? 10 : 8),
           Expanded(
             child: Stack(

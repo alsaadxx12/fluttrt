@@ -603,45 +603,18 @@ class _TrailerCard extends StatelessWidget {
                         child: const Icon(Icons.play_arrow_rounded, color: Colors.white, size: 32),
                       ),
                     ),
-
-                  const DecoratedBox(
-                    decoration: BoxDecoration(
-                      gradient: LinearGradient(
-                        begin: Alignment.topCenter,
-                        end: Alignment.bottomCenter,
-                        colors: [Colors.transparent, Color(0xB3000000)],
-                        stops: [0.45, 1.0],
-                      ),
-                    ),
-                  ),
-                  if (trailer.rating > 0)
-                    PositionedDirectional(
-                      top: 8,
-                      start: 8,
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
-                        decoration: BoxDecoration(color: Colors.black.withOpacity(0.6), borderRadius: BorderRadius.circular(8)),
-                        child: Row(mainAxisSize: MainAxisSize.min, children: [
-                          const Icon(Icons.star_rounded, color: Color(0xFFFFB800), size: 13),
-                          const SizedBox(width: 3),
-                          Text(trailer.rating.toStringAsFixed(1),
-                              style: const TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.w800)),
-                        ]),
-                      ),
-                    ),
-                  PositionedDirectional(
-                    start: 10,
-                    end: 10,
-                    bottom: 10,
-                    child: Text(trailer.title,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: const TextStyle(color: Colors.white, fontSize: 14.5, fontWeight: FontWeight.w900)),
-                  ),
                 ],
               ),
             ),
             const SizedBox(height: 8),
+            // The title, the rating and the scrim that carried them used to
+            // sit on the picture. Nothing is painted over the trailer now -
+            // it is the whole card - and the title reads on the page below it.
+            Text(trailer.title,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(color: p.text, fontSize: 14.5, fontWeight: FontWeight.w900)),
+            const SizedBox(height: 3),
             Row(
               children: [
                 if (trailer.year != null)

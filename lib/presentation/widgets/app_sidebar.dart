@@ -542,12 +542,10 @@ class _AppSidebarState extends ConsumerState<AppSidebar> {
   }) {
     const activeColor = AppColors.primary;
 
-    final unselectedIconColor =
-        isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B);
     final unselectedTextColor =
         isDark ? const Color(0xFFCBD5E1) : const Color(0xFF334155);
 
-    final iconColor = isSelected ? activeColor : unselectedIconColor;
+    const iconColor = Colors.white;
     final textColor = isSelected ? activeColor : unselectedTextColor;
 
     return Padding(

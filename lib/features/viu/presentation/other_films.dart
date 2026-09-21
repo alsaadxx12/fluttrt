@@ -72,55 +72,57 @@ class OtherFilmCard extends StatelessWidget {
     final poster = film.poster;
     return GestureDetector(
       onTap: () => film.open(context),
-      child: Container(
+      child: SizedBox(
         width: width,
-        decoration: BoxDecoration(
-          color: AppPalette.of(context).skeleton,
+        child: ClipRRect(
           borderRadius: BorderRadius.circular(16),
-        ),
-        clipBehavior: Clip.antiAlias,
-        child: AspectRatio(
-          aspectRatio: 2 / 3,
-          child: Stack(
-            fit: StackFit.expand,
-            children: [
-              if (poster != null && poster.isNotEmpty)
-                CachedNetworkImage(
-                  imageUrl: poster,
-                  cacheManager: appImageCache,
-                  fit: BoxFit.cover,
-                  memCacheWidth: (width * dpr).round(),
-                  fadeInDuration: Duration.zero,
-                  fadeOutDuration: Duration.zero,
-                  placeholderFadeInDuration: Duration.zero,
-                  useOldImageOnUrlChange: true,
-                  placeholder: (_, __) => const SizedBox.shrink(),
-                  errorWidget: (_, __, ___) => const Icon(Icons.movie_rounded, color: Colors.white24),
-                ),
-              const Positioned.fill(
-                child: DecoratedBox(
-                  decoration: BoxDecoration(
-                    gradient: LinearGradient(
-                      begin: Alignment.topCenter,
-                      end: Alignment.bottomCenter,
-                      colors: [Colors.transparent, Colors.transparent, Color(0xB3000000), Color(0xF0000000)],
-                      stops: [0, 0.45, 0.75, 1],
+          child: AspectRatio(
+            aspectRatio: 2 / 3,
+            child: Stack(
+              fit: StackFit.expand,
+              children: [
+                // The card's own colour goes under the poster, inside the clip -
+                // painted under the clip instead it bled through the rounded
+                // edge as a grey outline.
+                ColoredBox(color: AppPalette.of(context).card),
+                if (poster != null && poster.isNotEmpty)
+                  CachedNetworkImage(
+                    imageUrl: poster,
+                    cacheManager: appImageCache,
+                    fit: BoxFit.cover,
+                    memCacheWidth: (width * dpr).round(),
+                    fadeInDuration: Duration.zero,
+                    fadeOutDuration: Duration.zero,
+                    placeholderFadeInDuration: Duration.zero,
+                    useOldImageOnUrlChange: true,
+                    placeholder: (_, __) => const SizedBox.shrink(),
+                    errorWidget: (_, __, ___) => const Icon(Icons.movie_rounded, color: Colors.white24),
+                  ),
+                const Positioned.fill(
+                  child: DecoratedBox(
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(
+                        begin: Alignment.topCenter,
+                        end: Alignment.bottomCenter,
+                        colors: [Colors.transparent, Colors.transparent, Color(0xB3000000), Color(0xF0000000)],
+                        stops: [0, 0.45, 0.75, 1],
+                      ),
                     ),
                   ),
                 ),
-              ),
-              PositionedDirectional(
-                start: 8,
-                end: 8,
-                bottom: 8,
-                child: Text(
-                  film.title,
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.w800, height: 1.25),
+                PositionedDirectional(
+                  start: 8,
+                  end: 8,
+                  bottom: 8,
+                  child: Text(
+                    film.title,
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.w800, height: 1.25),
+                  ),
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
         ),
       ),

@@ -350,7 +350,7 @@ class _DynCardState extends ConsumerState<_DynCard> {
         child: Stack(
           fit: StackFit.expand,
           children: [
-            PosterTint(url: parts.last.cardImageUrl, card: p.card, isDark: p.isDark),
+            PosterTint(url: parts.first.cardImageUrl, card: p.card, isDark: p.isDark),
             Column(
               children: [
                 Expanded(child: PosterFan(films: parts)),
@@ -437,7 +437,7 @@ class DynamicFranchiseScreen extends ConsumerWidget {
           children: [
             Text('سلسلة ${live.name}', style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w900)),
             Text(
-              live.partsResolved ? '${FilmFranchise.countLabel(films)} بالترتيب' : 'جارٍ جلب الأجزاء…',
+              live.partsResolved ? '${FilmFranchise.countLabel(films)} · الأحدث أولاً' : 'جارٍ جلب الأجزاء…',
               style: TextStyle(fontSize: 11.5, color: p.textMuted, fontWeight: FontWeight.w600),
             ),
           ],
@@ -455,7 +455,7 @@ class DynamicFranchiseScreen extends ConsumerWidget {
               childAspectRatio: 0.67,
             ),
             itemCount: films.length,
-            itemBuilder: (context, i) => FranchiseFilmTile(film: films[i], number: i + 1),
+            itemBuilder: (context, i) => FranchiseFilmTile(film: films[i], number: films.length - i),
           );
         },
       ),

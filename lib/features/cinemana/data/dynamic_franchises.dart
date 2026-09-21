@@ -8,6 +8,13 @@ import 'services/cinemana_service.dart';
 /// lead title and the parts that belong with it (seasons, sequels, spin-offs),
 /// in release order. Until [partsResolved] the parts are just the lead.
 class DynamicFranchise {
+  /// How many parts a franchise needs before it is one.
+  ///
+  /// A card offering a single title is not a series, and two is a pair, not a
+  /// collection - both read as filler in a row headed "سلاسل". Three is the
+  /// floor, so every card in the deck is a real run of films or seasons.
+  static const int minParts = 3;
+
   final String id;
   final String name;
   final CinemanaItem lead;
@@ -102,9 +109,12 @@ class FranchiseFeedNotifier extends StateNotifier<FranchiseFeedState> {
     await Future.wait(List.generate(4, (_) => worker()));
     final head = <DynamicFranchise>[];
     for (var i = 0; i < curated.length; i++) {
-      final parts = lists[i];
-      if (parts.isEmpty) continue;
-      final lead = parts.first;
+      final parts = _ordered(lists[i]);
+      // Hand-listed or not, a franchise that resolved to fewer than three
+      // parts is not a series worth a card.
+      if (parts.length < DynamicFranchise.minParts) continue;
+      // The lead is the series' first entry - the end of a newest-first list.
+      final lead = parts.last;
       if (!_seen.add(lead.id)) continue;
       _covered.addAll(parts.map((p) => p.id));
       head.add(DynamicFranchise(id: lead.id, name: curated[i].name, lead: lead, parts: parts, partsResolved: true));
@@ -143,35 +153,29 @@ class FranchiseFeedNotifier extends StateNotifier<FranchiseFeedState> {
       }
 
       final fresh = page.where((it) => !_seen.contains(it.id) && !_covered.contains(it.id)).toList();
-      if (_isAnime) {
-        for (final it in fresh) {
+      // Films and anime alike: a title earns a card only once its other parts
+      // are in hand and there are enough of them. Anime used to become a card
+      // on sight and look up its parts later, which is how a single-season
+      // show ended up in the deck labelled "مسلسل واحد".
+      for (var i = 0; i < fresh.length; i += 6) {
+        final chunk = fresh.sublist(i, (i + 6).clamp(0, fresh.length));
+        final related = await Future.wait(
+          chunk.map((it) => _service.fetchFranchiseParts(it).catchError((_) => <CinemanaItem>[])),
+        );
+        for (var j = 0; j < chunk.length; j++) {
+          final it = chunk[j];
+          final parts = _ordered([it, ...related[j]]);
+          if (parts.length < DynamicFranchise.minParts) continue;
+          final ids = parts.map((p) => p.id).toSet();
+          if (ids.any(_covered.contains)) continue; // same series already shown
+          // Named after the series' first entry, at the end of a newest-first
+          // list. A stem under 4 chars means the parts matched on a generic
+          // fragment ("Re", "Go") rather than a real series name: skip.
+          final name = DynamicFranchise.nameOf(parts.last);
+          if (name.length < 4) continue;
           _seen.add(it.id);
-          _covered.add(it.id);
-          gathered.add(DynamicFranchise(
-              id: it.id, name: DynamicFranchise.nameOf(it), lead: it, parts: [it], partsResolved: false));
-        }
-      } else {
-        // Films: a card only for a film that has other parts.
-        for (var i = 0; i < fresh.length; i += 6) {
-          final chunk = fresh.sublist(i, (i + 6).clamp(0, fresh.length));
-          final related = await Future.wait(
-            chunk.map((it) => _service.fetchFranchiseParts(it).catchError((_) => <CinemanaItem>[])),
-          );
-          for (var j = 0; j < chunk.length; j++) {
-            final it = chunk[j];
-            final rel = related[j];
-            if (rel.isEmpty) continue;
-            final parts = _ordered([it, ...rel]);
-            final ids = parts.map((p) => p.id).toSet();
-            if (ids.any(_covered.contains)) continue; // same series already shown
-            final name = DynamicFranchise.nameOf(parts.first);
-            // A stem under 4 chars means the parts matched on a generic
-            // fragment ("Re", "Go") rather than a real series name: skip.
-            if (name.length < 4) continue;
-            _seen.add(it.id);
-            _covered.addAll(ids);
-            gathered.add(DynamicFranchise(id: it.id, name: name, lead: it, parts: parts, partsResolved: true));
-          }
+          _covered.addAll(ids);
+          gathered.add(DynamicFranchise(id: it.id, name: name, lead: it, parts: parts, partsResolved: true));
         }
       }
       if (gathered.length > before) break;
@@ -202,7 +206,11 @@ class FranchiseFeedNotifier extends StateNotifier<FranchiseFeedState> {
     }
   }
 
-  /// Release order, oldest first, de-duplicated by id.
+  /// Release order, newest first, de-duplicated by id.
+  ///
+  /// A year that will not parse sorts last rather than first: an unknown date
+  /// is not news. Callers that want the first entry of the series read the
+  /// end of this list.
   static List<CinemanaItem> _ordered(List<CinemanaItem> items) {
     final byId = <String, CinemanaItem>{};
     for (final it in items) {
@@ -210,9 +218,9 @@ class FranchiseFeedNotifier extends StateNotifier<FranchiseFeedState> {
     }
     final list = byId.values.toList()
       ..sort((a, b) {
-        final ya = int.tryParse(a.year) ?? 9999;
-        final yb = int.tryParse(b.year) ?? 9999;
-        return ya != yb ? ya.compareTo(yb) : a.displayTitle.compareTo(b.displayTitle);
+        final ya = int.tryParse(a.year) ?? -1;
+        final yb = int.tryParse(b.year) ?? -1;
+        return ya != yb ? yb.compareTo(ya) : a.displayTitle.compareTo(b.displayTitle);
       });
     return list;
   }
