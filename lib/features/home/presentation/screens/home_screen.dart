@@ -338,6 +338,10 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
 
   // The merged list, kept until one of the two feeds actually changes.
   List<SportMatchItem>? _mergedMatches;
+  // The same list in the order the row draws it. The sort used to run on
+  // every rebuild of the page; it now runs only when a feed hands over
+  // something new.
+  List<SportMatchItem>? _orderedMatches;
   List<SportMatchItem>? _mergedFromLive;
   List<LeagueGroup>? _mergedFromGroups;
 
@@ -362,55 +366,225 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     _mergedFromLive = live;
     _mergedFromGroups = groups;
     _mergedMatches = merged;
+    // In play first, then upcoming, then finished - sorted here, with the
+    // merge, so the row never re-sorts just because the page rebuilt.
+    _orderedMatches = MatchOrder.dayOrder(merged);
     return merged;
   }
 
+  /// The day's matches in the order the row shows them.
+  List<SportMatchItem> _orderedTodayMatches(dynamic sportsState) {
+    _mergedTodayMatches(sportsState);
+    return _orderedMatches!;
+  }
+
+  /// One poster row fed by [provider].
+  ///
+  /// The row watches its own feed inside its own [Consumer], so it appears
+  /// the moment that one request lands and nothing else on the page is
+  /// rebuilt with it.
+  Widget _posterRowSection({
+    required ProviderListenable<AsyncValue<List<CinemanaItem>>> provider,
+    required String title,
+    VoidCallback? onViewAll,
+  }) {
+    return RepaintBoundary(
+      child: Consumer(
+        builder: (context, ref, _) => ref.watch(provider).when(
+              data: (items) => _buildHorizontalCategorySection(
+                title: title,
+                items: items,
+                isLoading: false,
+                onViewAll: onViewAll,
+              ),
+              loading: () => _buildHorizontalCategorySection(
+                title: title,
+                items: const [],
+                isLoading: true,
+              ),
+              error: (_, __) => const SizedBox.shrink(),
+            ),
+      ),
+    );
+  }
+
+  /// One wide-card series row fed by [provider]; see [_posterRowSection].
+  Widget _wideSeriesRowSection({
+    required ProviderListenable<AsyncValue<List<CinemanaItem>>> provider,
+    required String title,
+    required String badge,
+    VoidCallback? onViewAll,
+  }) {
+    return RepaintBoundary(
+      child: Consumer(
+        builder: (context, ref, _) => ref.watch(provider).when(
+              data: (items) => _buildWideSeriesSection(
+                title: title,
+                badge: badge,
+                items: items,
+                isLoading: false,
+                onViewAll: onViewAll,
+              ),
+              loading: () => _buildWideSeriesSection(
+                title: title,
+                items: const [],
+                isLoading: true,
+              ),
+              error: (_, __) => const SizedBox.shrink(),
+            ),
+      ),
+    );
+  }
+
+  /// Everything under the hero, in order, each entry built only once it
+  /// scrolls near. Built once for the life of the page: no entry closes over
+  /// anything from [build], so a rebuild never has to make this list again.
+  late final List<WidgetBuilder> _sections = <WidgetBuilder>[
+    // Sports Section: Real Matches (Dynamic title, increased card height,
+    // clean time/date, team logos)
+    (_) => RepaintBoundary(
+          child: Consumer(
+            builder: (context, ref, __) {
+              final sportsState = ref.watch(sportsNotifierProvider('today'));
+              // Collect all real matches for today.
+              //
+              // The two feeds number their matches differently, so comparing
+              // ids let the same fixture through twice and it sat twice in the
+              // row. Identity is the two teams, and the surviving card keeps
+              // every channel either feed knew about, so the source is chosen
+              // inside the match.
+              final allTodayMatches = _mergedTodayMatches(sportsState);
+              // Dynamic title: the live count when something is in play,
+              // otherwise just the day. "Live" means actually in play right
+              // now - judged by each match's real status, not by the channel
+              // feed's `live_now`, whose entries are mostly still *scheduled*
+              // (it lists matches that have a stream today, not ones that have
+              // kicked off). Using it flipped the row to "live" and then
+              // showed the whole day, finished games included.
+              final liveNow = allTodayMatches.where((m) => m.isLive).toList();
+              final hasLiveMatches = liveNow.isNotEmpty;
+              // The row shows the whole day (live first), so it is titled as
+              // such; the live count and the red dot still flag what is in
+              // play right now.
+              return _buildSportsSection(
+                title: hasLiveMatches
+                    ? 'مباريات اليوم · ${liveNow.length} مباشرة'
+                    : 'مباريات اليوم',
+                isLiveMode: hasLiveMatches,
+                matches: _orderedTodayMatches(sportsState),
+                isLoading: sportsState.isLoading,
+              );
+            },
+          ),
+        ),
+
+    // Official film trailers from TMDB, right after the matches.
+    // Phone only: hidden on TV, desktop, and when TMDB is unset.
+    (_) => const RepaintBoundary(child: TrailersShowcase()),
+
+    (_) => const SizedBox(height: 4),
+
+    // Subscription plans.
+    (_) => const RepaintBoundary(child: SubscriptionPlansShowcase()),
+
+    (_) => const SizedBox(height: 24),
+
+    // 2. Recently added.
+    (_) => _posterRowSection(
+          provider: homeRecentlyAddedProvider,
+          title: 'أضيف حديثًا',
+          onViewAll: () => _openCatalog(kind: 'movies', order: 'desc'),
+        ),
+
+    (_) => const SizedBox(height: 24),
+
+    // 3. Latest movies.
+    (_) => _posterRowSection(
+          provider: homeLatestMoviesProvider,
+          title: 'أحدث الأفلام',
+          onViewAll: () => _openCatalog(kind: 'movies', order: 'release'),
+        ),
+
+    (_) => const SizedBox(height: 24),
+
+    // 4. Latest series - wide card layout.
+    (_) => _wideSeriesRowSection(
+          provider: homeLatestSeriesProvider,
+          title: 'أحدث المسلسلات',
+          badge: 'جديد',
+          onViewAll: () => _openCatalog(kind: 'series', order: 'release'),
+        ),
+
+    (_) => const SizedBox(height: 24),
+
+    // The big film series, each complete and in order.
+    // Live, endless film franchises (seeded with the curated ones).
+    (_) => const RepaintBoundary(child: DynamicFranchisesShowcase(section: FranchiseSection.films)),
+    (_) => const SizedBox(height: 12),
+
+    // 5. Anime.
+    (_) => _posterRowSection(
+          provider: homeAnimeProvider,
+          title: 'الأنمي',
+          onViewAll: () => _openCatalog(kind: 'anime', order: 'release'),
+        ),
+
+    (_) => const SizedBox(height: 24),
+
+    // Anime franchises: each franchise's series and films together.
+    (_) => const RepaintBoundary(child: DynamicFranchisesShowcase(section: FranchiseSection.anime)),
+    (_) => const SizedBox(height: 12),
+
+    // 6. Most viewed.
+    (_) => _posterRowSection(
+          provider: homeMostViewedProvider,
+          title: 'الأكثر مشاهدة',
+          onViewAll: () => _openCatalog(kind: 'movies', order: 'views'),
+        ),
+
+    (_) => const SizedBox(height: 24),
+
+    // 7. Arabic movies.
+    (_) => _posterRowSection(
+          provider: homeArabicMoviesProvider,
+          title: 'الأفلام العربية',
+          onViewAll: () => _openCatalog(kind: 'movies', categoryId: 130),
+        ),
+
+    (_) => const SizedBox(height: 24),
+
+    // 8. Arabic series - wide card layout.
+    (_) => _wideSeriesRowSection(
+          provider: homeArabicSeriesProvider,
+          title: 'المسلسلات العربية',
+          badge: 'عربي',
+          onViewAll: () => _openCatalog(kind: 'series', categoryId: 130),
+        ),
+
+    (_) => const SizedBox(height: 24),
+
+    // TV-series universes (spin-offs and sequels together).
+    (_) => const RepaintBoundary(child: FranchisesShowcase(section: FranchiseSection.series)),
+    (_) => const SizedBox(height: 12),
+
+    // 9. Viu: Arabic / Korean / Turkish series and free films, played in the
+    // app's own player. Each row loads when it scrolls near and hides itself
+    // if it has nothing.
+    for (final category in ViuCategory.home.where((c) => !c.isMovies))
+      (_) => RepaintBoundary(child: ViuHomeSection(category: category)),
+
+    // Viu's free films plus varied films by genre.
+    (_) => const RepaintBoundary(child: OtherFilmsSection()),
+    (_) => const SizedBox(height: 24),
+  ];
+
   @override
   Widget build(BuildContext context) {
-    final sportsState = ref.watch(sportsNotifierProvider('today'));
-    final bannerAsync = ref.watch(heroBannerMoviesProvider);
-    final featuredAsync = ref.watch(homeFeaturedProvider);
-    final recentlyAddedAsync = ref.watch(homeRecentlyAddedProvider);
-    final latestMoviesAsync = ref.watch(homeLatestMoviesProvider);
-    final latestSeriesAsync = ref.watch(homeLatestSeriesProvider);
-    final animeAsync = ref.watch(homeAnimeProvider);
-    final mostViewedAsync = ref.watch(homeMostViewedProvider);
-    final arabicMoviesAsync = ref.watch(homeArabicMoviesProvider);
-    final arabicSeriesAsync = ref.watch(homeArabicSeriesProvider);
-
-    // Hero Section: Strictly official Cinemana banners ("الإصدارات الجديدة").
-    // The banner feed alone: while it loads the hero keeps its skeleton
-    // rather than showing the featured titles and then swapping them out.
-    final heroMovies = bannerAsync.when(
-      data: (b) => b.take(20).toList(),
-      loading: () => const <CinemanaItem>[],
-      error: (_, __) => (featuredAsync.valueOrNull ?? const <CinemanaItem>[]).take(20).toList(),
-    );
-
-    _heroSlideCount = heroMovies.length;
-
-    // Collect all real matches for today.
-    //
-    // The two feeds number their matches differently, so comparing ids let
-    // the same fixture through twice and it sat twice in the row. Identity is
-    // the two teams, and the surviving card keeps every channel either feed
-    // knew about, so the source is chosen inside the match.
-    final allTodayMatches = _mergedTodayMatches(sportsState);
-
-
-    // Dynamic title: "المباريات المباشرة" if live, otherwise "مباريات اليوم"
-    // "Live" means actually in play right now — judged by each match's real
-    // status, not by the channel feed's `live_now`, whose entries are mostly
-    // still *scheduled* (it lists matches that have a stream today, not ones
-    // that have kicked off). Using it flipped the row to "live" and then
-    // showed the whole day, finished games included.
-    final liveNow = allTodayMatches.where((m) => m.isLive).toList();
-    final bool hasLiveMatches = liveNow.isNotEmpty;
-    // The row shows the whole day (live first), so it is titled as such; the
-    // live count and the red dot still flag what is in play right now.
-    final String sportsSectionTitle =
-        hasLiveMatches ? 'مباريات اليوم · ${liveNow.length} مباشرة' : 'مباريات اليوم';
-
+    // Nothing is watched at this level any more. The hero and every row
+    // below watch their own feed inside their own Consumer, so one feed
+    // landing rebuilds one row — not the hero, the matches and all twenty
+    // sections at once, which is what made the cards stutter into place
+    // while the ten home feeds arrived one after another.
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final bgColor = _p.bg;
     // The floating top bar: status bar + 4px padding + 40px row + 4px padding.
@@ -442,214 +616,53 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
               child: CustomScrollView(
               key: const PageStorageKey('home'),
               physics: kAppDefaultScrollPhysics,
-              cacheExtent: 350,
+              cacheExtent: 600,
               slivers: [
-                // 1. Full-Bleed Hero Movie Section (Screen-filling, Crystal Clear, Latest 20, Interactive & Pausable)
+                // 1. Full-Bleed Hero Movie Section (Screen-filling, Crystal
+                // Clear, Latest 20, Interactive & Pausable). Its own Consumer:
+                // the banner feed landing repaints the hero and nothing else.
                 SliverToBoxAdapter(
-                  // The flat skeleton stays until there is something to
-                  // show - also while the featured fallback is still on its
-                  // way after the banner feed failed - so nothing flashes.
                   child: RepaintBoundary(
-                    child: _buildHeroSection(
-                      heroMovies,
-                      heroMovies.isEmpty &&
-                          (bannerAsync.isLoading || (bannerAsync.hasError && featuredAsync.isLoading)),
+                    child: Consumer(
+                      builder: (context, ref, _) {
+                        final bannerAsync = ref.watch(heroBannerMoviesProvider);
+                        final featuredAsync = ref.watch(homeFeaturedProvider);
+                        // Hero Section: Strictly official Cinemana banners
+                        // ("الإصدارات الجديدة"). The banner feed alone: while it
+                        // loads the hero keeps its skeleton rather than showing
+                        // the featured titles and then swapping them out.
+                        final heroMovies = bannerAsync.when(
+                          data: (b) => b.take(20).toList(),
+                          loading: () => const <CinemanaItem>[],
+                          error: (_, __) =>
+                              (featuredAsync.valueOrNull ?? const <CinemanaItem>[]).take(20).toList(),
+                        );
+                        _heroSlideCount = heroMovies.length;
+                        // The flat skeleton stays until there is something to
+                        // show - also while the featured fallback is still on
+                        // its way after the banner feed failed - so nothing
+                        // flashes.
+                        return _buildHeroSection(
+                          heroMovies,
+                          heroMovies.isEmpty &&
+                              (bannerAsync.isLoading || (bannerAsync.hasError && featuredAsync.isLoading)),
+                        );
+                      },
                     ),
                   ),
                 ),
 
-                // Everything under the hero is one lazy list: a row is built
-                // only once it comes within cacheExtent of the viewport, so
-                // the first frame is the hero and the matches, not every
-                // section on the page.
+                // Everything under the hero is one lazy list. The children are
+                // *builders*, not a ready-made list of widgets: with a child
+                // list every section's tree was constructed on every rebuild of
+                // this page, however far off screen it sat. Now a row is built
+                // only once it comes within cacheExtent of the viewport, so the
+                // first frame is the hero and the matches, nothing more.
                 SliverList(
-                  delegate: SliverChildListDelegate([
-                    // Sports Section: Real Matches (Dynamic title, increased card height, clean time/date, team logos)
-                    RepaintBoundary(
-                      child: _buildSportsSection(
-                        title: sportsSectionTitle,
-                        isLiveMode: hasLiveMatches,
-                        // The whole day: in play first, then upcoming, then finished.
-                        matches: MatchOrder.dayOrder(allTodayMatches),
-                        isLoading: sportsState.isLoading,
-                      ),
-                    ),
-
-                    // Official film trailers from TMDB, right after the matches.
-                    // Phone only: hidden on TV, desktop, and when TMDB is unset.
-                    const RepaintBoundary(child: TrailersShowcase()),
-
-                    const SizedBox(height: 4),
-
-                    // Subscription Plans (باقات وأنواع الاشتراكات)
-                    const RepaintBoundary(child: SubscriptionPlansShowcase()),
-
-                    const SizedBox(height: 24),
-
-                    // 2. أضيف حديثًا (Recently Added)
-                    RepaintBoundary(
-                      child: recentlyAddedAsync.when(
-                        data: (items) => _buildHorizontalCategorySection(
-                          title: 'أضيف حديثًا',
-                          items: items,
-                          isLoading: false,
-                          onViewAll: () => _openCatalog(kind: 'movies', order: 'desc'),
-                        ),
-                        loading: () => _buildHorizontalCategorySection(
-                          title: 'أضيف حديثًا',
-                          items: const [],
-                          isLoading: true,
-                        ),
-                        error: (_, __) => const SizedBox.shrink(),
-                      ),
-                    ),
-
-                    const SizedBox(height: 24),
-
-                    // 3. أحدث الأفلام (Latest Movies)
-                    RepaintBoundary(
-                      child: latestMoviesAsync.when(
-                        data: (items) => _buildHorizontalCategorySection(
-                          title: 'أحدث الأفلام',
-                          items: items,
-                          isLoading: false,
-                          onViewAll: () => _openCatalog(kind: 'movies', order: 'release'),
-                        ),
-                        loading: () => _buildHorizontalCategorySection(
-                          title: 'أحدث الأفلام',
-                          items: const [],
-                          isLoading: true,
-                        ),
-                        error: (_, __) => const SizedBox.shrink(),
-                      ),
-                    ),
-
-                    const SizedBox(height: 24),
-
-                    // 4. أحدث المسلسلات (Latest Series) - Wide Card layout
-                    RepaintBoundary(
-                      child: latestSeriesAsync.when(
-                        data: (items) => _buildWideSeriesSection(
-                          title: 'أحدث المسلسلات',
-                          badge: 'جديد',
-                          items: items,
-                          isLoading: false,
-                          onViewAll: () => _openCatalog(kind: 'series', order: 'release'),
-                        ),
-                        loading: () => _buildWideSeriesSection(
-                          title: 'أحدث المسلسلات',
-                          items: const [],
-                          isLoading: true,
-                        ),
-                        error: (_, __) => const SizedBox.shrink(),
-                      ),
-                    ),
-
-                    const SizedBox(height: 24),
-
-                    // The big film series, each complete and in order.
-                    // Live, endless film franchises (seeded with the curated ones).
-                    const RepaintBoundary(child: DynamicFranchisesShowcase(section: FranchiseSection.films)),
-                    const SizedBox(height: 12),
-
-                    // 5. قسم الأنمي (Anime)
-                    RepaintBoundary(
-                      child: animeAsync.when(
-                        data: (items) => _buildHorizontalCategorySection(
-                          title: 'الأنمي',
-                          items: items,
-                          isLoading: false,
-                          onViewAll: () => _openCatalog(kind: 'anime', order: 'release'),
-                        ),
-                        loading: () => _buildHorizontalCategorySection(
-                          title: 'الأنمي',
-                          items: const [],
-                          isLoading: true,
-                        ),
-                        error: (_, __) => const SizedBox.shrink(),
-                      ),
-                    ),
-
-                    const SizedBox(height: 24),
-
-                    // Anime franchises: each franchise's series and films together.
-                    const RepaintBoundary(child: DynamicFranchisesShowcase(section: FranchiseSection.anime)),
-                    const SizedBox(height: 12),
-
-                    // 6. الأكثر مشاهدة (Most Viewed)
-                    RepaintBoundary(
-                      child: mostViewedAsync.when(
-                        data: (items) => _buildHorizontalCategorySection(
-                          title: 'الأكثر مشاهدة',
-                          items: items,
-                          isLoading: false,
-                          onViewAll: () => _openCatalog(kind: 'movies', order: 'views'),
-                        ),
-                        loading: () => _buildHorizontalCategorySection(
-                          title: 'الأكثر مشاهدة',
-                          items: const [],
-                          isLoading: true,
-                        ),
-                        error: (_, __) => const SizedBox.shrink(),
-                      ),
-                    ),
-
-                    const SizedBox(height: 24),
-
-                    // 7. الأفلام العربية (Arabic Movies)
-                    RepaintBoundary(
-                      child: arabicMoviesAsync.when(
-                        data: (items) => _buildHorizontalCategorySection(
-                          title: 'الأفلام العربية',
-                          items: items,
-                          isLoading: false,
-                          onViewAll: () => _openCatalog(kind: 'movies', categoryId: 130),
-                        ),
-                        loading: () => _buildHorizontalCategorySection(
-                          title: 'الأفلام العربية',
-                          items: const [],
-                          isLoading: true,
-                        ),
-                        error: (_, __) => const SizedBox.shrink(),
-                      ),
-                    ),
-
-                    const SizedBox(height: 24),
-
-                    // 8. المسلسلات العربية (Arabic Series) - Wide Card layout
-                    RepaintBoundary(
-                      child: arabicSeriesAsync.when(
-                        data: (items) => _buildWideSeriesSection(
-                          title: 'المسلسلات العربية',
-                          badge: 'عربي',
-                          items: items,
-                          isLoading: false,
-                          onViewAll: () => _openCatalog(kind: 'series', categoryId: 130),
-                        ),
-                        loading: () => _buildWideSeriesSection(
-                          title: 'المسلسلات العربية',
-                          items: const [],
-                          isLoading: true,
-                        ),
-                        error: (_, __) => const SizedBox.shrink(),
-                      ),
-                    ),
-
-                    const SizedBox(height: 24),
-
-                    // TV-series universes (spin-offs and sequels together).
-                    const RepaintBoundary(child: FranchisesShowcase(section: FranchiseSection.series)),
-                    const SizedBox(height: 12),
-
-                    // 9. Viu: Arabic / Korean / Turkish series and free films,
-                    // played in the app's own player. Each row loads when it
-                    // scrolls near and hides itself if it has nothing.
-                    for (final category in ViuCategory.home.where((c) => !c.isMovies))
-                      RepaintBoundary(child: ViuHomeSection(category: category)),
-                    // "أفلام أخرى": Viu's free films plus varied films by genre.
-                    const RepaintBoundary(child: OtherFilmsSection()),
-                    const SizedBox(height: 24),
-                  ]),
+                  delegate: SliverChildBuilderDelegate(
+                    (context, index) => _sections[index](context),
+                    childCount: _sections.length,
+                  ),
                 ),
               ],
             ),

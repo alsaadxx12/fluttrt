@@ -1,15 +1,15 @@
 {
   "updateEnabled": true,
-  "versionCode": 2090,
-  "versionName": "1.0.84",
-  "apkUrl": "https://cineball.netlify.app/download/app.apk?v=90",
-  "apkUrlArm64": "https://cineball.netlify.app/download/app-arm64-v8a-release.apk?v=90",
-  "apkUrlArm32": "https://cineball.netlify.app/download/app-armeabi-v7a-release.apk?v=90",
-  "sha256": "388958f63aa6dad45c959e62944c3fdd0b74f7782d1e85225a80bddd658a0256",
-  "sha256Arm64": "388958f63aa6dad45c959e62944c3fdd0b74f7782d1e85225a80bddd658a0256",
-  "sha256Arm32": "25b43141775d805d77f9adff1900ca0aae47a70e838db41b359e41d809d9d059",
-  "sizeBytes": 19290543,
+  "versionCode": 2091,
+  "versionName": "1.0.85",
+  "apkUrl": "https://cineball.netlify.app/download/app.apk?v=91",
+  "apkUrlArm64": "https://cineball.netlify.app/download/app-arm64-v8a-release.apk?v=91",
+  "apkUrlArm32": "https://cineball.netlify.app/download/app-armeabi-v7a-release.apk?v=91",
+  "sha256": "5aaf191b9fad11d001885cfd06831912260a7072fbddbfa161c0a8ae07f8e8a2",
+  "sha256Arm64": "5aaf191b9fad11d001885cfd06831912260a7072fbddbfa161c0a8ae07f8e8a2",
+  "sha256Arm32": "1a1400b423deb1a2b25e279c84daff5227c48d930ba0e4701f93354b463759e9",
+  "sizeBytes": 19291156,
   "forceUpdate": false,
   "minSupportedVersion": 1,
-  "notes": "اعتماد سيرفرات Kora x90 و BoomStreaming حصرياً للمباريات والبث المباشر وإزالة السيرفرات المتوقفة"
+  "notes": "معالجة جدول مباريات اليوم وإظهار حالة المباريات المنتهية بدقة"
 }

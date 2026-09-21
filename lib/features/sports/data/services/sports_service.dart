@@ -540,13 +540,26 @@ class SportsService {
         final teamKey = '${homeName.trim().toLowerCase()}_${awayName.trim().toLowerCase()}';
         if (!seenMatchTeams.add(teamKey)) continue;
 
-        // Meta (score, time, status, league)
+        // Meta (score, time, status, league, day)
         final scoreMatch = RegExp(r'<div class="score-time">\s*([\s\S]*?)\s*<\/div>', caseSensitive: false).firstMatch(block);
         final scoreTime = scoreMatch?.group(1)?.trim() ?? '';
+
+        final matchDayMatch = RegExp(r'<div class="match-day">\s*([\s\S]*?)\s*<\/div>', caseSensitive: false).firstMatch(block);
+        final matchDay = matchDayMatch?.group(1)?.trim() ?? '';
 
         final statusBadgeMatch = RegExp(r'<div class="status-badge([^"]*)">\s*([\s\S]*?)\s*<\/div>', caseSensitive: false).firstMatch(block);
         final badgeClass = statusBadgeMatch?.group(1)?.trim() ?? '';
         final badgeText = statusBadgeMatch?.group(2)?.replaceAll(RegExp(r'\s+'), ' ').trim() ?? '';
+
+        final isBadgeEnded = badgeClass.contains('status-ended') || badgeText.contains('انتهت');
+        final isBadgeLive = badgeClass.contains('status-live') || badgeText.contains('مباشر');
+        final isYesterdayMatch = matchDay.contains('أمس') || matchDay.contains('yesterday');
+
+        // When viewing today's or tomorrow's tab: If Kora x90 is displaying yesterday's matches (or ended matches)
+        // because there are no matches scheduled, filter them out so the tab accurately reflects that there are no matches.
+        if ((day == 'today' || day == 'tomorrow') && (isYesterdayMatch || isBadgeEnded)) {
+          continue;
+        }
 
         final dataStartMatch = RegExp(r'data-start="(\d+)"', caseSensitive: false).firstMatch(block);
         final dataStart = int.tryParse(dataStartMatch?.group(1) ?? '');
@@ -556,14 +569,12 @@ class SportsService {
 
         // Parse status
         String status = 'scheduled';
-        if (day == 'yesterday') {
+        if (day == 'yesterday' || isBadgeEnded || isYesterdayMatch) {
           status = 'finished';
         } else if (day == 'tomorrow') {
           status = 'scheduled';
-        } else if (badgeClass.contains('status-live') || badgeText.contains('مباشر')) {
+        } else if (isBadgeLive) {
           status = 'live';
-        } else if (badgeClass.contains('status-ended') || badgeText.contains('انتهت')) {
-          status = 'finished';
         } else if (badgeClass.contains('status-countdown') || badgeText.contains('يبدأ')) {
           status = 'scheduled';
         }
@@ -574,9 +585,12 @@ class SportsService {
         if (day != 'tomorrow' && scoreTime.contains('-')) {
           final parts = scoreTime.split('-');
           if (parts.length >= 2) {
-            homeScore = int.tryParse(parts[0].trim());
-            awayScore = int.tryParse(parts[1].trim());
+            homeScore = int.tryParse(parts[0].trim()) ?? 0;
+            awayScore = int.tryParse(parts[1].trim()) ?? 0;
           }
+        } else if (day == 'yesterday' || isBadgeEnded) {
+          homeScore = homeScore ?? 0;
+          awayScore = awayScore ?? 0;
         }
 
         // Kickoff time
@@ -587,7 +601,7 @@ class SportsService {
           kickoffAt = parseTimeToUtcIso(scoreTime, day: day);
         } else {
           var targetDate = now;
-          if (day == 'yesterday') {
+          if (day == 'yesterday' || isYesterdayMatch) {
             targetDate = now.subtract(const Duration(days: 1));
           } else if (day == 'tomorrow') {
             targetDate = now.add(const Duration(days: 1));
@@ -612,7 +626,7 @@ class SportsService {
         if (groupLeague.isEmpty) groupLeague = rawLeague;
 
         final isMatchLive = status == 'live';
-        final hasWatch = isMatchLive || (link.isNotEmpty && status != 'finished');
+        final hasWatch = isMatchLive || (link.isNotEmpty && status != 'finished' && day != 'yesterday');
         final item = SportMatchItem(
           id: matchId,
           kickoffAt: kickoffAt,

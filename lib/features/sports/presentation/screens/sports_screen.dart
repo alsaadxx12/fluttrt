@@ -951,8 +951,12 @@ class _SportsScreenState extends ConsumerState<SportsScreen> {
                 query.isNotEmpty
                     ? 'لا توجد مباريات مطابقة للبحث'
                     : (selectedLeagueId != null
-                        ? 'لا توجد مباريات لهذا الدوري اليوم'
-                        : 'لا توجد مباريات حالياً'),
+                        ? 'لا توجد مباريات لهذا الدوري'
+                        : (selectedDay == 'yesterday'
+                            ? 'لا توجد مباريات للأمس'
+                            : (selectedDay == 'tomorrow'
+                                ? 'لا توجد مباريات للغد'
+                                : 'لا توجد مباريات اليوم'))),
                 style: TextStyle(
                   color: isDark ? Colors.white70 : Colors.black54,
                   fontSize: 16,

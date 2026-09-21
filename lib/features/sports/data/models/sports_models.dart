@@ -54,15 +54,7 @@ class SportMatchItem {
   bool get isEnded {
     final s = status.trim().toLowerCase();
 
-    // 1. Explicitly NOT ended if marked as scheduled, not started, or upcoming
-    if (s.contains('لم تبدأ') ||
-        s.contains('scheduled') ||
-        s.contains('not_started') ||
-        s.contains('upcoming')) {
-      return false;
-    }
-
-    // 2. Explicitly ended if status says finished / ended
+    // 1. Explicitly ended if status says finished / ended
     if (s.contains('انتهت') ||
         s.contains('منتهي') ||
         s.contains('نهائي') ||
@@ -81,6 +73,12 @@ class SportMatchItem {
       return true;
     }
 
+    // 2. Explicitly live
+    if (s.contains('مباشر') || s.contains('live') || s.contains('جاري')) {
+      return false;
+    }
+
+    // 3. Time elapsed based on kickoffAt
     final ko = DateTime.tryParse(kickoffAt);
     if (ko != null) {
       final nowUtc = DateTime.now().toUtc();
@@ -100,6 +98,15 @@ class SportMatchItem {
         return true;
       }
     }
+
+    // 4. Explicitly NOT ended if marked as scheduled, not started, or upcoming
+    if (s.contains('لم تبدأ') ||
+        s.contains('scheduled') ||
+        s.contains('not_started') ||
+        s.contains('upcoming')) {
+      return false;
+    }
+
     return false;
   }
 
