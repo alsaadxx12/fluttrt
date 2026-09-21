@@ -8,6 +8,7 @@ import 'package:youtube_downloader/features/downloads/presentation/providers/dow
 import 'package:youtube_downloader/features/settings/presentation/providers/settings_provider.dart';
 import 'package:youtube_downloader/features/update/presentation/update_controller.dart';
 import 'package:youtube_downloader/features/subscription/presentation/providers/subscription_provider.dart';
+import 'package:youtube_downloader/features/auth/presentation/providers/auth_provider.dart';
 
 /// Light red wash behind the active row — replaces the old solid red tile.
 const Color _kActiveFill = Color(0x14E50914);
@@ -31,6 +32,8 @@ class _AppDrawerState extends ConsumerState<AppDrawer> {
     final palette = AppPalette.of(context);
     final currentPath = GoRouterState.of(context).uri.path;
     final isSportsUnlocked = ref.watch(isSportsUnlockedProvider);
+    final userProfile = ref.watch(userProfileProvider).valueOrNull;
+    final sportsSub = ref.watch(sportsSubscriptionProvider).valueOrNull;
 
     return Drawer(
       backgroundColor: palette.bg,
@@ -97,6 +100,185 @@ class _AppDrawerState extends ConsumerState<AppDrawer> {
             ),
 
             // ==========================================
+            // User Profile & Subscription Card
+            // ==========================================
+            Container(
+              margin: const EdgeInsets.fromLTRB(14, 4, 14, 8),
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: isDark
+                    ? Colors.white.withOpacity(0.04)
+                    : const Color(0xFFF8FAFC),
+                borderRadius: BorderRadius.circular(14),
+                border: Border.all(
+                  color: isSportsUnlocked
+                      ? AppColors.primary.withOpacity(0.35)
+                      : (isDark
+                          ? Colors.white.withOpacity(0.08)
+                          : const Color(0xFFE2E8F0)),
+                  width: 1,
+                ),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // User info row
+                  Row(
+                    children: [
+                      Container(
+                        width: 38,
+                        height: 38,
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          color: AppColors.primary.withOpacity(0.15),
+                          border: Border.all(
+                            color: AppColors.primary.withOpacity(0.4),
+                            width: 1.5,
+                          ),
+                        ),
+                        child: Center(
+                          child: Text(
+                            (userProfile?.fullName.isNotEmpty == true)
+                                ? userProfile!.fullName.substring(0, 1).toUpperCase()
+                                : 'ح',
+                            style: const TextStyle(
+                              color: AppColors.primary,
+                              fontSize: 16,
+                              fontWeight: FontWeight.w900,
+                            ),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              userProfile?.fullName.isNotEmpty == true
+                                  ? userProfile!.fullName
+                                  : 'مستخدم CineBall',
+                              style: TextStyle(
+                                fontSize: 13.5,
+                                fontWeight: FontWeight.w900,
+                                color: isDark ? Colors.white : Colors.black87,
+                              ),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                            const SizedBox(height: 2),
+                            Text(
+                              userProfile?.phone.isNotEmpty == true
+                                  ? userProfile!.phone
+                                  : 'رقم الهاتف غير متوفر',
+                              style: TextStyle(
+                                fontSize: 11.5,
+                                color: isDark ? Colors.white54 : Colors.black54,
+                              ),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+
+                  const SizedBox(height: 10),
+                  const Divider(height: 1, thickness: 0.8),
+                  const SizedBox(height: 8),
+
+                  // Subscription status
+                  if (isSportsUnlocked) ...[
+                    Row(
+                      children: [
+                        const Icon(
+                          Icons.verified_rounded,
+                          size: 16,
+                          color: AppColors.success,
+                        ),
+                        const SizedBox(width: 6),
+                        const Expanded(
+                          child: Text(
+                            'اشتراك المباريات: مفعّل',
+                            style: TextStyle(
+                              color: AppColors.success,
+                              fontSize: 12,
+                              fontWeight: FontWeight.w800,
+                            ),
+                          ),
+                        ),
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 8, vertical: 3),
+                          decoration: BoxDecoration(
+                            color: AppColors.success.withOpacity(0.15),
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: Text(
+                            'متبقي ${sportsSub?.remainingDays ?? 0} يوم',
+                            style: const TextStyle(
+                              color: AppColors.success,
+                              fontSize: 11,
+                              fontWeight: FontWeight.w900,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ] else ...[
+                    Row(
+                      children: [
+                        Icon(
+                          Icons.sports_soccer_rounded,
+                          size: 16,
+                          color: isDark ? Colors.white54 : Colors.black45,
+                        ),
+                        const SizedBox(width: 6),
+                        Expanded(
+                          child: Text(
+                            'اشتراك المباريات: غير مفعّل',
+                            style: TextStyle(
+                              fontSize: 11.5,
+                              fontWeight: FontWeight.w700,
+                              color: isDark ? Colors.white60 : Colors.black54,
+                            ),
+                          ),
+                        ),
+                        SizedBox(
+                          height: 28,
+                          child: ElevatedButton(
+                            onPressed: () {
+                              Navigator.pop(context);
+                              context.push('/sports-activation');
+                            },
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: AppColors.primary,
+                              foregroundColor: Colors.white,
+                              elevation: 0,
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 10, vertical: 0),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                            ),
+                            child: const Text(
+                              'اشتراك',
+                              style: TextStyle(
+                                fontSize: 11.5,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ],
+              ),
+            ),
+
+            // ==========================================
             // 2. Navigation list
             // ==========================================
             Expanded(
@@ -142,11 +324,9 @@ class _AppDrawerState extends ConsumerState<AppDrawer> {
                     },
                   ),
                   _DrawerItem(
-                    icon: isSportsUnlocked
-                        ? Icons.sports_soccer_rounded
-                        : Icons.lock_outline_rounded,
-                    title: isSportsUnlocked ? 'المباريات' : 'المباريات',
-                    badgeText: isSportsUnlocked ? null : '🔒',
+                    icon: Icons.sports_soccer_rounded,
+                    title: 'المباريات',
+                    badgeText: null,
                     isSelected: currentPath == '/sports' ||
                         currentPath == '/sports-activation',
                     onTap: () {

@@ -1137,7 +1137,7 @@ class _SportsScreenState extends ConsumerState<SportsScreen> {
                 SnackBar(
                   content: Row(
                     children: [
-                      const Icon(Icons.lock_clock_rounded, color: Colors.amberAccent, size: 20),
+                      const Icon(Icons.schedule_rounded, color: Colors.white70, size: 20),
                       const SizedBox(width: 10),
                       Expanded(
                         child: Text(
@@ -1348,7 +1348,7 @@ class _SportsScreenState extends ConsumerState<SportsScreen> {
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
                         Icon(
-                          Icons.lock_clock_rounded,
+                          Icons.schedule_rounded,
                           color: isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B),
                           size: 16,
                         ),

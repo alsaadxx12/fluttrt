@@ -1,11 +1,11 @@
 {
   "updateEnabled": true,
-  "versionCode": 72,
-  "versionName": "1.0.70",
-  "apkUrl": "https://cineball.netlify.app/download/app.apk?v=72",
-  "sha256": "42eba3c9cff7d37cdbbee630543d92ec8706f45636eac14a9ad3b747ee95b68d",
-  "sizeBytes": 57055707,
+  "versionCode": 73,
+  "versionName": "1.0.71",
+  "apkUrl": "https://cineball.netlify.app/download/app.apk?v=73",
+  "sha256": "9379061054dc52582a5fb58fe52f5a11dbd6fb7e49933196db7b27173b46a296",
+  "sizeBytes": 57072767,
   "forceUpdate": false,
   "minSupportedVersion": 1,
-  "notes": "إصلاح توجيه الواتساب المباشر وإضافة تعليمات تفعيل الحساب"
+  "notes": "إضافة بيانات الحساب والاشتراك في القائمة الجانبية وتحسين صفحة التفعيل والمباريات"
 }

@@ -9,6 +9,7 @@ import 'package:youtube_downloader/features/settings/presentation/providers/sett
 import 'package:youtube_downloader/features/update/data/update_service.dart';
 import 'package:youtube_downloader/features/update/presentation/update_controller.dart';
 import 'package:youtube_downloader/features/subscription/presentation/providers/subscription_provider.dart';
+import 'package:youtube_downloader/features/auth/presentation/providers/auth_provider.dart';
 
 class AppSidebar extends ConsumerStatefulWidget {
   final int selectedIndex;
@@ -39,6 +40,8 @@ class _AppSidebarState extends ConsumerState<AppSidebar> {
     final activeDownloads = ref.watch(downloadsProvider).activeTasks.length;
     final installed = ref.watch(installedVersionProvider);
     final isSportsUnlocked = ref.watch(isSportsUnlockedProvider);
+    final userProfile = ref.watch(userProfileProvider).valueOrNull;
+    final sportsSub = ref.watch(sportsSubscriptionProvider).valueOrNull;
 
     final collapsed = _collapsed;
     return AnimatedContainer(
@@ -88,6 +91,161 @@ class _AppSidebarState extends ConsumerState<AppSidebar> {
             ),
           ),
 
+          // User Profile & Subscription Card in Sidebar
+          if (!collapsed)
+            Container(
+              margin: const EdgeInsets.fromLTRB(10, 0, 10, 8),
+              padding: const EdgeInsets.all(10),
+              decoration: BoxDecoration(
+                color: isDark
+                    ? Colors.white.withOpacity(0.04)
+                    : const Color(0xFFF8FAFC),
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(
+                  color: isSportsUnlocked
+                      ? AppColors.primary.withOpacity(0.35)
+                      : (isDark
+                          ? Colors.white.withOpacity(0.08)
+                          : const Color(0xFFE2E8F0)),
+                  width: 1,
+                ),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Container(
+                        width: 32,
+                        height: 32,
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          color: AppColors.primary.withOpacity(0.15),
+                          border: Border.all(
+                            color: AppColors.primary.withOpacity(0.4),
+                            width: 1.5,
+                          ),
+                        ),
+                        child: Center(
+                          child: Text(
+                            (userProfile?.fullName.isNotEmpty == true)
+                                ? userProfile!.fullName.substring(0, 1).toUpperCase()
+                                : 'ح',
+                            style: const TextStyle(
+                              color: AppColors.primary,
+                              fontSize: 14,
+                              fontWeight: FontWeight.w900,
+                            ),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              userProfile?.fullName.isNotEmpty == true
+                                  ? userProfile!.fullName
+                                  : 'مستخدم CineBall',
+                              style: TextStyle(
+                                fontSize: 12.5,
+                                fontWeight: FontWeight.w900,
+                                color: isDark ? Colors.white : Colors.black87,
+                              ),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                            Text(
+                              userProfile?.phone.isNotEmpty == true
+                                  ? userProfile!.phone
+                                  : '',
+                              style: TextStyle(
+                                fontSize: 10.5,
+                                color: isDark ? Colors.white54 : Colors.black54,
+                              ),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 8),
+                  const Divider(height: 1, thickness: 0.8),
+                  const SizedBox(height: 6),
+                  if (isSportsUnlocked) ...[
+                    Row(
+                      children: [
+                        const Icon(
+                          Icons.verified_rounded,
+                          size: 14,
+                          color: AppColors.success,
+                        ),
+                        const SizedBox(width: 4),
+                        const Expanded(
+                          child: Text(
+                            'المباريات: مفعّل',
+                            style: TextStyle(
+                              color: AppColors.success,
+                              fontSize: 11,
+                              fontWeight: FontWeight.w800,
+                            ),
+                          ),
+                        ),
+                        Text(
+                          'متبقي ${sportsSub?.remainingDays ?? 0} يوم',
+                          style: const TextStyle(
+                            color: AppColors.success,
+                            fontSize: 10.5,
+                            fontWeight: FontWeight.w900,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ] else ...[
+                    Row(
+                      children: [
+                        Expanded(
+                          child: Text(
+                            'المباريات: غير مفعّل',
+                            style: TextStyle(
+                              fontSize: 10.5,
+                              color: isDark ? Colors.white60 : Colors.black54,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ),
+                        SizedBox(
+                          height: 24,
+                          child: ElevatedButton(
+                            onPressed: () => context.push('/sports-activation'),
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: AppColors.primary,
+                              foregroundColor: Colors.white,
+                              elevation: 0,
+                              padding: const EdgeInsets.symmetric(horizontal: 8),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(6),
+                              ),
+                            ),
+                            child: const Text(
+                              'اشتراك',
+                              style: TextStyle(
+                                fontSize: 10.5,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ],
+              ),
+            ),
+
           // ----------------------------------------------------
           // 2. Scrollable Navigation Menu (Unified Icons)
           // ----------------------------------------------------
@@ -126,11 +284,9 @@ class _AppSidebarState extends ConsumerState<AppSidebar> {
                   onTap: () => context.push('/cinemana/anime'),
                 ),
                 _buildSidebarItem(
-                  icon: isSportsUnlocked
-                      ? Icons.sports_soccer_rounded
-                      : Icons.lock_outline_rounded,
-                  title: isSportsUnlocked ? 'المباريات' : 'المباريات',
-                  badgeText: isSportsUnlocked ? null : '🔒',
+                  icon: Icons.sports_soccer_rounded,
+                  title: 'المباريات',
+                  badgeText: null,
                   isSelected: currentPath == '/sports' ||
                       currentPath == '/sports-activation',
                   isDark: isDark,
