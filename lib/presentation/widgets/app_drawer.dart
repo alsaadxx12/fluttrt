@@ -4,10 +4,8 @@ import 'package:go_router/go_router.dart';
 import 'package:youtube_downloader/core/constants/app_colors.dart';
 import 'package:youtube_downloader/core/constants/app_palette.dart';
 import 'package:youtube_downloader/features/cinemana/presentation/providers/cinemana_provider.dart';
-import 'package:youtube_downloader/features/downloads/presentation/providers/downloads_provider.dart';
 import 'package:youtube_downloader/features/settings/presentation/providers/settings_provider.dart';
 import 'package:youtube_downloader/features/update/presentation/update_controller.dart';
-import 'package:youtube_downloader/features/update/presentation/update_feedback.dart';
 import 'package:youtube_downloader/features/subscription/presentation/providers/subscription_provider.dart';
 import 'package:youtube_downloader/features/auth/presentation/providers/auth_provider.dart';
 
@@ -26,7 +24,6 @@ class _AppDrawerState extends ConsumerState<AppDrawer> {
   Widget build(BuildContext context) {
     final strings = ref.watch(stringsProvider);
     final favorites = ref.watch(cinemanaFavoritesProvider);
-    final activeDownloads = ref.watch(downloadsProvider).activeTasks.length;
     final update = ref.watch(updateControllerProvider);
     final installed = ref.watch(installedVersionProvider);
     final isDark = Theme.of(context).brightness == Brightness.dark;
@@ -348,15 +345,6 @@ class _AppDrawerState extends ConsumerState<AppDrawer> {
                       context.go('/youtube_cinematic');
                     },
                   ),
-                  _DrawerItem(
-                    icon: Icons.play_circle_fill_rounded,
-                    title: 'مشاهد',
-                    isSelected: currentPath == '/reels',
-                    onTap: () {
-                      Navigator.pop(context);
-                      context.go('/reels');
-                    },
-                  ),
 
                   const SizedBox(height: 10),
 
@@ -371,25 +359,6 @@ class _AppDrawerState extends ConsumerState<AppDrawer> {
                       context.push('/cinemana/favorites');
                     },
                   ),
-                  _DrawerItem(
-                    icon: Icons.history_rounded,
-                    title: 'سجل المشاهدة',
-                    isSelected: currentPath == '/history',
-                    onTap: () {
-                      Navigator.pop(context);
-                      context.push('/history');
-                    },
-                  ),
-                  _DrawerItem(
-                    icon: Icons.download_rounded,
-                    title: 'التنزيلات',
-                    badgeText: activeDownloads > 0 ? '$activeDownloads' : null,
-                    isSelected: currentPath == '/downloads',
-                    onTap: () {
-                      Navigator.pop(context);
-                      context.go('/downloads');
-                    },
-                  ),
 
                   const SizedBox(height: 10),
 
@@ -400,16 +369,6 @@ class _AppDrawerState extends ConsumerState<AppDrawer> {
                     onTap: () {
                       Navigator.pop(context);
                       context.go('/settings');
-                    },
-                  ),
-                  _DrawerItem(
-                    icon: Icons.system_update_rounded,
-                    title: 'التحقق من وجود تحديث',
-                    badgeText: update.hasUpdate ? 'تحديث متوفر' : null,
-                    isSelected: false,
-                    onTap: () {
-                      Navigator.pop(context);
-                      checkUpdateWithFeedback(context, ref);
                     },
                   ),
                   _DrawerItem(
@@ -508,53 +467,6 @@ class _AppDrawerState extends ConsumerState<AppDrawer> {
                               .showPrompt();
                         },
                         child: const _Pill(text: 'تحديث متاح'),
-                      ),
-                    ),
-                  ] else ...[
-                    const SizedBox(width: 8),
-                    Material(
-                      color: Colors.transparent,
-                      child: InkWell(
-                        borderRadius: BorderRadius.circular(8),
-                        onTap: () {
-                          Navigator.pop(context);
-                          checkUpdateWithFeedback(context, ref);
-                        },
-                        child: Container(
-                          padding: const EdgeInsets.symmetric(
-                              horizontal: 8, vertical: 4),
-                          decoration: BoxDecoration(
-                            color: isDark
-                                ? Colors.white.withOpacity(0.08)
-                                : const Color(0xFFF1F5F9),
-                            borderRadius: BorderRadius.circular(6),
-                            border: Border.all(
-                              color: isDark
-                                  ? Colors.white.withOpacity(0.12)
-                                  : const Color(0xFFCBD5E1),
-                              width: 0.8,
-                            ),
-                          ),
-                          child: Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              Icon(
-                                Icons.refresh_rounded,
-                                size: 12,
-                                color: palette.textMuted,
-                              ),
-                              const SizedBox(width: 4),
-                              Text(
-                                'تحقق',
-                                style: TextStyle(
-                                  fontSize: 10.5,
-                                  fontWeight: FontWeight.w700,
-                                  color: palette.textMuted,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
                       ),
                     ),
                   ],
