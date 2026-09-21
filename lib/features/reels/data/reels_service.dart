@@ -8,6 +8,8 @@ import 'package:youtube_downloader/features/cinemana/data/models/cinemana_models
 import 'package:youtube_downloader/features/cinemana/data/services/cinemana_service.dart';
 import 'package:youtube_downloader/features/reels/data/reel_letterbox.dart';
 import 'package:youtube_downloader/features/reels/data/reel_stream_resolver.dart';
+import 'package:youtube_downloader/features/trailers/data/movie_trailer.dart';
+import 'package:youtube_downloader/features/trailers/data/tmdb_service.dart';
 import 'package:youtube_explode_dart/youtube_explode_dart.dart';
 
 /// The author line a reel carries when its channel is not known.
@@ -103,6 +105,24 @@ class Reel {
 
   /// The link handed to the share sheet.
   String get shareUrl => 'https://youtu.be/$id';
+
+  /// A reel of one of the trailers the app's «مقاطع وإعلانات» row shows:
+  /// the film's title and year, its TMDB artwork, and its own official
+  /// trailer on YouTube.
+  factory Reel.fromTrailer(MovieTrailer t) => Reel(
+        id: t.youtubeId!,
+        title: reelTitleWithYear(t.title, t.year),
+        author: kReelTrailerAuthor,
+        channelId: null,
+        description: t.overview,
+        duration: null,
+        viewCount: null,
+        likeCount: null,
+        uploadDate: null,
+        kind: kindTrailer,
+        thumbnail: t.posterUrl ?? t.bestImage,
+        lane: ReelLane.film,
+      );
 
   /// A reel of a search hit as it is: the short's own title, its channel
   /// when YouTube named one, its view count.
@@ -1038,17 +1058,6 @@ String? _firstUrl(List<String?> urls) {
   return null;
 }
 
-/// A short found while a page was built: in what order its film was drawn,
-/// from which lane, for which film.
-class _Found {
-  const _Found(this.order, this.lane, this.film, this.reel);
-
-  final int order;
-  final ReelLane lane;
-  final ReelFilm film;
-  final Reel reel;
-}
-
 /// [f] over [items], at most [limit] at a time, the answers in [items]'s
 /// order.
 Future<List<T>> _mapLimited<S, T>(List<S> items, int limit, Future<T> Function(S) f) async {
@@ -1084,11 +1093,17 @@ class ReelsService {
     CinemanaService? cinemana,
     ReelStreamResolver? resolver,
     ReelLetterbox? letterbox,
-  })  : _yt = yt ?? YoutubeExplode(),
+    TmdbService? tmdb,
+  })  : _tmdb = tmdb ?? TmdbService(),
+        _yt = yt ?? YoutubeExplode(),
         _shorts = shorts ?? ReelShortsSearch(),
         _cinemanaGiven = cinemana,
         _resolverGiven = resolver,
         _letterbox = letterbox ?? ReelLetterbox();
+
+  /// The trailers the feed is made of — the same source the home page's
+  /// «مقاطع وإعلانات» row reads.
+  final TmdbService _tmdb;
 
   /// For the watch page ([video]) only; the searches go through [_shorts].
   final YoutubeExplode _yt;
@@ -1186,152 +1201,65 @@ class ReelsService {
   @visibleForTesting
   Map<String, String?> get shortsFound => _shortOf;
 
-  /// The next page of the film feed; without [after] the first one.
+  /// The largest page TMDB will answer for a discover query.
+  static const int lastTrailerPage = 500;
+
+  /// One page of the feed: the very trailers the home page's
+  /// «مقاطع وإعلانات» row shows, newest release first.
   ///
-  /// Titles are drawn from the two lanes in [kReelPagePattern]'s order and
-  /// searched [filmsAtOnce] at a time until [kReelsPageSize] shorts are
-  /// found, the lanes run out, or [pageBudget] is spent; a lane that runs
-  /// low is topped up, one that fails is tried again next time, and one
-  /// that keeps coming back empty is left alone. The reels come out in the
-  /// titles' order (newest first). The page reports `failed` only when a
-  /// request really failed and nothing at all could be shown.
+  /// It used to take a title from the catalogue and search YouTube for a
+  /// vertical short of it, which is how clips turned up that had nothing to
+  /// do with the film. It now reads TMDB's own list — sorted by release date,
+  /// newest first — and each film's own official trailer, the same rows the
+  /// trailers section is built from, so the two can never disagree. Nothing
+  /// is searched for, so nothing arbitrary can be found.
+  ///
+  /// Endless: TMDB answers 500 pages of releases, and a page is only the
+  /// next handful of them, so swiping never reaches the end.
+  ///
+  /// Quality is settled per trailer when it plays, not here. A clip of a
+  /// minute or less plays from the 1080p pair; a longer one takes the muxed
+  /// stream, because YouTube refuses adaptive bytes past about 60 s without a
+  /// proof-of-origin token (measured; see [kReelAdaptiveMaxDuration]). Whole
+  /// at the muxed picture beats 1080p that stops a minute in.
   Future<ReelsPage> fetchFeed({ReelsPage? after}) async {
     final prev = after?.cursor ?? const ReelsCursor();
-    final films = List<ReelFilm>.of(prev.films);
-    final series = List<ReelFilm>.of(prev.series);
-    final anime = List<ReelFilm>.of(prev.anime);
     final seen = Set<String>.of(prev.seen);
-    var filmPage = prev.filmPage;
-    var seriesPage = prev.seriesPage;
-    var animePage = prev.animePage;
-    var filmMisses = prev.filmMisses;
-    var seriesMisses = prev.seriesMisses;
-    var animeMisses = prev.animeMisses;
-    var searched = prev.filmsSearched;
-    var matched = prev.filmsMatched;
+    // TMDB pages count from 1; the cursor carries where we are.
+    var page = prev.filmPage < 1 ? 1 : prev.filmPage;
+    var misses = prev.filmMisses;
+    final found = <Reel>[];
     var threw = false;
-    final found = <_Found>[];
-    final clock = Stopwatch()..start();
-    final slot = [0];
-    var drawn = 0;
 
-    // Adds what a lane brought, less the titles already waiting in any lane
-    // (an anime is one of the newest series too), and reports whether that
-    // was anything.
-    bool fill(List<ReelFilm> lane, List<ReelFilm> fetched) {
-      final known = {
-        ...films.map((f) => f.key),
-        ...series.map((f) => f.key),
-        ...anime.map((f) => f.key),
-      };
-      final fresh = fetched.where((f) => known.add(f.key)).toList();
-      lane.addAll(fresh);
-      return fresh.isNotEmpty;
+    while (found.length < kReelsPageSize &&
+        page <= lastTrailerPage &&
+        misses < ReelsCursor.laneMisses) {
+      final List<MovieTrailer> batch;
+      try {
+        batch = await _tmdb.feedPage(page, want: kReelsPageSize * 2).timeout(laneTimeout);
+      } catch (_) {
+        threw = true;
+        break;
+      }
+      page++;
+      var added = 0;
+      for (final t in batch) {
+        final id = t.youtubeId;
+        if (id == null || id.isEmpty || _dead.contains(id) || !seen.add(id)) continue;
+        found.add(Reel.fromTrailer(t));
+        added++;
+        if (found.length >= kReelsPageSize) break;
+      }
+      // A page of releases with no trailer among them is not the end of the
+      // feed; a run of them is.
+      misses = added == 0 ? misses + 1 : 0;
     }
 
-    Future<void> worker() async {
-      while (found.length < kReelsPageSize && clock.elapsed < pageBudget && !_resolver.throttled) {
-        final drawnNow = drawReelFilm(films: films, series: series, anime: anime, slot: slot);
-        if (drawnNow == null) return;
-        final (:film, :lane) = drawnNow;
-        final order = drawn++;
-        searched++;
-        final id = await _shortFor(film);
-        if (id == null) continue;
-        matched++;
-        if (!seen.add(id)) continue;
-        found.add(_Found(order, lane, film, _reelOf(film, id, lane)));
-      }
-    }
-
-    while (found.length < kReelsPageSize && clock.elapsed < pageBudget && !_resolver.throttled) {
-      final wantFilms = filmMisses < ReelsCursor.laneMisses && films.length < laneLowWater;
-      final wantSeries = seriesMisses < ReelsCursor.laneMisses && series.length < laneLowWater;
-      final wantAnime = animeMisses < ReelsCursor.laneMisses && anime.length < laneLowWater;
-      if (wantFilms || wantSeries || wantAnime) {
-        List<ReelFilm>? filmsGot, seriesGot, animeGot;
-        await Future.wait<void>([
-          if (wantFilms) _lane(() => _fetchFilms(filmPage)).then((r) => filmsGot = r),
-          if (wantSeries) _lane(() => _fetchSeries(seriesPage)).then((r) => seriesGot = r),
-          if (wantAnime) _lane(() => _fetchAnime(animePage)).then((r) => animeGot = r),
-        ]);
-        // A request that failed outright means the network is probably
-        // down: the other lanes' empty answers are not held against them.
-        final failedNow = (wantFilms && filmsGot == null) ||
-            (wantSeries && seriesGot == null) ||
-            (wantAnime && animeGot == null);
-        threw = threw || failedNow;
-        final f = filmsGot;
-        if (f != null) {
-          filmMisses = fill(films, f) ? 0 : (failedNow ? filmMisses : filmMisses + 1);
-          filmPage++;
-        }
-        final s = seriesGot;
-        if (s != null) {
-          seriesMisses = fill(series, s) ? 0 : (failedNow ? seriesMisses : seriesMisses + 1);
-          seriesPage++;
-        }
-        final a = animeGot;
-        if (a != null) {
-          animeMisses = fill(anime, a) ? 0 : (failedNow ? animeMisses : animeMisses + 1);
-          animePage++;
-        }
-      }
-      if (films.isEmpty && series.isEmpty && anime.isEmpty) {
-        // Nothing to look at: give a lane that can still answer another
-        // go, unless the network is down or every lane is dry.
-        final dry = filmMisses >= ReelsCursor.laneMisses &&
-            seriesMisses >= ReelsCursor.laneMisses &&
-            animeMisses >= ReelsCursor.laneMisses;
-        if (threw || dry) break;
-        continue;
-      }
-      await Future.wait([for (var k = 0; k < filmsAtOnce; k++) worker()]);
-    }
-
-    found.sort((a, b) => a.order.compareTo(b.order));
-    final items = [for (final f in found.take(kReelsPageSize)) f.reel];
-    // The searches in flight when the page filled may all have landed: what
-    // the page cannot hold goes back to the head of its lane, unseen, for
-    // the next page — its short is remembered, so it costs nothing then.
-    for (final f in found.skip(kReelsPageSize).toList().reversed) {
-      seen.remove(f.reel.id);
-      switch (f.lane) {
-        case ReelLane.film:
-          films.insert(0, f.film);
-        case ReelLane.series:
-          series.insert(0, f.film);
-        case ReelLane.anime:
-          anime.insert(0, f.film);
-      }
-      searched--;
-      matched--;
-    }
-    final cursor = ReelsCursor(
-      seen: seen,
-      films: films,
-      series: series,
-      anime: anime,
-      filmPage: filmPage,
-      seriesPage: seriesPage,
-      animePage: animePage,
-      filmMisses: filmMisses,
-      seriesMisses: seriesMisses,
-      animeMisses: animeMisses,
-      filmsSearched: searched,
-      filmsMatched: matched,
-    );
-    // Nothing to show because a request failed, or because YouTube is
-    // refusing the probes for now: a failure, so the page offers a retry.
-    final failed = items.isEmpty && (threw || _resolver.throttled);
-    if (items.isNotEmpty) unawaited(_resolver.prewarm(items.take(prewarmCount).map((r) => r.id)));
     return ReelsPage(
-      items: items,
-      // A failed request keeps the feed open so the next pull retries; only
-      // both lanes running dry ends it.
-      hasMore: failed || !cursor.exhausted,
-      failed: failed,
-      cursor: cursor,
+      items: found,
+      hasMore: !threw && page <= lastTrailerPage && misses < ReelsCursor.laneMisses,
+      failed: threw && found.isEmpty,
+      cursor: ReelsCursor(seen: seen, filmPage: page, filmMisses: misses),
     );
   }
 
@@ -1343,21 +1271,6 @@ class ReelsService {
       return null;
     }
   }
-
-  /// One page of the catalogue's newest films — the same «أحدث الأفلام» the
-  /// app's cards show, newest first.
-  Future<List<ReelFilm>> _fetchFilms(int page) async =>
-      reelFilmsFromCinemana(await _cinemana.fetchLatestMoviesRelease(page: page, itemsPerPage: filmsPerFetch));
-
-  /// One page of the catalogue's newest series, likewise.
-  Future<List<ReelFilm>> _fetchSeries(int page) async =>
-      reelFilmsFromCinemana(await _cinemana.fetchLatestSeriesRelease(page: page, itemsPerPage: seriesPerFetch));
-
-  /// One page of the catalogue's newest anime — the «قسم الأنمي» section,
-  /// newest by release date. They are series entries, marked as anime so
-  /// their shorts are looked for as PVs.
-  Future<List<ReelFilm>> _fetchAnime(int page) async =>
-      reelFilmsFromCinemana(await _cinemana.fetchAnime(page: page, itemsPerPage: animePerFetch), anime: true);
 
   /// The id of [film]'s vertical short, or null when none qualifies —
   /// remembered for the session either way, unless the search was cut

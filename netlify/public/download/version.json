@@ -1,15 +1,15 @@
 {
   "updateEnabled": true,
-  "versionCode": 2098,
-  "versionName": "1.0.92",
-  "apkUrl": "https://cineball.netlify.app/download/app.apk?v=98",
-  "apkUrlArm64": "https://cineball.netlify.app/download/app-arm64-v8a-release.apk?v=98",
-  "apkUrlArm32": "https://cineball.netlify.app/download/app-armeabi-v7a-release.apk?v=98",
-  "sha256": "8ef5858996306e6727c92183cd72b6a46c5347435950f009afb43996df77bc80",
-  "sha256Arm64": "8ef5858996306e6727c92183cd72b6a46c5347435950f009afb43996df77bc80",
-  "sha256Arm32": "036810b138fedf5e8ead4c5e67bf705ff8f64750797ed94f62818eb323192c85",
-  "sizeBytes": 19967904,
+  "versionCode": 2104,
+  "versionName": "1.0.98",
+  "apkUrl": "https://cineball.netlify.app/download/app.apk?v=104",
+  "apkUrlArm64": "https://cineball.netlify.app/download/app-arm64-v8a-release.apk?v=104",
+  "apkUrlArm32": "https://cineball.netlify.app/download/app-armeabi-v7a-release.apk?v=104",
+  "sha256": "d1fb683cd147a1365fdcae06be23f48ed51447f98ac116f6f92dd53e63fa4cf3",
+  "sha256Arm64": "d1fb683cd147a1365fdcae06be23f48ed51447f98ac116f6f92dd53e63fa4cf3",
+  "sha256Arm32": "0ee0caa0017cdc439f21c5ace19812c7ffff1a4cb1c8c75b0490ecf8ee632013",
+  "sizeBytes": 20164930,
   "forceUpdate": false,
   "minSupportedVersion": 1,
-  "notes": "إضافة مصادر وسيرفرات مسلسلات وأفلام Asia2TV بجودة عالية وبدون إعلانات"
+  "notes": "إضافة أحدث المسلسلات والأفلام الحصرية بدون إعلانات وتحديث القائمة الجانبية بالثيم الأسود الفاخر"
 }
