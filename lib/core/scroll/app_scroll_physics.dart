@@ -21,12 +21,12 @@ class AppScrollPhysics extends BouncingScrollPhysics {
     );
   }
 
-  /// Refined spring description for controlled, subtle edge springback
+  /// Refined spring description for fluid, responsive, silky-smooth scrolling without lag or heavy drag
   @override
   SpringDescription get spring => const SpringDescription(
-        mass: 55,
-        stiffness: 100,
-        damping: 0.9,
+        mass: 0.8,
+        stiffness: 100.0,
+        damping: 1.1,
       );
 }
 

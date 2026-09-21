@@ -440,7 +440,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
               child: CustomScrollView(
               key: const PageStorageKey('home'),
               physics: kAppDefaultScrollPhysics,
-              cacheExtent: 1000,
+              cacheExtent: 350,
               slivers: [
                 // 1. Full-Bleed Hero Movie Section (Screen-filling, Crystal Clear, Latest 20, Interactive & Pausable)
                 SliverToBoxAdapter(
@@ -463,22 +463,24 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                 SliverList(
                   delegate: SliverChildListDelegate([
                     // Sports Section: Real Matches (Dynamic title, increased card height, clean time/date, team logos)
-                    _buildSportsSection(
-                      title: sportsSectionTitle,
-                      isLiveMode: hasLiveMatches,
-                      // The whole day: in play first, then upcoming, then finished.
-                      matches: MatchOrder.dayOrder(allTodayMatches),
-                      isLoading: sportsState.isLoading,
+                    RepaintBoundary(
+                      child: _buildSportsSection(
+                        title: sportsSectionTitle,
+                        isLiveMode: hasLiveMatches,
+                        // The whole day: in play first, then upcoming, then finished.
+                        matches: MatchOrder.dayOrder(allTodayMatches),
+                        isLoading: sportsState.isLoading,
+                      ),
                     ),
 
                     // Official film trailers from TMDB, right after the matches.
                     // Phone only: hidden on TV, desktop, and when TMDB is unset.
-                    const TrailersShowcase(),
+                    const RepaintBoundary(child: TrailersShowcase()),
 
                     const SizedBox(height: 4),
 
                     // Subscription Plans (باقات وأنواع الاشتراكات)
-                    const SubscriptionPlansShowcase(),
+                    const RepaintBoundary(child: SubscriptionPlansShowcase()),
 
                     const SizedBox(height: 24),
 
@@ -2094,7 +2096,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
   Widget _buildRealMoviePosterCard(CinemanaItem movie) {
     final poster = movie.cardImageUrl;
 
-    return PressScale(
+    return RepaintBoundary(
+      child: PressScale(
       onTap: () {
         Navigator.of(context, rootNavigator: true).push(
           MaterialPageRoute(
@@ -2208,8 +2211,9 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
           ),
         ),
       ),
-    );
-  }
+    ),
+  );
+}
 
   Widget _buildPosterPlaceholder() {
     return Container(

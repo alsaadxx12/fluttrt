@@ -128,9 +128,12 @@ class _TrailersShowcaseState extends ConsumerState<TrailersShowcase> with Widget
   bool _hadItems = false;
 
   bool get _onScreen => _visible && _routeActive;
-  bool get _shouldPlay => _visible && _routeActive && _settled && _foreground && !_userPaused;
+  bool get _shouldPlay =>
+      _visible && _routeActive && _settled && _foreground && !_userPaused && !_isAncestorScrolling;
 
   ScrollPosition? _ancestorPos;
+  bool _isAncestorScrolling = false;
+  int _lastMeasure = 0;
 
   @override
   void initState() {
@@ -144,6 +147,7 @@ class _TrailersShowcaseState extends ConsumerState<TrailersShowcase> with Widget
     WidgetsBinding.instance.removeObserver(this);
     _settleTimer?.cancel();
     _ancestorPos?.removeListener(_onAncestorScroll);
+    _ancestorPos?.isScrollingNotifier.removeListener(_onScrollingChanged);
     _pageController.dispose();
     super.dispose();
   }
@@ -175,16 +179,40 @@ class _TrailersShowcaseState extends ConsumerState<TrailersShowcase> with Widget
     final pos = Scrollable.maybeOf(context)?.position;
     if (pos != _ancestorPos) {
       _ancestorPos?.removeListener(_onAncestorScroll);
+      _ancestorPos?.isScrollingNotifier.removeListener(_onScrollingChanged);
       _ancestorPos = pos;
       _ancestorPos?.addListener(_onAncestorScroll);
+      _ancestorPos?.isScrollingNotifier.addListener(_onScrollingChanged);
     }
     // Re-measured even when the position is unchanged: the post-frame call
     // after the first layout is what computes the real value.
     _onAncestorScroll();
   }
 
+  void _onScrollingChanged() {
+    if (!mounted) return;
+    final scrolling = _ancestorPos?.isScrollingNotifier.value ?? false;
+    if (scrolling != _isAncestorScrolling) {
+      setState(() => _isAncestorScrolling = scrolling);
+      if (!scrolling) {
+        // Measure visibility once user stops scrolling
+        final visible = _computeVisible();
+        if (visible != _visible) {
+          setState(() {
+            _visible = visible;
+            _updateSettle();
+          });
+        }
+      }
+    }
+  }
+
   void _onAncestorScroll() {
     if (!mounted) return;
+    final now = DateTime.now().millisecondsSinceEpoch;
+    // Throttle localToGlobal calls during scrolling to avoid GPU/CPU jank
+    if (now - _lastMeasure < 150) return;
+    _lastMeasure = now;
     final visible = _computeVisible();
     if (visible == _visible) return;
     setState(() {
@@ -383,7 +411,7 @@ class _TrailersShowcaseState extends ConsumerState<TrailersShowcase> with Widget
         height: rowH,
         child: PageView.builder(
           controller: _pageController,
-          physics: const PageScrollPhysics(),
+          physics: const BouncingScrollPhysics(parent: PageScrollPhysics()),
           onPageChanged: _onPageChanged,
           itemCount: count,
           itemBuilder: (context, i) {
@@ -398,16 +426,18 @@ class _TrailersShowcaseState extends ConsumerState<TrailersShowcase> with Widget
             }
             final trailer = feed.items[i];
             final isActive = trailer.youtubeId != null && trailer.youtubeId == activeId;
-            return _TrailerCard(
-              trailer: trailer,
-              isActive: isActive,
-              showVideo: isActive && _playerArmed,
-              play: isActive && _shouldPlay,
-              isPaused: isActive && _userPaused,
-              onTap: () => _tap(i),
-              onOpen: () => _open(trailer),
-              onFailed: () => _skipFailed(trailer.youtubeId),
-              onEnded: () => _onVideoEnded(i),
+            return RepaintBoundary(
+              child: _TrailerCard(
+                trailer: trailer,
+                isActive: isActive,
+                showVideo: isActive && _playerArmed,
+                play: isActive && _shouldPlay,
+                isPaused: isActive && _userPaused,
+                onTap: () => _tap(i),
+                onOpen: () => _open(trailer),
+                onFailed: () => _skipFailed(trailer.youtubeId),
+                onEnded: () => _onVideoEnded(i),
+              ),
             );
           },
         ),
