@@ -1,3 +1,5 @@
+import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 class SubscriptionPlan {
@@ -80,22 +82,67 @@ class SubscriptionPlan {
     ),
   ];
 
-  static Future<void> openWhatsAppSales({SubscriptionPlan? plan}) async {
-    const phone = '9647714289278';
-    String message = 'مرحباً، أود التواصل مع المبيعات بخصوص تفعيل قسم المباريات';
+  static Future<bool> openWhatsAppSales({
+    SubscriptionPlan? plan,
+    BuildContext? context,
+  }) async {
+    const rawPhone = '9647714289278';
+    String message = 'مرحباً، أود الحصول على كود تفعيل لقسم المباريات';
     if (plan != null) {
       message =
           'مرحباً، أود تفعيل اشتراك المباريات: باقة (${plan.title} - ${plan.priceText})';
     }
-    final url =
-        'https://wa.me/$phone?text=${Uri.encodeComponent(message)}';
-    final uri = Uri.parse(url);
+    final encodedMessage = Uri.encodeComponent(message);
+
+    // 1. Direct native WhatsApp intent scheme (bypasses browser, opens app directly)
+    final nativeUri =
+        Uri.parse('whatsapp://send?phone=$rawPhone&text=$encodedMessage');
     try {
-      if (await canLaunchUrl(uri)) {
-        await launchUrl(uri, mode: LaunchMode.externalApplication);
-      } else {
-        await launchUrl(uri, mode: LaunchMode.platformDefault);
+      if (await launchUrl(nativeUri, mode: LaunchMode.externalApplication)) {
+        return true;
       }
     } catch (_) {}
+
+    // 2. Official wa.me shortlink
+    final waMeUri =
+        Uri.parse('https://wa.me/$rawPhone?text=$encodedMessage');
+    try {
+      if (await launchUrl(waMeUri, mode: LaunchMode.externalApplication)) {
+        return true;
+      }
+    } catch (_) {}
+
+    // 3. Fallback api.whatsapp.com
+    final apiUri = Uri.parse(
+        'https://api.whatsapp.com/send?phone=$rawPhone&text=$encodedMessage');
+    try {
+      if (await launchUrl(apiUri, mode: LaunchMode.externalApplication)) {
+        return true;
+      }
+    } catch (_) {}
+
+    // 4. Platform default fallback
+    try {
+      if (await launchUrl(waMeUri, mode: LaunchMode.platformDefault)) {
+        return true;
+      }
+    } catch (_) {}
+
+    // 5. If all fail, copy phone to clipboard and notify user
+    await Clipboard.setData(const ClipboardData(text: '+9647714289278'));
+    if (context != null && context.mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text(
+            'تم نسخ رقم المبيعات (+9647714289278). يمكنك مراسلتهم مباشرة عبر واتساب.',
+            textAlign: TextAlign.center,
+            style: TextStyle(fontWeight: FontWeight.bold),
+          ),
+          backgroundColor: Color(0xFF25D366),
+          duration: Duration(seconds: 4),
+        ),
+      );
+    }
+    return false;
   }
 }

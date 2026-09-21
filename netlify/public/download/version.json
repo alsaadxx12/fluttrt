@@ -1,11 +1,11 @@
 {
   "updateEnabled": true,
-  "versionCode": 71,
-  "versionName": "1.0.69",
-  "apkUrl": "https://cineball.netlify.app/download/app.apk?v=71",
-  "sha256": "0bb3eba9c75173ece5a52b4b3cd98ccc04f7821f3bb21c83dd04ead150c57ab4",
-  "sizeBytes": 57051571,
+  "versionCode": 72,
+  "versionName": "1.0.70",
+  "apkUrl": "https://cineball.netlify.app/download/app.apk?v=72",
+  "sha256": "42eba3c9cff7d37cdbbee630543d92ec8706f45636eac14a9ad3b747ee95b68d",
+  "sizeBytes": 57055707,
   "forceUpdate": false,
   "minSupportedVersion": 1,
-  "notes": "إضافة باقات الاشتراكات (شهر، شهرين، 3 أشهر، 6 أشهر، 12 شهر) وإزالة الأقسام الزائدة"
+  "notes": "إصلاح توجيه الواتساب المباشر وإضافة تعليمات تفعيل الحساب"
 }

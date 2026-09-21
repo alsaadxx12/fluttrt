@@ -43,7 +43,10 @@ class _SportsActivationScreenState
   }
 
   Future<void> _openWhatsApp() async {
-    await SubscriptionPlan.openWhatsAppSales(plan: _selectedPlan);
+    await SubscriptionPlan.openWhatsAppSales(
+      plan: _selectedPlan,
+      context: context,
+    );
   }
 
   Future<void> _handleActivation() async {
@@ -619,6 +622,53 @@ class _SportsActivationScreenState
                           fontWeight: FontWeight.w800,
                         ),
                       ),
+                    ),
+                  ),
+                  const SizedBox(height: 18),
+
+                  // Clear Instructions Box
+                  Container(
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: isDark
+                          ? Colors.white.withOpacity(0.04)
+                          : const Color(0xFFF8FAFC),
+                      borderRadius:
+                          BorderRadius.circular(AppTheme.borderRadius),
+                      border: Border.all(
+                        color: isDark
+                            ? Colors.white.withOpacity(0.08)
+                            : Colors.black.withOpacity(0.06),
+                      ),
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          children: [
+                            const Icon(Icons.info_outline_rounded,
+                                size: 16, color: AppColors.info),
+                            const SizedBox(width: 6),
+                            Text(
+                              'طريقة التفعيل:',
+                              style: TextStyle(
+                                fontSize: 12.5,
+                                fontWeight: FontWeight.w800,
+                                color: isDark ? Colors.white : Colors.black87,
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 6),
+                        Text(
+                          '1. اضغط زر الواتساب للتواصل مع المبيعات (+9647714289278) واستلام كود التفعيل.\n2. انسخ الكود المُرسل لك وألصقه في خانة "كود التفعيل" أعلاه.\n3. اضغط زر "تفعيل الاشتراك" ليتم فتح وتفعيل قسم المباريات في حسابك فوراً.',
+                          style: TextStyle(
+                            fontSize: 11.5,
+                            height: 1.55,
+                            color: isDark ? Colors.white70 : Colors.black87,
+                          ),
+                        ),
+                      ],
                     ),
                   ),
                 ],

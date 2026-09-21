@@ -280,7 +280,10 @@ class _PlanCard extends StatelessWidget {
                   height: 34,
                   child: ElevatedButton(
                     onPressed: () =>
-                        SubscriptionPlan.openWhatsAppSales(plan: plan),
+                        SubscriptionPlan.openWhatsAppSales(
+                          plan: plan,
+                          context: context,
+                        ),
                     style: ElevatedButton.styleFrom(
                       backgroundColor: const Color(0xFF25D366),
                       foregroundColor: Colors.white,
