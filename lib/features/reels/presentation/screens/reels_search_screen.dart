@@ -9,10 +9,10 @@ import 'package:youtube_downloader/features/reels/presentation/screens/reels_scr
 import 'package:youtube_downloader/features/reels/presentation/widgets/reel_widgets.dart';
 import 'package:youtube_downloader/presentation/widgets/app_search_field.dart';
 
-const Color _kText = Color(0xFF0F172A);
-const Color _kMuted = Color(0xFF64748B);
-const Color _kFaint = Color(0xFF94A3B8);
-const Color _kPill = Color(0xFFF2F2F2);
+const Color _kText = Colors.white;
+const Color _kMuted = Color(0xFF94A3B8);
+const Color _kFaint = Colors.white38;
+const Color _kPill = Color(0xFF131926);
 
 /// TikTok's search, for films: a white page with the field at the top,
 /// recent and trending queries as pills, and results as a two-column grid
@@ -95,7 +95,7 @@ class _ReelsSearchScreenState extends ConsumerState<ReelsSearchScreen> {
     final state = ref.watch(reelsSearchProvider);
 
     return Scaffold(
-      backgroundColor: Colors.white,
+      backgroundColor: const Color(0xFF04060A),
       body: SafeArea(
         child: Column(
           children: [

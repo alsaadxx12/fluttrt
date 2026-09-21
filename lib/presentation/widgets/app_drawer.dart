@@ -304,7 +304,7 @@ class _AppDrawerState extends ConsumerState<AppDrawer> {
                     },
                   ),
                   _DrawerItem(
-                    icon: Icons.tv_rounded,
+                    icon: Icons.live_tv_rounded,
                     title: 'المسلسلات',
                     isSelected: currentPath == '/cinemana/series',
                     onTap: () {
@@ -313,7 +313,7 @@ class _AppDrawerState extends ConsumerState<AppDrawer> {
                     },
                   ),
                   _DrawerItem(
-                    icon: Icons.whatshot_rounded,
+                    icon: Icons.auto_awesome_rounded,
                     title: 'الأنمي',
                     isSelected: currentPath == '/cinemana/anime',
                     onTap: () {
@@ -363,7 +363,7 @@ class _AppDrawerState extends ConsumerState<AppDrawer> {
                   const SizedBox(height: 10),
 
                   _DrawerItem(
-                    icon: Icons.settings_rounded,
+                    icon: Icons.settings_suggest_rounded,
                     title: 'الإعدادات',
                     isSelected: currentPath == '/settings',
                     onTap: () {
@@ -372,7 +372,7 @@ class _AppDrawerState extends ConsumerState<AppDrawer> {
                     },
                   ),
                   _DrawerItem(
-                    icon: Icons.info_outline_rounded,
+                    icon: Icons.info_rounded,
                     title: 'حول التطبيق',
                     badgeText: update.hasUpdate ? 'تحديث' : null,
                     isSelected: currentPath == '/about',

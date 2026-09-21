@@ -271,14 +271,14 @@ class _AppSidebarState extends ConsumerState<AppSidebar> {
                   onTap: () => context.push('/cinemana/movies'),
                 ),
                 _buildSidebarItem(
-                  icon: Icons.tv_rounded,
+                  icon: Icons.live_tv_rounded,
                   title: 'المسلسلات',
                   isSelected: currentPath == '/cinemana/series',
                   isDark: isDark,
                   onTap: () => context.push('/cinemana/series'),
                 ),
                 _buildSidebarItem(
-                  icon: Icons.whatshot_rounded,
+                  icon: Icons.auto_awesome_rounded,
                   title: 'الأنمي',
                   isSelected: currentPath == '/cinemana/anime',
                   isDark: isDark,
@@ -343,7 +343,7 @@ class _AppSidebarState extends ConsumerState<AppSidebar> {
                 const SizedBox(height: 10),
 
                 _buildSidebarItem(
-                  icon: Icons.settings_rounded,
+                  icon: Icons.settings_suggest_rounded,
                   title: 'الإعدادات',
                   isSelected: currentPath == '/settings',
                   isDark: isDark,
@@ -358,7 +358,7 @@ class _AppSidebarState extends ConsumerState<AppSidebar> {
                   onTap: () => checkUpdateWithFeedback(context, ref),
                 ),
                 _buildSidebarItem(
-                  icon: Icons.info_outline_rounded,
+                  icon: Icons.info_rounded,
                   title: 'حول التطبيق',
                   badgeText: update.hasUpdate ? 'تحديث' : null,
                   isSelected: currentPath == '/about',

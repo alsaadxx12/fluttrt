@@ -14,6 +14,14 @@ class TvMode {
 
   static const _channel = MethodChannel('cineball/updater');
 
+  /// True once the app knows it is running on a television.
+  ///
+  /// Resolved by [tvModeProvider] while the splash is up, so it is settled
+  /// before any page is drawn. It is here as a plain field as well as in the
+  /// provider so that widgets built hundreds of times over - a poster card in
+  /// a row - can ask without holding a `ref`.
+  static bool isTv = false;
+
   static Future<bool> detect() async {
     if (!Platform.isAndroid) return false;
     try {
@@ -43,6 +51,7 @@ class TvMode {
 /// and false rather than an error when the platform cannot say.
 final tvModeProvider = FutureProvider<bool>((ref) async {
   final isTv = await TvMode.detect();
+  TvMode.isTv = isTv;
   if (isTv) TvMode.enableRemoteFocus();
   return isTv;
 });

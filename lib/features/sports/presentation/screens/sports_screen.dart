@@ -238,18 +238,19 @@ class _SportsScreenState extends ConsumerState<SportsScreen> {
       }
     }
 
+    final palette = AppPalette.of(context);
     const accentColor = Color(0xFFFF1744);
 
     return Scaffold(
-      backgroundColor: isDark ? AppPalette.of(context).bg : AppPalette.of(context).bg,
+      backgroundColor: palette.bg,
       body: Column(
         children: [
           Container(
             decoration: BoxDecoration(
-              color: isDark ? const Color(0xFF111622) : Colors.white,
+              color: palette.card,
               border: Border(
                 bottom: BorderSide(
-                  color: isDark ? const Color(0xFF1C2233) : const Color(0xFFE8EAF0),
+                  color: palette.border,
                   width: 1,
                 ),
               ),
@@ -295,7 +296,7 @@ class _SportsScreenState extends ConsumerState<SportsScreen> {
           Expanded(
             child: RefreshIndicator(
               triggerMode: RefreshIndicatorTriggerMode.anywhere,
-              backgroundColor: Colors.white,
+              backgroundColor: palette.card,
               color: const Color(0xFFE50914),
               strokeWidth: 2.4,
               onRefresh: () => sportsNotifier.refresh(),

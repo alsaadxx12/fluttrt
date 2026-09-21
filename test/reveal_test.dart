@@ -133,4 +133,36 @@ void main() {
     await tester.pumpAndSettle();
     expect(taps, 1);
   });
+
+  group('the focus and hover machinery is built only where it can show', () {
+    tearDown(() => PressScale.debugUsesFocusAndHover = null);
+
+    testWidgets('a touch device gets the gesture alone', (tester) async {
+      // FocusableActionDetector costs a focus node, a mouse region and an
+      // actions map per card; a phone has no cursor and no arrow keys, so a
+      // row of posters was paying for a highlight that can never appear.
+      PressScale.debugUsesFocusAndHover = false;
+      var taps = 0;
+      await tester.pumpWidget(_wrap(
+        Center(child: PressScale(onTap: () => taps++, child: const SizedBox(width: 100, height: 100))),
+      ));
+
+      expect(find.byType(FocusableActionDetector), findsNothing);
+      // And no box is drawn for the ring that can never show.
+      expect(find.byType(AnimatedContainer), findsNothing);
+
+      await tester.tap(find.byType(PressScale));
+      expect(taps, 1, reason: 'still opens the title');
+    });
+
+    testWidgets('a television keeps the remote focus ring', (tester) async {
+      PressScale.debugUsesFocusAndHover = true;
+      await tester.pumpWidget(_wrap(
+        Center(child: PressScale(onTap: () {}, child: const SizedBox(width: 100, height: 100))),
+      ));
+
+      expect(find.byType(FocusableActionDetector), findsOneWidget);
+      expect(find.byType(AnimatedContainer), findsOneWidget);
+    });
+  });
 }

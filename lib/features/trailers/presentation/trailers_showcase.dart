@@ -127,9 +127,19 @@ class _TrailersShowcaseState extends ConsumerState<TrailersShowcase> with Widget
   bool _playerArmed = false;
   bool _hadItems = false;
 
+  // True while the home page is under the finger or still gliding. A video
+  // decoding and compositing its texture through a scroll is the most
+  // expensive thing on the page, and it is the one thing on it nobody is
+  // looking at while the page is moving, so it holds until the page stops.
+  bool _ancestorScrolling = false;
+
   bool get _onScreen => _visible && _routeActive;
-  bool get _shouldPlay =>
-      _visible && _routeActive && _settled && _foreground && !_userPaused;
+  bool get _shouldPlay => _visible &&
+      _routeActive &&
+      _settled &&
+      _foreground &&
+      !_userPaused &&
+      !_ancestorScrolling;
 
   ScrollPosition? _ancestorPos;
 
@@ -178,6 +188,9 @@ class _TrailersShowcaseState extends ConsumerState<TrailersShowcase> with Widget
       _ancestorPos?.isScrollingNotifier.removeListener(_onScrollingChanged);
       _ancestorPos = pos;
       _ancestorPos?.isScrollingNotifier.addListener(_onScrollingChanged);
+      // A new position may already be still or already moving; either way the
+      // flag has to describe this one, not the one we just let go of.
+      _ancestorScrolling = pos?.isScrollingNotifier.value ?? false;
     }
     _checkVisibility();
   }
@@ -185,6 +198,11 @@ class _TrailersShowcaseState extends ConsumerState<TrailersShowcase> with Widget
   void _onScrollingChanged() {
     if (!mounted) return;
     final scrolling = _ancestorPos?.isScrollingNotifier.value ?? false;
+    if (scrolling != _ancestorScrolling) {
+      // Pausing is a setState, but only on the two edges of a scroll, not
+      // per frame: the row holds its player and merely stops the picture.
+      setState(() => _ancestorScrolling = scrolling);
+    }
     // Check visibility ONLY when user finishes scrolling - never during active gestures!
     if (!scrolling) {
       _checkVisibility();
@@ -525,9 +543,8 @@ class _TrailerCard extends StatelessWidget {
             Container(
               width: double.infinity,
               height: imageH,
-              decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(18),
-                border: Border.all(color: p.border, width: 1),
+              decoration: const BoxDecoration(
+                borderRadius: BorderRadius.all(Radius.circular(18)),
               ),
               clipBehavior: Clip.antiAlias,
               child: Stack(

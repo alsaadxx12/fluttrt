@@ -142,22 +142,27 @@ class _GlowingCrestState extends State<GlowingCrest> {
         clipBehavior: Clip.none,
         children: [
           // The glow: a blurred disc in the crest's colour, behind it.
-          AnimatedOpacity(
-            opacity: _glow == null ? 0 : 1,
+          //
+          // The colour itself fades in. An AnimatedOpacity here put every
+          // crest behind its own compositing layer - two per match card, for
+          // a whole row of them - to fade something that is only ever a
+          // shadow. Animating the shadow's own colour needs no layer, and
+          // while the colour is still unknown nothing is painted at all.
+          AnimatedContainer(
             duration: const Duration(milliseconds: 350),
-            child: Container(
-              width: size * 0.62,
-              height: size * 0.62,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                boxShadow: [
-                  BoxShadow(
-                    color: (_glow ?? Colors.transparent).withOpacity(_glow == _neutralGlow ? 0.35 : 0.55),
-                    blurRadius: size * 0.42,
-                    spreadRadius: size * 0.06,
-                  ),
-                ],
-              ),
+            width: size * 0.62,
+            height: size * 0.62,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              boxShadow: _glow == null
+                  ? null
+                  : [
+                      BoxShadow(
+                        color: _glow!.withOpacity(_glow == _neutralGlow ? 0.35 : 0.55),
+                        blurRadius: size * 0.42,
+                        spreadRadius: size * 0.06,
+                      ),
+                    ],
             ),
           ),
           if (url != null && url.isNotEmpty)

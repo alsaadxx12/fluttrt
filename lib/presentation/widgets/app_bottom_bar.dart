@@ -19,15 +19,13 @@ class AppBottomBar extends StatelessWidget {
   /// The bar's own height, before the bottom safe-area inset.
   static const double barHeight = 64;
 
-  static const Color _inactiveLight = Color(0xFF64748B);
-
   @override
   Widget build(BuildContext context) {
     final palette = AppPalette.of(context);
     final bottomInset = MediaQuery.paddingOf(context).bottom;
-    final Color bg = dark ? Colors.black : Colors.white;
-    final Color line = dark ? Colors.white12 : palette.border;
-    final Color inactive = dark ? Colors.white70 : _inactiveLight;
+    final Color bg = palette.bg;
+    final Color line = Colors.white.withOpacity(0.08);
+    const Color inactive = Color(0xFF94A3B8);
 
     final homeActive = location == '/';
     final reelsActive = location.startsWith('/reels');
@@ -64,7 +62,7 @@ class AppBottomBar extends StatelessWidget {
                 ),
                 Expanded(
                   child: _BarItem(
-                    icon: listActive ? Icons.bookmark_rounded : Icons.bookmark_border_rounded,
+                    icon: listActive ? Icons.bookmarks_rounded : Icons.bookmarks_outlined,
                     label: 'قائمتي',
                     active: listActive,
                     inactiveColor: inactive,
@@ -165,12 +163,23 @@ class _ReelsItem extends StatelessWidget {
                 maxHeight: _disc,
                 child: Transform.translate(
                   offset: const Offset(0, -14),
-                  child: const DecoratedBox(
+                  child: DecoratedBox(
                     decoration: BoxDecoration(
-                      color: AppColors.primary,
+                      gradient: const LinearGradient(
+                        colors: [Color(0xFFFF2A3A), AppColors.primary, Color(0xFFB80710)],
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
+                      ),
                       shape: BoxShape.circle,
+                      boxShadow: [
+                        BoxShadow(
+                          color: AppColors.primary.withOpacity(0.4),
+                          blurRadius: 10,
+                          offset: const Offset(0, 4),
+                        ),
+                      ],
                     ),
-                    child: Center(
+                    child: const Center(
                       child: Icon(Icons.play_arrow_rounded, size: 30, color: Colors.white),
                     ),
                   ),

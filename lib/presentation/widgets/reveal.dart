@@ -1,7 +1,10 @@
 import 'dart:async';
+import 'dart:io' show Platform;
 
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
+
+import '../../core/tv/tv_mode.dart';
 
 /// A passthrough: the child is simply there, on every page, with no entrance
 /// animation at all.
@@ -208,6 +211,11 @@ class PressScale extends StatefulWidget {
 
   const PressScale({super.key, required this.child, this.onTap, this.pressedScale = 0.96});
 
+  /// Forces whether the focus and hover machinery is built. Tests set it to
+  /// reach the branch the host platform is not.
+  @visibleForTesting
+  static bool? debugUsesFocusAndHover;
+
   @override
   State<PressScale> createState() => _PressScaleState();
 }
@@ -250,12 +258,56 @@ class _PressScaleState extends State<PressScale> {
   /// same thing: this is what you are about to open. So both lift it.
   bool get _highlighted => _hovered || _focused;
 
+  /// Whether this device has a pointer or a remote at all.
+  ///
+  /// [FocusableActionDetector] costs a focus node, a mouse region and an
+  /// actions map for every card it wraps, and a row of posters wraps dozens.
+  /// A phone has neither a cursor to hover with nor arrow keys to move focus
+  /// with, so all of that was built, registered and torn down on every card
+  /// scrolling past for a highlight that can never appear. Desktop and
+  /// television still get it; touch gets the gesture alone.
+  static bool get _usesFocusAndHover =>
+      PressScale.debugUsesFocusAndHover ??
+      (TvMode.isTv || !(Platform.isAndroid || Platform.isIOS));
+
   @override
   Widget build(BuildContext context) {
     final reduced = MediaQuery.maybeOf(context)?.disableAnimations ?? false;
     final scale = _down && !reduced
         ? widget.pressedScale
         : (_highlighted && !reduced ? 1.04 : 1.0);
+
+    final Widget gesture = GestureDetector(
+      // The whole card area answers the touch, not only the painted parts,
+      // so a tap on a gap inside it still opens the title.
+      behavior: HitTestBehavior.opaque,
+      onTap: widget.onTap,
+      onTapDown: _onTapDown,
+      onTapUp: _onTapUp,
+      onTapCancel: _onTapCancel,
+      child: AnimatedScale(
+        scale: scale,
+        duration: Duration(milliseconds: _down ? 90 : 220),
+        curve: _down ? Curves.easeOut : Curves.easeOutBack,
+        child: _usesFocusAndHover
+            ? AnimatedContainer(
+                duration: const Duration(milliseconds: 160),
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(18),
+                  // A ring only while it is the one in hand.
+                  border: Border.all(
+                    color: _highlighted ? const Color(0xFFE50914) : Colors.transparent,
+                    width: 2,
+                  ),
+                ),
+                child: widget.child,
+              )
+            // No ring can ever show on touch, so no box is drawn for it.
+            : widget.child,
+      ),
+    );
+
+    if (!_usesFocusAndHover) return gesture;
 
     return FocusableActionDetector(
       onShowFocusHighlight: (v) => _set(() => _focused = v),
@@ -269,32 +321,7 @@ class _PressScaleState extends State<PressScale> {
           },
         ),
       },
-      child: GestureDetector(
-        // The whole card area answers the touch, not only the painted parts,
-        // so a tap on a gap inside it still opens the title.
-        behavior: HitTestBehavior.opaque,
-        onTap: widget.onTap,
-        onTapDown: _onTapDown,
-        onTapUp: _onTapUp,
-        onTapCancel: _onTapCancel,
-        child: AnimatedScale(
-          scale: scale,
-          duration: Duration(milliseconds: _down ? 90 : 220),
-          curve: _down ? Curves.easeOut : Curves.easeOutBack,
-          child: AnimatedContainer(
-            duration: const Duration(milliseconds: 160),
-            decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(18),
-              // A ring only while it is the one in hand.
-              border: Border.all(
-                color: _highlighted ? const Color(0xFFE50914) : Colors.transparent,
-                width: 2,
-              ),
-            ),
-            child: widget.child,
-          ),
-        ),
-      ),
+      child: gesture,
     );
   }
 }

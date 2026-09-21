@@ -77,7 +77,6 @@ class OtherFilmCard extends StatelessWidget {
         decoration: BoxDecoration(
           color: AppPalette.of(context).skeleton,
           borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: AppPalette.of(context).border),
         ),
         clipBehavior: Clip.antiAlias,
         child: AspectRatio(

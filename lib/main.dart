@@ -1,9 +1,9 @@
 import 'dart:io';
+import 'package:flutter/foundation.dart' show LicenseEntryWithLineBreaks, LicenseRegistry;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:google_fonts/google_fonts.dart';
 import 'package:media_kit/media_kit.dart';
 import 'package:window_manager/window_manager.dart';
 import 'package:youtube_downloader/core/constants/app_theme.dart';
@@ -22,6 +22,7 @@ import 'package:video_player_media_kit/video_player_media_kit.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  _registerFontLicense();
   // Initialize Supabase Authentication & Database
   try {
     await Supabase.initialize(
@@ -44,7 +45,6 @@ void main() async {
   // 200 MB: enough for the whole home page decoded at 1x, and still well
   // below the budget that once starved the match WebView of tile memory.
   PaintingBinding.instance.imageCache.maximumSizeBytes = 200 << 20; // 200 MB
-  GoogleFonts.config.allowRuntimeFetching = true;
 
   // MediaKit on every platform: the reels play through media_kit on Android
   // and iOS too (a video-only stream paired with a separate audio track).
@@ -112,6 +112,17 @@ void main() async {
   );
 }
 
+/// Puts the bundled font's licence on the app's own licences page.
+///
+/// Noto Sans Arabic ships inside the app rather than being fetched, and the
+/// SIL Open Font License asks that its text travel with the font.
+void _registerFontLicense() {
+  LicenseRegistry.addLicense(() async* {
+    final text = await rootBundle.loadString('assets/fonts/OFL.txt');
+    yield LicenseEntryWithLineBreaks(const ['Noto Sans Arabic'], text);
+  });
+}
+
 class YouTubeDownloaderApp extends ConsumerWidget {
   const YouTubeDownloaderApp({super.key});
 
@@ -128,11 +139,9 @@ class YouTubeDownloaderApp extends ConsumerWidget {
       title: strings.appName,
       debugShowCheckedModeBanner: false,
       routerConfig: appRouter,
-      // The app is white-only: the saved theme preference is ignored and the
-      // dark theme is kept solely so nothing that still branches on
-      // brightness has to change.
-      themeMode: ThemeMode.light,
-      theme: AppTheme.lightTheme(settings.language),
+      // Cinematic Pitch Black Theme everywhere
+      themeMode: ThemeMode.dark,
+      theme: AppTheme.darkTheme(settings.language),
       darkTheme: AppTheme.darkTheme(settings.language),
       locale: locale,
       supportedLocales: const [

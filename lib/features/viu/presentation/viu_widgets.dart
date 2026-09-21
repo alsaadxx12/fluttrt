@@ -33,7 +33,6 @@ class ViuPosterCard extends StatelessWidget {
         decoration: BoxDecoration(
           color: AppPalette.of(context).skeleton,
           borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: AppPalette.of(context).border),
         ),
         clipBehavior: Clip.antiAlias,
         child: AspectRatio(
@@ -46,7 +45,7 @@ class ViuPosterCard extends StatelessWidget {
                   imageUrl: poster,
                   cacheManager: appImageCache,
                   fit: BoxFit.cover,
-                  filterQuality: FilterQuality.medium,
+                  filterQuality: FilterQuality.high,
                   // Decode at the card's own pixel size.
                   memCacheWidth: (width * dpr).round(),
                   fadeInDuration: Duration.zero,

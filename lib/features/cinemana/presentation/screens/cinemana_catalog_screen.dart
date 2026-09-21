@@ -514,7 +514,7 @@ class _CinemanaCatalogScreenState extends ConsumerState<CinemanaCatalogScreen> {
             Expanded(
               child: RefreshIndicator(
                 triggerMode: RefreshIndicatorTriggerMode.anywhere,
-                backgroundColor: Colors.white,
+                backgroundColor: palette.card,
                 color: const Color(0xFFE50914),
                 strokeWidth: 2.4,
                 onRefresh: () => sectionNotifier.refresh(),

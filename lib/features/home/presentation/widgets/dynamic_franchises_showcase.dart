@@ -80,7 +80,6 @@ class _LoadingDeck extends StatelessWidget {
         decoration: BoxDecoration(
           color: p.card,
           borderRadius: BorderRadius.circular(18),
-          border: Border.all(color: p.border),
         ),
         child: const Column(children: [Expanded(child: PosterFanPlaceholder())]),
       ),
@@ -271,7 +270,6 @@ class _LoaderCard extends StatelessWidget {
       decoration: BoxDecoration(
         color: p.card,
         borderRadius: BorderRadius.circular(18),
-        border: Border.all(color: p.border),
       ),
       child: const Center(
         child: CircularProgressIndicator(color: Color(0xFFE50914), strokeWidth: 2.4),
@@ -342,14 +340,13 @@ class _DynCardState extends ConsumerState<_DynCard> {
           color: p.card,
           borderRadius: BorderRadius.circular(18),
         ),
-        foregroundDecoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(18),
-          border: Border.all(
-            color: widget.isActive ? const Color(0xFFFF2A4A).withOpacity(0.85) : p.border,
-            width: widget.isActive ? 2.0 : 1.0,
-          ),
-        ),
-        clipBehavior: Clip.antiAliasWithSaveLayer,
+        foregroundDecoration: widget.isActive
+            ? BoxDecoration(
+                borderRadius: BorderRadius.circular(18),
+                border: Border.all(color: const Color(0xFFFF2A4A).withOpacity(0.85), width: 2),
+              )
+            : null,
+        clipBehavior: Clip.antiAlias,
         child: Stack(
           fit: StackFit.expand,
           children: [

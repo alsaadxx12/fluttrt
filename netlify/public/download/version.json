@@ -1,15 +1,15 @@
 {
   "updateEnabled": true,
-  "versionCode": 2092,
-  "versionName": "1.0.86",
-  "apkUrl": "https://cineball.netlify.app/download/app.apk?v=92",
-  "apkUrlArm64": "https://cineball.netlify.app/download/app-arm64-v8a-release.apk?v=92",
-  "apkUrlArm32": "https://cineball.netlify.app/download/app-armeabi-v7a-release.apk?v=92",
-  "sha256": "d5eff13027f902514dbfb07966119f9d993c2bbb7e1165e0c0df397d900dbd51",
-  "sha256Arm64": "d5eff13027f902514dbfb07966119f9d993c2bbb7e1165e0c0df397d900dbd51",
-  "sha256Arm32": "c1457c3dbea084df6afb523399f803a730df59e169402fd4fd3598d77f1e87d4",
-  "sizeBytes": 19291273,
+  "versionCode": 2094,
+  "versionName": "1.0.88",
+  "apkUrl": "https://cineball.netlify.app/download/app.apk?v=94",
+  "apkUrlArm64": "https://cineball.netlify.app/download/app-arm64-v8a-release.apk?v=94",
+  "apkUrlArm32": "https://cineball.netlify.app/download/app-armeabi-v7a-release.apk?v=94",
+  "sha256": "1c8113acec15e18f8ab7b7345ebdd308b7909618ad88b45d3c7cd94ee4b6a646",
+  "sha256Arm64": "1c8113acec15e18f8ab7b7345ebdd308b7909618ad88b45d3c7cd94ee4b6a646",
+  "sha256Arm32": "1614134d709969f4dff00eec03e9b1b034577ecc57a474499e548f12f877d2e0",
+  "sizeBytes": 19824214,
   "forceUpdate": false,
   "minSupportedVersion": 1,
-  "notes": "إضافة أقسام سلاسل سبايدر مان وباتمان وجيمس بوند"
+  "notes": "تطبيق المظهر الأسود الداكن الشامل وإزالة إطار الشعار وتقليل الفراغ العلوي وتحديث الأيقونات"
 }

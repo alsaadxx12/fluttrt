@@ -268,15 +268,16 @@ class _FranchiseCard extends ConsumerWidget {
           color: p.card,
           borderRadius: BorderRadius.circular(18),
         ),
-        // The edge is drawn over the content, so nothing inside can smudge it.
-        foregroundDecoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(18),
-          border: Border.all(
-            color: isActive ? const Color(0xFFFF2A4A).withOpacity(0.85) : p.border,
-            width: isActive ? 2.0 : 1.0,
-          ),
-        ),
-        clipBehavior: Clip.antiAliasWithSaveLayer,
+        // Only the card in hand is ringed, and in the brand red; the rest
+        // carry no edge at all. The edge is drawn over the content, so
+        // nothing inside can smudge it.
+        foregroundDecoration: isActive
+            ? BoxDecoration(
+                borderRadius: BorderRadius.circular(18),
+                border: Border.all(color: const Color(0xFFFF2A4A).withOpacity(0.85), width: 2),
+              )
+            : null,
+        clipBehavior: Clip.antiAlias,
         child: Stack(
           fit: StackFit.expand,
           children: [
@@ -638,10 +639,9 @@ class _FranchiseFilmTileState extends State<FranchiseFilmTile> {
           decoration: BoxDecoration(
             color: p.card,
             borderRadius: BorderRadius.circular(14),
-            border: Border.all(
-              color: _isHovered ? const Color(0xFFE50914) : p.border,
-              width: _isHovered ? 1.5 : 1.0,
-            ),
+            border: _isHovered
+                ? Border.all(color: const Color(0xFFE50914), width: 1.5)
+                : null,
           ),
           clipBehavior: Clip.antiAlias,
           child: Stack(
@@ -652,7 +652,7 @@ class _FranchiseFilmTileState extends State<FranchiseFilmTile> {
                 imageUrl: posterUrl,
                 cacheManager: appImageCache,
                 fit: BoxFit.cover,
-                filterQuality: FilterQuality.medium,
+                filterQuality: FilterQuality.high,
                 // Decode at the tile's own pixel width.
                 memCacheWidth: (260 * dpr).round(),
                 fadeInDuration: Duration.zero,

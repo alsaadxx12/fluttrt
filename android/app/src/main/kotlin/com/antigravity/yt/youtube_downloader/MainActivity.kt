@@ -43,6 +43,50 @@ class MainActivity : FlutterActivity() {
             window.attributes.layoutInDisplayCutoutMode =
                 android.view.WindowManager.LayoutParams.LAYOUT_IN_DISPLAY_CUTOUT_MODE_SHORT_EDGES
         }
+        useHighestRefreshRate()
+    }
+
+    override fun onResume() {
+        super.onResume()
+        // The window can be handed back at the system's own rate after the
+        // app has been away, so the choice is made again here.
+        useHighestRefreshRate()
+    }
+
+    /// Asks the display for its fastest mode at the resolution already in use.
+    ///
+    /// A 90 Hz or 120 Hz phone does not give an app those frames by default:
+    /// the window stays at 60 Hz unless it names a display mode, and Flutter
+    /// does not name one. Every scroll on this app was therefore drawn at 60
+    /// frames a second on a screen capable of twice that, which is exactly
+    /// what reads as "not smooth" however cheap each frame is to build.
+    ///
+    /// Only modes of the same size are considered, so this never changes the
+    /// resolution; if the display has a single mode the call does nothing.
+    private fun useHighestRefreshRate() {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.M) return
+        try {
+            val screen = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+                getDisplay()
+            } else {
+                @Suppress("DEPRECATION")
+                windowManager.defaultDisplay
+            } ?: return
+
+            val current = screen.mode
+            val best = screen.supportedModes
+                .filter {
+                    it.physicalWidth == current.physicalWidth &&
+                        it.physicalHeight == current.physicalHeight
+                }
+                .maxByOrNull { it.refreshRate } ?: return
+
+            if (best.modeId == current.modeId) return
+            if (best.refreshRate <= current.refreshRate + 0.1f) return
+            window.attributes = window.attributes.apply { preferredDisplayModeId = best.modeId }
+        } catch (_: Exception) {
+            // Decoration only: a display that will not answer keeps its rate.
+        }
     }
 
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {

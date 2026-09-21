@@ -16,7 +16,7 @@ publish_to: 'none' # Remove this line if you wish to publish to pub.dev
 # https://developer.apple.com/library/archive/documentation/General/Reference/InfoPlistKeyReference/Articles/CoreFoundationKeys.html
 # In Windows, build-name is used as the major, minor, and patch parts
 # of the product and file versions while build-number is used as the build suffix.
-version: 1.0.86+92
+version: 1.0.89+95
 environment:
   sdk: ^3.5.0
 
@@ -40,7 +40,6 @@ dependencies:
   go_router: ^15.1.2
   dio: ^5.11.1
   youtube_explode_dart: ^3.0.0
-  google_fonts: ^6.3.0
   shared_preferences: ^2.5.3
   path_provider: ^2.1.5
   file_picker: ^11.0.3
@@ -105,6 +104,37 @@ flutter:
   assets:
     - assets/images/
     - assets/config/
+    # The bundled font's licence, shown on the app's own licences page. Named
+    # file by file: listing the folder would bundle the .ttf files a second
+    # time, once as assets and again as fonts.
+    - assets/fonts/OFL.txt
+
+  # Noto Sans Arabic, bundled rather than fetched.
+  #
+  # google_fonts downloaded the family over the network on first launch: the
+  # app opened in a fallback face and re-laid out every line of text the
+  # moment the real one arrived, on top of competing with the posters for the
+  # connection. Bundled, the right face is there in the first frame.
+  #
+  # Bundling also gives the weights real cuts. The app sets w600-w900 all over
+  # the cards; with only the downloaded regular face loaded those were
+  # synthesised, which is what made headings look smeared rather than bold.
+  # SIL Open Font License 1.1 - see assets/fonts/OFL.txt.
+  fonts:
+    - family: NotoSansArabic
+      fonts:
+        - asset: assets/fonts/NotoSansArabic-Regular.ttf
+          weight: 400
+        - asset: assets/fonts/NotoSansArabic-Medium.ttf
+          weight: 500
+        - asset: assets/fonts/NotoSansArabic-SemiBold.ttf
+          weight: 600
+        - asset: assets/fonts/NotoSansArabic-Bold.ttf
+          weight: 700
+        - asset: assets/fonts/NotoSansArabic-ExtraBold.ttf
+          weight: 800
+        - asset: assets/fonts/NotoSansArabic-Black.ttf
+          weight: 900
 
   # An image asset can refer to one or more resolution-specific "variants", see
   # https://flutter.dev/to/resolution-aware-images

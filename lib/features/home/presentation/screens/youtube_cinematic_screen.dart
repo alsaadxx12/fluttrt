@@ -107,7 +107,7 @@ class _YoutubeCinematicScreenState extends ConsumerState<YoutubeCinematicScreen>
       backgroundColor: bgColor,
       body: RefreshIndicator(
         triggerMode: RefreshIndicatorTriggerMode.anywhere,
-        backgroundColor: Colors.white,
+        backgroundColor: cardColor,
         color: const Color(0xFFE50914),
         strokeWidth: 2.4,
         onRefresh: () async {

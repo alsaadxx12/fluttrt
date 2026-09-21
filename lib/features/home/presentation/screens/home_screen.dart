@@ -672,8 +672,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final bgColor = _p.bg;
     // The floating top bar: status bar + 4px padding + 40px row + 4px padding.
-    // Status bar + 8 + the 48 px field + 8.
-    final topBarHeight = MediaQuery.of(context).padding.top + 64.0;
+    final topBarHeight = MediaQuery.of(context).padding.top + 52.0;
 
     return AnnotatedRegion<SystemUiOverlayStyle>(
       value: (isDark ? SystemUiOverlayStyle.light : SystemUiOverlayStyle.dark)
@@ -685,7 +684,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
           // Main Scrollable Content
           RefreshIndicator(
             color: const Color(0xFFE50914),
-            backgroundColor: Colors.white,
+            backgroundColor: _p.card,
             strokeWidth: 2.4,
             displacement: 48,
             // The spinner drops in below the floating bar, never under it.
@@ -779,7 +778,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
               child: SafeArea(
                 bottom: false,
                 child: Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
                   child: _buildFloatingTopBar(),
                 ),
               ),
@@ -842,10 +841,10 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
   ) {
     final media = MediaQuery.of(context);
     final isDesktop = availableWidth > 680;
-    // Pinned top bar: media.padding.top + 36px content + 10px padding = media.padding.top + 46.0
-    final topBarHeight = media.padding.top + 64.0;
-    // Clear 14px separation gap so the image container NEVER encroaches or hides behind the top bar:
-    final artworkTop = topBarHeight + 14.0;
+    // Pinned top bar: compact vertical padding
+    final topBarHeight = media.padding.top + 52.0;
+    // Sleek minimal separation gap between top bar and hero artwork:
+    final artworkTop = topBarHeight + 4.0;
     // On Windows/Desktop, provide a generous, well-proportioned height (420-520px)
     // so the hero artwork has ample space, clear visibility, and doesn't get squeezed.
     final artworkHeight = isDesktop
@@ -1116,7 +1115,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
         children: [
           // Account / menu
           _buildTranslucentIconButton(
-            icon: Icons.person_outline_rounded,
+            icon: Icons.person_rounded,
             onTap: () => mainScaffoldKey.currentState?.openDrawer(),
           ),
           const SizedBox(width: 12),
@@ -1195,15 +1194,12 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
           height: 40,
           decoration: BoxDecoration(
             shape: BoxShape.circle,
-            color: _p.isDark ? Colors.white.withOpacity(0.16) : Colors.white,
-            border: Border.all(color: _p.isDark ? Colors.white.withOpacity(0.24) : const Color(0xFFEDF0F5), width: 1),
-            boxShadow: _p.isDark
-                ? null
-                : const [BoxShadow(color: Color(0x0A0F172A), blurRadius: 10, offset: Offset(0, 3))],
+            color: const Color(0xFF141926),
+            border: Border.all(color: Colors.white.withOpacity(0.12), width: 1),
           ),
           child: Icon(
             icon,
-            color: _p.isDark ? Colors.white.withOpacity(0.95) : _p.icon,
+            color: Colors.white,
             size: 20,
           ),
         ),
@@ -1211,35 +1207,23 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     );
   }
 
-  // Compact, Professional CINEBALL Logo
+  // Compact, Professional CINEBALL Logo (Clean & Borderless)
   Widget _buildCineballLogo() {
-    // Logo mark only — the name was dropped from the top bar.
     return Row(
       mainAxisSize: MainAxisSize.min,
       children: [
-        Container(
-          width: 36,
-          height: 36,
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(11),
-            border: Border.all(
-              color: const Color(0xFFE50914).withOpacity(0.35),
-              width: 1,
-            ),
-          ),
-          child: ClipRRect(
-            borderRadius: BorderRadius.circular(10),
-            child: Image.asset(
-              'assets/images/app_logo.png',
+        ClipRRect(
+          borderRadius: BorderRadius.circular(10),
+          child: Image.asset(
+            'assets/images/app_logo.png',
+            width: 36,
+            height: 36,
+            fit: BoxFit.contain,
+            errorBuilder: (_, __, ___) => Container(
               width: 36,
               height: 36,
-              fit: BoxFit.contain,
-              errorBuilder: (_, __, ___) => Container(
-                width: 36,
-                height: 36,
-                color: const Color(0xFFE50914),
-                child: const Icon(Icons.movie_rounded, color: Colors.white, size: 16),
-              ),
+              color: const Color(0xFFE50914),
+              child: const Icon(Icons.movie_rounded, color: Colors.white, size: 16),
             ),
           ),
         ),
@@ -1421,10 +1405,16 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
   }
 
   /// The decode width for a card [logicalWidth] wide: its own pixels, no
-  /// more, kept between 200 and 480 so a poster is decoded once at draw size
+  /// more, kept between 200 and 720 so a poster is decoded once at draw size
   /// and a large one never decodes more than it can show.
+  ///
+  /// The ceiling used to be 480, which a 4x screen's card passes - the poster
+  /// was then decoded smaller than the card it fills and drawn soft. 720
+  /// covers every phone card at its real pixel width, and since the decode is
+  /// never larger than the source file it costs nothing where the artwork is
+  /// smaller than that.
   int _hiResDecodeWidth(double logicalWidth) {
-    return (logicalWidth * MediaQuery.of(context).devicePixelRatio).clamp(200, 480).round();
+    return (logicalWidth * MediaQuery.of(context).devicePixelRatio).clamp(200, 720).round();
   }
 
   Widget _buildMetaSeparator() {
@@ -1583,7 +1573,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                       height: 70,
                       memCacheWidth: _decodeWidthFor(55),
                       fit: BoxFit.cover,
-                      filterQuality: FilterQuality.medium,
+                      filterQuality: FilterQuality.high,
                       fadeInDuration: Duration.zero,
                       fadeOutDuration: Duration.zero,
                       placeholderFadeInDuration: Duration.zero,
@@ -2199,6 +2189,35 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     );
   }
 
+  /// The scrim that carries a poster's title, and the little rating pill.
+  ///
+  /// Constants rather than expressions in the card: `withOpacity` builds a new
+  /// Color, and with them inline every poster allocated a gradient, two
+  /// colours and a border on every build of its row. As constants the same
+  /// objects are handed to every card, and an unchanged const subtree is one
+  /// Flutter can skip rebuilding outright.
+  static const BoxDecoration _posterScrim = BoxDecoration(
+    gradient: LinearGradient(
+      begin: Alignment.topCenter,
+      end: Alignment.bottomCenter,
+      colors: [
+        Colors.transparent,
+        Colors.transparent,
+        Color(0x59000000), // black at 35%
+        Color(0xEB000000), // black at 92%
+      ],
+      stops: [0.0, 0.40, 0.70, 1.0],
+    ),
+  );
+
+  static const BoxDecoration _ratingBadge = BoxDecoration(
+    color: Color(0xA6000000), // black at 65%
+    borderRadius: BorderRadius.all(Radius.circular(8)),
+    border: Border.fromBorderSide(
+      BorderSide(color: Color(0x2EFFFFFF), width: 0.5), // white at 18%
+    ),
+  );
+
   // Real Movie Poster Card (High Resolution, Clean Border & Subtle Shadow)
   Widget _buildRealMoviePosterCard(CinemanaItem movie) {
     final poster = movie.cardImageUrl;
@@ -2212,12 +2231,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
           ),
         );
       },
-      child: Container(
+      child: SizedBox(
         width: 130,
-        decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: _p.border),
-        ),
         child: ClipRRect(
           borderRadius: BorderRadius.circular(16),
           child: Stack(
@@ -2230,7 +2245,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                   imageUrl: movie.imageForWidth(_decodeWidthFor(130).toDouble(), hiRes: preferFullArtwork),
                   cacheManager: appImageCache,
                   fit: BoxFit.cover,
-                  filterQuality: FilterQuality.medium,
+                  filterQuality: FilterQuality.high,
                   memCacheWidth: _hiResDecodeWidth(130),
                   fadeInDuration: Duration.zero,
                   fadeOutDuration: Duration.zero,
@@ -2243,23 +2258,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                 _buildPosterPlaceholder(),
 
               // Gradient Overlay at bottom
-              Positioned.fill(
-                child: DecoratedBox(
-                  decoration: BoxDecoration(
-                    gradient: LinearGradient(
-                      begin: Alignment.topCenter,
-                      end: Alignment.bottomCenter,
-                      colors: [
-                        Colors.transparent,
-                        Colors.transparent,
-                        Colors.black.withOpacity(0.35),
-                        Colors.black.withOpacity(0.92),
-                      ],
-                      stops: const [0.0, 0.40, 0.70, 1.0],
-                    ),
-                  ),
-                ),
-              ),
+              const Positioned.fill(child: DecoratedBox(decoration: _posterScrim)),
 
               // Rating Star Badge at Top Left
               Positioned(
@@ -2267,11 +2266,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                 left: 8,
                 child: Container(
                   padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                  decoration: BoxDecoration(
-                    color: Colors.black.withOpacity(0.65),
-                    borderRadius: BorderRadius.circular(8),
-                    border: Border.all(color: Colors.white.withOpacity(0.18), width: 0.5),
-                  ),
+                  decoration: _ratingBadge,
                   child: Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
@@ -2434,7 +2429,6 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                 decoration: BoxDecoration(
                   color: _p.skeleton,
                   borderRadius: BorderRadius.circular(16),
-                  border: Border.all(color: _p.border),
                 ),
               ),
             ),
@@ -2474,7 +2468,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     final yearText = series.year.isNotEmpty ? series.year : '2026';
     final rating = series.stars.isNotEmpty ? series.stars : '0.0';
 
-    return GestureDetector(
+    return RepaintBoundary(
+      child: GestureDetector(
       onTap: () {
         Navigator.of(context, rootNavigator: true).push(
           MaterialPageRoute(
@@ -2488,7 +2483,6 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
         decoration: BoxDecoration(
           color: _p.card,
           borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: _p.border),
         ),
         clipBehavior: Clip.antiAlias,
         child: Row(
@@ -2502,7 +2496,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                       imageUrl: series.imageForWidth(_decodeWidthFor(posterW).toDouble(), hiRes: preferFullArtwork),
                       cacheManager: appImageCache,
                       fit: BoxFit.cover,
-                      filterQuality: FilterQuality.medium,
+                      filterQuality: FilterQuality.high,
                       memCacheWidth: _hiResDecodeWidth(posterW),
                       fadeInDuration: Duration.zero,
                       fadeOutDuration: Duration.zero,
@@ -2605,6 +2599,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
           ],
         ),
       ),
+    ),
     );
   }
 }

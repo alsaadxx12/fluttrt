@@ -147,10 +147,9 @@ class _SplashScreenState extends ConsumerState<SplashScreen>
 
   @override
   Widget build(BuildContext context) {
-    // White, like every page after it, so the home appears in place with no
-    // dark-to-white jump.
+    // Pitch black background for seamless cinematic entrance
     return Scaffold(
-      backgroundColor: Colors.white,
+      backgroundColor: const Color(0xFF04060A),
       body: Stack(
         fit: StackFit.expand,
         children: [
@@ -213,7 +212,7 @@ class _SplashScreenState extends ConsumerState<SplashScreen>
                       Text(
                         'CINEBALL',
                         style: TextStyle(
-                          color: Color(0xFF0F172A),
+                          color: Colors.white,
                           fontSize: 28,
                           fontWeight: FontWeight.w900,
                           letterSpacing: 2.5,
@@ -223,7 +222,7 @@ class _SplashScreenState extends ConsumerState<SplashScreen>
                       Text(
                         'سينما ومباريات بلا حدود',
                         style: TextStyle(
-                          color: Colors.black54,
+                          color: Colors.white70,
                           fontSize: 13,
                           fontWeight: FontWeight.w500,
                           letterSpacing: 0.5,
@@ -250,7 +249,7 @@ class _SplashScreenState extends ConsumerState<SplashScreen>
                     Text(
                       'تطوير',
                       style: TextStyle(
-                        color: Colors.black54,
+                        color: Colors.white38,
                         fontSize: 11,
                         fontWeight: FontWeight.w500,
                         letterSpacing: 1.2,
@@ -260,7 +259,7 @@ class _SplashScreenState extends ConsumerState<SplashScreen>
                     Text(
                       'ALI ALSAADY',
                       style: TextStyle(
-                        color: Color(0xFF0F172A),
+                        color: Colors.white70,
                         fontSize: 14.5,
                         fontWeight: FontWeight.w900,
                         letterSpacing: 2.5,
