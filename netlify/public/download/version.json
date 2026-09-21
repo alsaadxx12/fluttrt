@@ -1,15 +1,15 @@
 {
   "updateEnabled": true,
-  "versionCode": 2088,
-  "versionName": "1.0.82",
-  "apkUrl": "https://cineball.netlify.app/download/app.apk?v=88",
-  "apkUrlArm64": "https://cineball.netlify.app/download/app-arm64-v8a-release.apk?v=88",
-  "apkUrlArm32": "https://cineball.netlify.app/download/app-armeabi-v7a-release.apk?v=88",
-  "sha256": "020df5f99b1ccc8df64c6ca559717229aab82da455c110551ed68ecdd683c068",
-  "sha256Arm64": "020df5f99b1ccc8df64c6ca559717229aab82da455c110551ed68ecdd683c068",
-  "sha256Arm32": "6f11f3a7970e82202f499b47fc0bc8b6a817e86603d82a3bd7a7b8ab03123969",
-  "sizeBytes": 19325627,
+  "versionCode": 2089,
+  "versionName": "1.0.83",
+  "apkUrl": "https://cineball.netlify.app/download/app.apk?v=89",
+  "apkUrlArm64": "https://cineball.netlify.app/download/app-arm64-v8a-release.apk?v=89",
+  "apkUrlArm32": "https://cineball.netlify.app/download/app-armeabi-v7a-release.apk?v=89",
+  "sha256": "2a8ce42307327a24366f3e8792a98fdecfd280944cae489833165dc975bb2ec5",
+  "sha256Arm64": "2a8ce42307327a24366f3e8792a98fdecfd280944cae489833165dc975bb2ec5",
+  "sha256Arm32": "fc7243379bd8dd75e0d0e5006bbf4660b8445132a1745268d71039120751c61e",
+  "sizeBytes": 19307949,
   "forceUpdate": false,
   "minSupportedVersion": 1,
-  "notes": "إصلاح حجم التحديث وتثبيت التحديث مباشرة، وتفعيل سيرفرات البث المباشر ومسلسلات شاهد"
+  "notes": "إزالة مسلسلات وأفلام شاهد بالكامل، مع تحسين سيرفرات البث المباشر وسرعة التطبيق"
 }

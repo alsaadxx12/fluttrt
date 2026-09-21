@@ -14,21 +14,6 @@ final shahidRowProvider = FutureProvider.family<List<ShahidItem>, String>((ref, 
   return ref.watch(shahidServiceProvider).fetchRow(rowId);
 });
 
-/// Free Arabic Series from Shahid (المسلسلات العربية المجانية)
-final shahidFreeArabicSeriesProvider = FutureProvider<List<ShahidItem>>((ref) {
-  return ref.watch(shahidServiceProvider).fetchFreeArabicSeries();
-});
-
-/// All Free Series from Shahid (مسلسلات شاهد المجانية)
-final shahidFreeAllSeriesProvider = FutureProvider<List<ShahidItem>>((ref) {
-  return ref.watch(shahidServiceProvider).fetchFreeAllSeries();
-});
-
-/// Entire Free Catalog (Arabic, Egyptian, Gulf, Turkish, TV shows)
-final shahidFreeCatalogProvider = FutureProvider<List<ShahidItem>>((ref) {
-  return ref.watch(shahidServiceProvider).fetchAllFreeCatalog();
-});
-
 const kShahidFilterAll = 'الكل';
 const kShahidFilterFree = 'مجانية';
 
