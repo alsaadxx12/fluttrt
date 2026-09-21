@@ -187,7 +187,7 @@ class OtherFilmsSection extends ConsumerWidget {
             child: ListView.separated(
               padding: const EdgeInsets.symmetric(horizontal: 16),
               scrollDirection: Axis.horizontal,
-              physics: films.isEmpty ? const NeverScrollableScrollPhysics() : const BouncingScrollPhysics(),
+              physics: films.isEmpty ? const NeverScrollableScrollPhysics() : const ClampingScrollPhysics(),
               itemCount: films.isEmpty ? 4 : films.length,
               separatorBuilder: (_, __) => const SizedBox(width: 12),
               itemBuilder: (_, i) => films.isEmpty

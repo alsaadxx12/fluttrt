@@ -155,7 +155,7 @@ class ViuHomeSection extends ConsumerWidget {
             child: ListView.separated(
               padding: const EdgeInsets.symmetric(horizontal: 16),
               scrollDirection: Axis.horizontal,
-              physics: shows.isEmpty ? const NeverScrollableScrollPhysics() : const BouncingScrollPhysics(),
+              physics: shows.isEmpty ? const NeverScrollableScrollPhysics() : const ClampingScrollPhysics(),
               itemCount: shows.isEmpty ? 4 : shows.length,
               separatorBuilder: (_, __) => const SizedBox(width: 12),
               itemBuilder: (_, i) => shows.isEmpty

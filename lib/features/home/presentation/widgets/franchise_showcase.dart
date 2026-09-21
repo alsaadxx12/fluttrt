@@ -103,7 +103,7 @@ class _FranchiseCarouselState extends State<_FranchiseCarousel> {
         final controller = _controller!;
         return PageView.builder(
           controller: controller,
-          physics: const PageScrollPhysics(parent: BouncingScrollPhysics()),
+          physics: const PageScrollPhysics(parent: ClampingScrollPhysics()),
           // Always centre the active card in the middle of the screen
           padEnds: true,
           clipBehavior: Clip.none,

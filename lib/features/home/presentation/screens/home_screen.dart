@@ -485,159 +485,167 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                     const SizedBox(height: 24),
 
                     // 2. أضيف حديثًا (Recently Added)
-                    recentlyAddedAsync.when(
-                      data: (items) => _buildHorizontalCategorySection(
-                        title: 'أضيف حديثًا',
-                        items: items,
-                        isLoading: false,
-                        onViewAll: () => _openCatalog(kind: 'movies', order: 'desc'),
+                    RepaintBoundary(
+                      child: recentlyAddedAsync.when(
+                        data: (items) => _buildHorizontalCategorySection(
+                          title: 'أضيف حديثًا',
+                          items: items,
+                          isLoading: false,
+                          onViewAll: () => _openCatalog(kind: 'movies', order: 'desc'),
+                        ),
+                        loading: () => _buildHorizontalCategorySection(
+                          title: 'أضيف حديثًا',
+                          items: const [],
+                          isLoading: true,
+                        ),
+                        error: (_, __) => const SizedBox.shrink(),
                       ),
-                      loading: () => _buildHorizontalCategorySection(
-                        title: 'أضيف حديثًا',
-                        items: const [],
-                        isLoading: true,
-                      ),
-                      error: (_, __) => const SizedBox.shrink(),
                     ),
 
                     const SizedBox(height: 24),
 
                     // 3. أحدث الأفلام (Latest Movies)
-                    latestMoviesAsync.when(
-                      data: (items) => _buildHorizontalCategorySection(
-                        title: 'أحدث الأفلام',
-                        items: items,
-                        isLoading: false,
-                        onViewAll: () => _openCatalog(kind: 'movies', order: 'release'),
+                    RepaintBoundary(
+                      child: latestMoviesAsync.when(
+                        data: (items) => _buildHorizontalCategorySection(
+                          title: 'أحدث الأفلام',
+                          items: items,
+                          isLoading: false,
+                          onViewAll: () => _openCatalog(kind: 'movies', order: 'release'),
+                        ),
+                        loading: () => _buildHorizontalCategorySection(
+                          title: 'أحدث الأفلام',
+                          items: const [],
+                          isLoading: true,
+                        ),
+                        error: (_, __) => const SizedBox.shrink(),
                       ),
-                      loading: () => _buildHorizontalCategorySection(
-                        title: 'أحدث الأفلام',
-                        items: const [],
-                        isLoading: true,
-                      ),
-                      error: (_, __) => const SizedBox.shrink(),
                     ),
 
                     const SizedBox(height: 24),
 
-
-
                     // 4. أحدث المسلسلات (Latest Series) - Wide Card layout
-                    latestSeriesAsync.when(
-                      data: (items) => _buildWideSeriesSection(
-                        title: 'أحدث المسلسلات',
-                        badge: 'جديد',
-                        items: items,
-                        isLoading: false,
-                        onViewAll: () => _openCatalog(kind: 'series', order: 'release'),
+                    RepaintBoundary(
+                      child: latestSeriesAsync.when(
+                        data: (items) => _buildWideSeriesSection(
+                          title: 'أحدث المسلسلات',
+                          badge: 'جديد',
+                          items: items,
+                          isLoading: false,
+                          onViewAll: () => _openCatalog(kind: 'series', order: 'release'),
+                        ),
+                        loading: () => _buildWideSeriesSection(
+                          title: 'أحدث المسلسلات',
+                          items: const [],
+                          isLoading: true,
+                        ),
+                        error: (_, __) => const SizedBox.shrink(),
                       ),
-                      loading: () => _buildWideSeriesSection(
-                        title: 'أحدث المسلسلات',
-                        items: const [],
-                        isLoading: true,
-                      ),
-                      error: (_, __) => const SizedBox.shrink(),
                     ),
 
                     const SizedBox(height: 24),
 
                     // The big film series, each complete and in order.
                     // Live, endless film franchises (seeded with the curated ones).
-                    const DynamicFranchisesShowcase(section: FranchiseSection.films),
+                    const RepaintBoundary(child: DynamicFranchisesShowcase(section: FranchiseSection.films)),
                     const SizedBox(height: 12),
 
                     // 5. قسم الأنمي (Anime)
-                    animeAsync.when(
-                      data: (items) => _buildHorizontalCategorySection(
-                        title: 'الأنمي',
-                        items: items,
-                        isLoading: false,
-                        onViewAll: () => _openCatalog(kind: 'anime', order: 'release'),
+                    RepaintBoundary(
+                      child: animeAsync.when(
+                        data: (items) => _buildHorizontalCategorySection(
+                          title: 'الأنمي',
+                          items: items,
+                          isLoading: false,
+                          onViewAll: () => _openCatalog(kind: 'anime', order: 'release'),
+                        ),
+                        loading: () => _buildHorizontalCategorySection(
+                          title: 'الأنمي',
+                          items: const [],
+                          isLoading: true,
+                        ),
+                        error: (_, __) => const SizedBox.shrink(),
                       ),
-                      loading: () => _buildHorizontalCategorySection(
-                        title: 'الأنمي',
-                        items: const [],
-                        isLoading: true,
-                      ),
-                      error: (_, __) => const SizedBox.shrink(),
                     ),
 
                     const SizedBox(height: 24),
 
                     // Anime franchises: each franchise's series and films together.
-                    const DynamicFranchisesShowcase(section: FranchiseSection.anime),
+                    const RepaintBoundary(child: DynamicFranchisesShowcase(section: FranchiseSection.anime)),
                     const SizedBox(height: 12),
 
-
-
                     // 6. الأكثر مشاهدة (Most Viewed)
-                    mostViewedAsync.when(
-                      data: (items) => _buildHorizontalCategorySection(
-                        title: 'الأكثر مشاهدة',
-                        items: items,
-                        isLoading: false,
-                        onViewAll: () => _openCatalog(kind: 'movies', order: 'views'),
+                    RepaintBoundary(
+                      child: mostViewedAsync.when(
+                        data: (items) => _buildHorizontalCategorySection(
+                          title: 'الأكثر مشاهدة',
+                          items: items,
+                          isLoading: false,
+                          onViewAll: () => _openCatalog(kind: 'movies', order: 'views'),
+                        ),
+                        loading: () => _buildHorizontalCategorySection(
+                          title: 'الأكثر مشاهدة',
+                          items: const [],
+                          isLoading: true,
+                        ),
+                        error: (_, __) => const SizedBox.shrink(),
                       ),
-                      loading: () => _buildHorizontalCategorySection(
-                        title: 'الأكثر مشاهدة',
-                        items: const [],
-                        isLoading: true,
-                      ),
-                      error: (_, __) => const SizedBox.shrink(),
                     ),
 
                     const SizedBox(height: 24),
 
-
-
                     // 7. الأفلام العربية (Arabic Movies)
-                    arabicMoviesAsync.when(
-                      data: (items) => _buildHorizontalCategorySection(
-                        title: 'الأفلام العربية',
-                        items: items,
-                        isLoading: false,
-                        onViewAll: () => _openCatalog(kind: 'movies', categoryId: 130),
+                    RepaintBoundary(
+                      child: arabicMoviesAsync.when(
+                        data: (items) => _buildHorizontalCategorySection(
+                          title: 'الأفلام العربية',
+                          items: items,
+                          isLoading: false,
+                          onViewAll: () => _openCatalog(kind: 'movies', categoryId: 130),
+                        ),
+                        loading: () => _buildHorizontalCategorySection(
+                          title: 'الأفلام العربية',
+                          items: const [],
+                          isLoading: true,
+                        ),
+                        error: (_, __) => const SizedBox.shrink(),
                       ),
-                      loading: () => _buildHorizontalCategorySection(
-                        title: 'الأفلام العربية',
-                        items: const [],
-                        isLoading: true,
-                      ),
-                      error: (_, __) => const SizedBox.shrink(),
                     ),
 
                     const SizedBox(height: 24),
 
                     // 8. المسلسلات العربية (Arabic Series) - Wide Card layout
-                    arabicSeriesAsync.when(
-                      data: (items) => _buildWideSeriesSection(
-                        title: 'المسلسلات العربية',
-                        badge: 'عربي',
-                        items: items,
-                        isLoading: false,
-                        onViewAll: () => _openCatalog(kind: 'series', categoryId: 130),
+                    RepaintBoundary(
+                      child: arabicSeriesAsync.when(
+                        data: (items) => _buildWideSeriesSection(
+                          title: 'المسلسلات العربية',
+                          badge: 'عربي',
+                          items: items,
+                          isLoading: false,
+                          onViewAll: () => _openCatalog(kind: 'series', categoryId: 130),
+                        ),
+                        loading: () => _buildWideSeriesSection(
+                          title: 'المسلسلات العربية',
+                          items: const [],
+                          isLoading: true,
+                        ),
+                        error: (_, __) => const SizedBox.shrink(),
                       ),
-                      loading: () => _buildWideSeriesSection(
-                        title: 'المسلسلات العربية',
-                        items: const [],
-                        isLoading: true,
-                      ),
-                      error: (_, __) => const SizedBox.shrink(),
                     ),
 
                     const SizedBox(height: 24),
 
                     // TV-series universes (spin-offs and sequels together).
-                    const FranchisesShowcase(section: FranchiseSection.series),
+                    const RepaintBoundary(child: FranchisesShowcase(section: FranchiseSection.series)),
                     const SizedBox(height: 12),
 
                     // 9. Viu: Arabic / Korean / Turkish series and free films,
                     // played in the app's own player. Each row loads when it
                     // scrolls near and hides itself if it has nothing.
                     for (final category in ViuCategory.home.where((c) => !c.isMovies))
-                      ViuHomeSection(category: category),
+                      RepaintBoundary(child: ViuHomeSection(category: category)),
                     // "أفلام أخرى": Viu's free films plus varied films by genre.
-                    const OtherFilmsSection(),
+                    const RepaintBoundary(child: OtherFilmsSection()),
                     const SizedBox(height: 24),
                   ]),
                 ),
@@ -655,19 +663,19 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
             right: 0,
             child: ValueListenableBuilder<bool>(
               valueListenable: _barScrolled,
-              builder: (context, scrolled, child) => ClipRect(
-                child: BackdropFilter(
-                  filter: ImageFilter.blur(sigmaX: scrolled ? 14 : 0, sigmaY: scrolled ? 14 : 0),
-                  child: Container(
-                    decoration: BoxDecoration(
-                      color: scrolled ? _barColor.withOpacity(0.86) : _barColor,
-                      boxShadow: scrolled
-                          ? const [BoxShadow(color: Color(0x0F0F172A), blurRadius: 14, offset: Offset(0, 4))]
-                          : null,
-                    ),
-                    child: child,
-                  ),
+              builder: (context, scrolled, child) => Container(
+                decoration: BoxDecoration(
+                  color: scrolled
+                      ? (_p.isDark ? const Color(0xFF0F172A).withOpacity(0.96) : Colors.white.withOpacity(0.96))
+                      : _barColor,
+                  boxShadow: scrolled
+                      ? const [BoxShadow(color: Color(0x14000000), blurRadius: 10, offset: Offset(0, 3))]
+                      : null,
+                  border: scrolled
+                      ? Border(bottom: BorderSide(color: _p.isDark ? Colors.white10 : Colors.black.withOpacity(0.06), width: 0.8))
+                      : null,
                 ),
+                child: child,
               ),
               child: SafeArea(
                 bottom: false,
@@ -787,7 +795,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                         },
                         child: PageView.builder(
                           controller: _heroPageController,
-                          physics: const BouncingScrollPhysics(),
+                          physics: const ClampingScrollPhysics(),
                           onPageChanged: (index) {
                             // Dots and details listen to the notifier; the
                             // page itself is left alone.
@@ -1662,7 +1670,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
               key: const PageStorageKey('row-sports'),
               padding: const EdgeInsets.symmetric(horizontal: 16),
               scrollDirection: Axis.horizontal,
-              physics: const BouncingScrollPhysics(),
+              physics: const ClampingScrollPhysics(),
               itemCount: matches.length,
               separatorBuilder: (_, __) => const SizedBox(width: 12),
               itemBuilder: (context, index) {
@@ -2046,7 +2054,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
               controller: controller,
               padding: const EdgeInsets.symmetric(horizontal: 16),
               scrollDirection: Axis.horizontal,
-              physics: const BouncingScrollPhysics(),
+              physics: const ClampingScrollPhysics(),
               itemCount: items.length,
               separatorBuilder: (_, __) => const SizedBox(width: 12),
               itemBuilder: (context, index) => _buildRealMoviePosterCard(items[index]),
@@ -2129,11 +2137,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                   fadeOutDuration: Duration.zero,
                   placeholderFadeInDuration: Duration.zero,
                   useOldImageOnUrlChange: true,
-                  placeholder: (_, __) => Shimmer(
-                    base: _p.skeleton,
-                    highlight: _p.isDark ? const Color(0xFF1E2636) : const Color(0xFFF4F7FC),
-                    child: const SizedBox.expand(),
-                  ),
+                  placeholder: (_, __) => ColoredBox(color: _p.skeleton),
                   errorWidget: (_, __, ___) => _buildPosterPlaceholder(),
                 )
               else
@@ -2307,7 +2311,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
               key: PageStorageKey('wide-$title'),
               padding: const EdgeInsets.symmetric(horizontal: 16),
               scrollDirection: Axis.horizontal,
-              physics: const BouncingScrollPhysics(),
+              physics: const ClampingScrollPhysics(),
               itemCount: items.length,
               separatorBuilder: (_, __) => const SizedBox(width: 14),
               itemBuilder: (context, index) {

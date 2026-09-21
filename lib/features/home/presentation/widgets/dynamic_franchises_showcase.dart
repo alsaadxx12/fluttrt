@@ -135,7 +135,7 @@ class _DynCarouselState extends ConsumerState<_DynCarousel> {
         final controller = _controller!;
         return PageView.builder(
           controller: controller,
-          physics: const PageScrollPhysics(parent: BouncingScrollPhysics()),
+          physics: const PageScrollPhysics(parent: ClampingScrollPhysics()),
           padEnds: true,
           clipBehavior: Clip.none,
           itemCount: count,

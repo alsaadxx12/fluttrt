@@ -1,37 +1,26 @@
 import 'dart:ui';
 import 'package:flutter/material.dart';
 
-/// Unified ultra-smooth scroll physics modeled after modern fluid feeds (TikTok, Facebook, Instagram).
-///
-/// Features:
-/// 1. Natural momentum: Smooth gliding velocity that continues naturally after lifting the finger.
-/// 2. Controlled subtle boundary spring: Elegant, tight edge behavior without exaggerated bouncy snaps.
-/// 3. Cross-platform consistency: Identical silky feel across Android, iOS, Windows, and Web.
-class AppScrollPhysics extends BouncingScrollPhysics {
-  const AppScrollPhysics({
-    super.parent,
-    super.decelerationRate = ScrollDecelerationRate.normal,
-  });
+/// Ultra-smooth, responsive scroll physics providing natural momentum and 60fps/120fps fluid scrolling.
+class AppScrollPhysics extends ScrollPhysics {
+  const AppScrollPhysics({super.parent});
 
   @override
   AppScrollPhysics applyTo(ScrollPhysics? ancestor) {
-    return AppScrollPhysics(
-      parent: buildParent(ancestor),
-      decelerationRate: decelerationRate,
-    );
+    return AppScrollPhysics(parent: buildParent(ancestor));
   }
 
-  /// Refined spring description for fluid, responsive, silky-smooth scrolling without lag or heavy drag
   @override
-  SpringDescription get spring => const SpringDescription(
-        mass: 0.8,
+  SpringDescription get spring => SpringDescription.withDampingRatio(
+        mass: 0.5,
         stiffness: 100.0,
-        damping: 1.1,
+        ratio: 1.1,
       );
 }
 
-/// Global standard scroll physics instance with guaranteed refreshability
-const ScrollPhysics kAppDefaultScrollPhysics = AppScrollPhysics(
+/// Global standard scroll physics instance with guaranteed refreshability and frictionless fluid gliding.
+/// On Android and Desktop, ClampingScrollPhysics ensures zero rubber-band resistance and eliminates gesture hitching.
+const ScrollPhysics kAppDefaultScrollPhysics = ClampingScrollPhysics(
   parent: AlwaysScrollableScrollPhysics(),
 );
 
@@ -41,7 +30,16 @@ class AppScrollBehavior extends MaterialScrollBehavior {
 
   @override
   ScrollPhysics getScrollPhysics(BuildContext context) {
-    return kAppDefaultScrollPhysics;
+    switch (getPlatform(context)) {
+      case TargetPlatform.iOS:
+      case TargetPlatform.macOS:
+        return const BouncingScrollPhysics(parent: AlwaysScrollableScrollPhysics());
+      case TargetPlatform.android:
+      case TargetPlatform.fuchsia:
+      case TargetPlatform.linux:
+      case TargetPlatform.windows:
+        return kAppDefaultScrollPhysics;
+    }
   }
 
   @override

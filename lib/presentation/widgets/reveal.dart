@@ -216,9 +216,34 @@ class _PressScaleState extends State<PressScale> {
   bool _down = false;
   bool _hovered = false;
   bool _focused = false;
+  Timer? _pressTimer;
+
+  @override
+  void dispose() {
+    _pressTimer?.cancel();
+    super.dispose();
+  }
 
   void _set(void Function() change) {
     if (mounted) setState(change);
+  }
+
+  void _onTapDown(TapDownDetails _) {
+    _pressTimer?.cancel();
+    // Only engage visual press effect if finger stays down for >70ms (not a scroll gesture)
+    _pressTimer = Timer(const Duration(milliseconds: 70), () {
+      if (mounted) _set(() => _down = true);
+    });
+  }
+
+  void _onTapUp(TapUpDetails _) {
+    _pressTimer?.cancel();
+    if (_down) _set(() => _down = false);
+  }
+
+  void _onTapCancel() {
+    _pressTimer?.cancel();
+    if (_down) _set(() => _down = false);
   }
 
   /// A pointer over the card, or the remote sitting on it, both mean the
@@ -249,9 +274,9 @@ class _PressScaleState extends State<PressScale> {
         // so a tap on a gap inside it still opens the title.
         behavior: HitTestBehavior.opaque,
         onTap: widget.onTap,
-        onTapDown: (_) => _set(() => _down = true),
-        onTapUp: (_) => _set(() => _down = false),
-        onTapCancel: () => _set(() => _down = false),
+        onTapDown: _onTapDown,
+        onTapUp: _onTapUp,
+        onTapCancel: _onTapCancel,
         child: AnimatedScale(
           scale: scale,
           duration: Duration(milliseconds: _down ? 90 : 220),

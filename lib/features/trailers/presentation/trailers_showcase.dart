@@ -129,11 +129,9 @@ class _TrailersShowcaseState extends ConsumerState<TrailersShowcase> with Widget
 
   bool get _onScreen => _visible && _routeActive;
   bool get _shouldPlay =>
-      _visible && _routeActive && _settled && _foreground && !_userPaused && !_isAncestorScrolling;
+      _visible && _routeActive && _settled && _foreground && !_userPaused;
 
   ScrollPosition? _ancestorPos;
-  bool _isAncestorScrolling = false;
-  int _lastMeasure = 0;
 
   @override
   void initState() {
@@ -146,7 +144,6 @@ class _TrailersShowcaseState extends ConsumerState<TrailersShowcase> with Widget
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
     _settleTimer?.cancel();
-    _ancestorPos?.removeListener(_onAncestorScroll);
     _ancestorPos?.isScrollingNotifier.removeListener(_onScrollingChanged);
     _pageController.dispose();
     super.dispose();
@@ -178,47 +175,31 @@ class _TrailersShowcaseState extends ConsumerState<TrailersShowcase> with Widget
     if (!mounted) return;
     final pos = Scrollable.maybeOf(context)?.position;
     if (pos != _ancestorPos) {
-      _ancestorPos?.removeListener(_onAncestorScroll);
       _ancestorPos?.isScrollingNotifier.removeListener(_onScrollingChanged);
       _ancestorPos = pos;
-      _ancestorPos?.addListener(_onAncestorScroll);
       _ancestorPos?.isScrollingNotifier.addListener(_onScrollingChanged);
     }
-    // Re-measured even when the position is unchanged: the post-frame call
-    // after the first layout is what computes the real value.
-    _onAncestorScroll();
+    _checkVisibility();
   }
 
   void _onScrollingChanged() {
     if (!mounted) return;
     final scrolling = _ancestorPos?.isScrollingNotifier.value ?? false;
-    if (scrolling != _isAncestorScrolling) {
-      setState(() => _isAncestorScrolling = scrolling);
-      if (!scrolling) {
-        // Measure visibility once user stops scrolling
-        final visible = _computeVisible();
-        if (visible != _visible) {
-          setState(() {
-            _visible = visible;
-            _updateSettle();
-          });
-        }
-      }
+    // Check visibility ONLY when user finishes scrolling - never during active gestures!
+    if (!scrolling) {
+      _checkVisibility();
     }
   }
 
-  void _onAncestorScroll() {
+  void _checkVisibility() {
     if (!mounted) return;
-    final now = DateTime.now().millisecondsSinceEpoch;
-    // Throttle localToGlobal calls during scrolling to avoid GPU/CPU jank
-    if (now - _lastMeasure < 150) return;
-    _lastMeasure = now;
     final visible = _computeVisible();
-    if (visible == _visible) return;
-    setState(() {
-      _visible = visible;
-      _updateSettle();
-    });
+    if (visible != _visible) {
+      setState(() {
+        _visible = visible;
+        _updateSettle();
+      });
+    }
   }
 
   /// Starts the settle timer while the row is on screen; the moment it is
@@ -390,7 +371,7 @@ class _TrailersShowcaseState extends ConsumerState<TrailersShowcase> with Widget
       // it is laid out, since no scroll may follow to do it.
       _hadItems = true;
       WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (mounted) _onAncestorScroll();
+        if (mounted) _checkVisibility();
       });
     }
     // Warm the first cards once the row has settled, so the opening trailer
@@ -411,7 +392,7 @@ class _TrailersShowcaseState extends ConsumerState<TrailersShowcase> with Widget
         height: rowH,
         child: PageView.builder(
           controller: _pageController,
-          physics: const BouncingScrollPhysics(parent: PageScrollPhysics()),
+          physics: const PageScrollPhysics(parent: ClampingScrollPhysics()),
           onPageChanged: _onPageChanged,
           itemCount: count,
           itemBuilder: (context, i) {

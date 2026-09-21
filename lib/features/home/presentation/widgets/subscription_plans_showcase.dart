@@ -82,6 +82,7 @@ class SubscriptionPlansShowcase extends ConsumerWidget {
             child: ListView.separated(
               padding: const EdgeInsets.symmetric(horizontal: 16),
               scrollDirection: Axis.horizontal,
+              physics: const ClampingScrollPhysics(),
               itemCount: SubscriptionPlan.defaultPlans.length,
               separatorBuilder: (_, __) => const SizedBox(width: 10),
               itemBuilder: (context, index) {
