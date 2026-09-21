@@ -12,6 +12,8 @@ import 'package:youtube_downloader/core/scroll/app_scroll_physics.dart';
 import 'package:youtube_downloader/core/services/storage_service.dart';
 import 'package:youtube_downloader/features/settings/presentation/providers/settings_provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:youtube_downloader/core/config/supabase_config.dart';
 import 'package:youtube_downloader/router/app_router.dart';
 import 'features/update/presentation/update_gate.dart';
 import 'core/tv/tv_mode.dart';
@@ -20,6 +22,17 @@ import 'package:video_player_media_kit/video_player_media_kit.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  // Initialize Supabase Authentication & Database
+  try {
+    await Supabase.initialize(
+      url: SupabaseConfig.url,
+      // ignore: deprecated_member_use
+      anonKey: SupabaseConfig.anonKey,
+    );
+  } catch (e) {
+    debugPrint('Supabase init error: $e');
+  }
+
   // Load the bundled TMDB token if the build did not compile one in, so the
   // trailers section works whether or not --dart-define was passed.
   await TmdbConfig.ensureLoaded();

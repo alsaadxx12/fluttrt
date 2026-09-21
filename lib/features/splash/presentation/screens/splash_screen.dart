@@ -4,10 +4,13 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:youtube_downloader/core/network/image_cache.dart';
 import 'package:youtube_downloader/core/tv/tv_mode.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:youtube_downloader/features/cinemana/data/models/cinemana_models.dart';
 import 'package:youtube_downloader/features/cinemana/presentation/providers/cinemana_provider.dart';
 import 'package:youtube_downloader/features/reels/presentation/providers/reels_feed_provider.dart';
 import 'package:youtube_downloader/features/sports/presentation/providers/sports_provider.dart';
+import 'package:youtube_downloader/features/auth/presentation/providers/auth_provider.dart';
+import 'package:youtube_downloader/features/subscription/presentation/providers/subscription_provider.dart';
 
 class SplashScreen extends ConsumerStatefulWidget {
   const SplashScreen({super.key});
@@ -42,6 +45,23 @@ class _SplashScreenState extends ConsumerState<SplashScreen>
 
     _controller.forward();
 
+    final session = Supabase.instance.client.auth.currentSession;
+    final minWait = Future<void>.delayed(const Duration(milliseconds: 900));
+
+    if (session == null) {
+      // No active session: show splash animation then transition to login
+      minWait.then((_) {
+        if (mounted) {
+          context.go('/login');
+        }
+      });
+      return;
+    }
+
+    // Active session: load user profile & subscription in background
+    ref.read(userProfileProvider.notifier).reload();
+    ref.read(sportsSubscriptionProvider.notifier).refresh();
+
     // Warm the home while the logo animates, so it opens already filled
     // instead of loading in front of the user. Reading a provider is enough
     // to start its request, and none of these auto-dispose. The hero and the
@@ -71,7 +91,6 @@ class _SplashScreenState extends ConsumerState<SplashScreen>
 
     // Leave once the logo has had its 900 ms and the hero has answered
     // (success or error), but never later than 1600 ms in total.
-    final Future<void> minWait = Future<void>.delayed(const Duration(milliseconds: 900));
     Future.any<void>([
       Future.wait<void>([heroSettled, minWait]),
       Future<void>.delayed(const Duration(milliseconds: 1600)),

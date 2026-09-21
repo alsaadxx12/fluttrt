@@ -39,6 +39,7 @@ import '../../../../core/video/desktop_video.dart';
 import '../../../trailers/presentation/trailers_showcase.dart';
 import '../../../sports/presentation/widgets/match_highlights_banner.dart';
 import 'package:youtube_downloader/core/scroll/app_scroll_physics.dart';
+import 'package:youtube_downloader/features/subscription/presentation/providers/subscription_provider.dart';
 
 class HomeScreen extends ConsumerStatefulWidget {
   const HomeScreen({super.key});
@@ -1627,7 +1628,10 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
               ),
               const Spacer(),
               InkWell(
-                onTap: () => context.push('/sports'),
+                onTap: () {
+                  final isUnlocked = ref.read(isSportsUnlockedProvider);
+                  context.push(isUnlocked ? '/sports' : '/sports-activation');
+                },
                 borderRadius: BorderRadius.circular(8),
                 child: const Padding(
                   padding: EdgeInsets.symmetric(horizontal: 6, vertical: 4),

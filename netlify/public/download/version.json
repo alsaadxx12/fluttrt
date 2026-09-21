@@ -1,11 +1,11 @@
 {
   "updateEnabled": true,
-  "versionCode": 68,
-  "versionName": "1.0.66",
-  "apkUrl": "https://cineball.netlify.app/download/app.apk?v=68",
-  "sha256": "90657d34d7ca4433e53d3bb27af179e3379c9fd81e19904b0176a2ecfdfcbb31",
-  "sizeBytes": 56507836,
+  "versionCode": 69,
+  "versionName": "1.0.67",
+  "apkUrl": "https://cineball.netlify.app/download/app.apk?v=69",
+  "sha256": "f7e19173a933b6a01adc985cfb385a7edf362e470e6baaaca09ed00b7c181f7a",
+  "sizeBytes": 57123947,
   "forceUpdate": false,
   "minSupportedVersion": 1,
-  "notes": "إصلاح أوقات بطاقات المباريات والتوقيت المحلي بدقة"
+  "notes": "إضافة نظام تسجيل الدخول وتفعيل اشتراك المباريات"
 }

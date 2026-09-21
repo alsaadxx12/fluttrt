@@ -8,6 +8,7 @@ import 'package:youtube_downloader/features/downloads/presentation/providers/dow
 import 'package:youtube_downloader/features/settings/presentation/providers/settings_provider.dart';
 import 'package:youtube_downloader/features/update/data/update_service.dart';
 import 'package:youtube_downloader/features/update/presentation/update_controller.dart';
+import 'package:youtube_downloader/features/subscription/presentation/providers/subscription_provider.dart';
 
 class AppSidebar extends ConsumerStatefulWidget {
   final int selectedIndex;
@@ -37,6 +38,7 @@ class _AppSidebarState extends ConsumerState<AppSidebar> {
     final update = ref.watch(updateControllerProvider);
     final activeDownloads = ref.watch(downloadsProvider).activeTasks.length;
     final installed = ref.watch(installedVersionProvider);
+    final isSportsUnlocked = ref.watch(isSportsUnlockedProvider);
 
     final collapsed = _collapsed;
     return AnimatedContainer(
@@ -124,11 +126,21 @@ class _AppSidebarState extends ConsumerState<AppSidebar> {
                   onTap: () => context.push('/cinemana/anime'),
                 ),
                 _buildSidebarItem(
-                  icon: Icons.sports_soccer_rounded,
-                  title: 'المباريات',
-                  isSelected: currentPath == '/sports',
+                  icon: isSportsUnlocked
+                      ? Icons.sports_soccer_rounded
+                      : Icons.lock_outline_rounded,
+                  title: isSportsUnlocked ? 'المباريات' : 'المباريات',
+                  badgeText: isSportsUnlocked ? null : '🔒',
+                  isSelected: currentPath == '/sports' ||
+                      currentPath == '/sports-activation',
                   isDark: isDark,
-                  onTap: () => context.push('/sports'),
+                  onTap: () {
+                    if (isSportsUnlocked) {
+                      context.push('/sports');
+                    } else {
+                      context.push('/sports-activation');
+                    }
+                  },
                 ),
                 _buildSidebarItem(
                   icon: Icons.smart_display_rounded,

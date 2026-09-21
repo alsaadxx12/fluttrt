@@ -18,6 +18,9 @@ import '../presentation/screens/main_scaffold.dart';
 import '../features/splash/presentation/screens/splash_screen.dart';
 import '../features/cinemana/presentation/screens/cinemana_detail_screen.dart';
 import '../features/cinemana/data/models/cinemana_models.dart';
+import '../features/auth/presentation/screens/login_screen.dart';
+import '../features/auth/presentation/screens/register_screen.dart';
+import '../features/subscription/presentation/screens/sports_activation_screen.dart';
 
 final GlobalKey<NavigatorState> _rootNavigatorKey = GlobalKey<NavigatorState>();
 // One navigator per page of the main shell. The pages sit side by side in an
@@ -219,6 +222,21 @@ final appRouter = GoRouter(
       // left by swiping from the edge — start-edge, mirrored for RTL — the
       // way the user asked, without fighting the page's horizontal lists.
       pageBuilder: (context, state) => CupertinoPage(key: state.pageKey, child: const SportsScreen()),
+    ),
+    GoRoute(
+      path: '/sports-activation',
+      parentNavigatorKey: _rootNavigatorKey,
+      pageBuilder: (context, state) => CupertinoPage(key: state.pageKey, child: const SportsActivationScreen()),
+    ),
+    GoRoute(
+      path: '/login',
+      parentNavigatorKey: _rootNavigatorKey,
+      pageBuilder: (context, state) => NoTransitionPage(key: state.pageKey, child: const LoginScreen()),
+    ),
+    GoRoute(
+      path: '/register',
+      parentNavigatorKey: _rootNavigatorKey,
+      pageBuilder: (context, state) => CupertinoPage(key: state.pageKey, child: const RegisterScreen()),
     ),
   ],
 );

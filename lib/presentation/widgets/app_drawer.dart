@@ -7,6 +7,7 @@ import 'package:youtube_downloader/features/cinemana/presentation/providers/cine
 import 'package:youtube_downloader/features/downloads/presentation/providers/downloads_provider.dart';
 import 'package:youtube_downloader/features/settings/presentation/providers/settings_provider.dart';
 import 'package:youtube_downloader/features/update/presentation/update_controller.dart';
+import 'package:youtube_downloader/features/subscription/presentation/providers/subscription_provider.dart';
 
 /// Light red wash behind the active row — replaces the old solid red tile.
 const Color _kActiveFill = Color(0x14E50914);
@@ -29,6 +30,7 @@ class _AppDrawerState extends ConsumerState<AppDrawer> {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final palette = AppPalette.of(context);
     final currentPath = GoRouterState.of(context).uri.path;
+    final isSportsUnlocked = ref.watch(isSportsUnlockedProvider);
 
     return Drawer(
       backgroundColor: palette.bg,
@@ -140,12 +142,20 @@ class _AppDrawerState extends ConsumerState<AppDrawer> {
                     },
                   ),
                   _DrawerItem(
-                    icon: Icons.sports_soccer_rounded,
-                    title: 'المباريات',
-                    isSelected: currentPath == '/sports',
+                    icon: isSportsUnlocked
+                        ? Icons.sports_soccer_rounded
+                        : Icons.lock_outline_rounded,
+                    title: isSportsUnlocked ? 'المباريات' : 'المباريات',
+                    badgeText: isSportsUnlocked ? null : '🔒',
+                    isSelected: currentPath == '/sports' ||
+                        currentPath == '/sports-activation',
                     onTap: () {
                       Navigator.pop(context);
-                      context.push('/sports');
+                      if (isSportsUnlocked) {
+                        context.push('/sports');
+                      } else {
+                        context.push('/sports-activation');
+                      }
                     },
                   ),
                   _DrawerItem(

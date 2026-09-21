@@ -3,10 +3,11 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import 'package:youtube_downloader/core/constants/app_palette.dart';
 import 'package:youtube_downloader/features/sports/presentation/widgets/match_score_line.dart';
 import 'package:youtube_downloader/presentation/widgets/app_search_field.dart';
-import 'package:intl/intl.dart' hide TextDirection;
+import 'package:youtube_downloader/features/subscription/presentation/providers/subscription_provider.dart';
 import '../../data/models/sports_models.dart';
 import '../../data/match_order.dart';
 import '../providers/sports_provider.dart';
@@ -36,11 +37,23 @@ class _SportsScreenState extends ConsumerState<SportsScreen> {
         DeviceOrientation.portraitUp,
       ]);
     }
-    // Auto refresh live matches every 60 seconds
+    // Verify subscription access immediately on entry
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+      final isUnlocked = ref.read(isSportsUnlockedProvider);
+      if (!isUnlocked) {
+        await ref.read(sportsSubscriptionProvider.notifier).refresh();
+        if (mounted && !ref.read(isSportsUnlockedProvider)) {
+          context.pushReplacement('/sports-activation');
+        }
+      }
+    });
+
+    // Auto refresh live matches and subscription check every 60 seconds
     _autoRefreshTimer = Timer.periodic(const Duration(seconds: 60), (_) {
       if (mounted) {
         final currentDay = ref.read(sportsDayProvider);
         ref.read(sportsNotifierProvider(currentDay).notifier).refresh();
+        ref.read(sportsSubscriptionProvider.notifier).refresh();
       }
     });
   }
@@ -197,6 +210,12 @@ class _SportsScreenState extends ConsumerState<SportsScreen> {
 
   @override
   Widget build(BuildContext context) {
+    ref.listen<bool>(isSportsUnlockedProvider, (previous, next) {
+      if (!next && mounted) {
+        context.pushReplacement('/sports-activation');
+      }
+    });
+
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final selectedDay = ref.watch(sportsDayProvider);
     final selectedTab = ref.watch(sportsTabProvider);
