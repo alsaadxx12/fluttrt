@@ -15,17 +15,13 @@ class ChannelWhitelist {
       .replaceAll('آ', 'ا')
       .trim();
 
-  /// "sir tv" as its own words, so "Sirius" or "Sir Lancelot" do not match.
-  static final RegExp _sirTv = RegExp(r'(^|\s)sir\s*tv(\s|$)');
-
   static bool allows(String channelName) {
     final n = normalize(channelName);
     if (n.isEmpty) return false;
     // beIN Sports, Latin or Arabic.
     if (n.contains('bein') || n.contains('بي ان') || n.contains('بين سبورت')) return true;
-    // The app's own channels: YASIR TV / Sir TV, Latin or Arabic.
+    // The app's own channels: YASIR TV, Latin or Arabic.
     if (n.contains('yasir') || n.contains('ياسر')) return true;
-    if (_sirTv.hasMatch(n)) return true;
     return false;
   }
 }

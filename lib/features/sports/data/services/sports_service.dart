@@ -246,200 +246,6 @@ class SportsService {
     return list;
   }
 
-  /// Fetch matches exclusively from the official SIR TV website (sira.website)
-  Future<List<LeagueGroup>> fetchSirTvMatches({String day = 'today'}) async {
-    try {
-      String url = 'https://sira.website/';
-      if (day == 'yesterday') {
-        url = 'https://sira.website/%d9%85%d8%a8%d8%a7%d8%b1%d9%8a%d8%a7%d8%aa-%d8%a7%d9%84%d8%a3%d9%85%d8%b3-%d8%b3%d9%8a%d8%b1-%d8%aa%d9%8a%d9%81%d9%8a-%d9%86%d8%aa%d8%a7%d8%a6%d8%ac-%d8%a7%d9%84%d9%85%d8%a8%d8%a7%d8%b1%d9%8a%d8%a7/';
-      } else if (day == 'tomorrow') {
-        url = 'https://sira.website/%d9%85%d8%a8%d8%a7%d8%b1%d9%8a%d8%a7%d8%aa-%d8%a7%d9%84%d8%ba%d8%af-%d8%b3%d9%8a%d8%b1-%d8%aa%d9%8a%d9%81%d9%8a-%d8%ac%d8%af%d9%88%d9%84-%d8%a7%d9%84%d9%85%d8%a8%d8%a7%d8%b1%d9%8a%d8%a7%d8%aa-%d8%a7/';
-      }
-
-      final dio = createDio(BaseOptions(
-        connectTimeout: const Duration(seconds: 10),
-        receiveTimeout: const Duration(seconds: 10),
-        headers: {
-          'User-Agent':
-              'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
-          'Referer': 'https://sira.website/',
-        },
-      ));
-
-      final res = await dio.get<String>(url);
-      if (res.statusCode != 200 || res.data == null) return [];
-      final html = res.data!;
-
-      final matchCardRegex = RegExp(
-        r'''<div[^>]*class=['"][^'"]*AY_Match[^'"]*['"][^>]*id=['"]m-(\d+)['"][^>]*>([\s\S]*?)<a\s+class=['"]hit['"][^>]*href=['"]([^'"]*)['"][^>]*>[\s\S]*?<\/a>\s*<\/div>''',
-        caseSensitive: false,
-      );
-
-      final Map<String, List<SportMatchItem>> groupedByLeague = {};
-      int matchOrder = 0;
-
-      for (final match in matchCardRegex.allMatches(html)) {
-        final idStr = match.group(1);
-        final body = match.group(2) ?? '';
-        final hitUrl = match.group(3)?.trim();
-        final matchId = int.tryParse(idStr ?? '') ?? (90000 + matchOrder);
-        matchOrder++;
-
-        // Home Team (TM1)
-        final tm1NameMatch = RegExp(
-          r'''class=['"][^'"]*TM1[^'"]*['"][\s\S]*?class=['"][^'"]*TM_Name[^'"]*['"]>([^<]+)<\/div>''',
-          caseSensitive: false,
-        ).firstMatch(body);
-        final tm1Name = tm1NameMatch?.group(1)?.trim() ?? '';
-
-        final tm1LogoMatch = RegExp(
-          r'''class=['"][^'"]*TM1[^'"]*['"][\s\S]*?class=['"][^'"]*TM_Logo[^'"]*['"][\s\S]*?<img[^>]*(?:data-src|src)=['"]([^'"]+)['"]''',
-          caseSensitive: false,
-        ).firstMatch(body);
-        final tm1Logo = tm1LogoMatch?.group(1)?.trim();
-
-        // Away Team (TM2)
-        final tm2NameMatch = RegExp(
-          r'''class=['"][^'"]*TM2[^'"]*['"][\s\S]*?class=['"][^'"]*TM_Name[^'"]*['"]>([^<]+)<\/div>''',
-          caseSensitive: false,
-        ).firstMatch(body);
-        final tm2Name = tm2NameMatch?.group(1)?.trim() ?? '';
-
-        final tm2LogoMatch = RegExp(
-          r'''class=['"][^'"]*TM2[^'"]*['"][\s\S]*?class=['"][^'"]*TM_Logo[^'"]*['"][\s\S]*?<img[^>]*(?:data-src|src)=['"]([^'"]+)['"]''',
-          caseSensitive: false,
-        ).firstMatch(body);
-        final tm2Logo = tm2LogoMatch?.group(1)?.trim();
-
-        if (tm1Name.isEmpty && tm2Name.isEmpty) continue;
-
-        // Kickoff Time
-        final timeMatch = RegExp(
-          r'''class=['"][^'"]*MT_Time[^'"]*['"]>([^<]+)<\/span>''',
-          caseSensitive: false,
-        ).firstMatch(body);
-        final timeStr = timeMatch?.group(1)?.trim() ?? '';
-
-        // Status text
-        final statMatch = RegExp(
-          r'''class=['"][^'"]*MT_Stat[^'"]*['"]>([^<]+)<\/div>''',
-          caseSensitive: false,
-        ).firstMatch(body);
-        final statStr = statMatch?.group(1)?.trim() ?? '';
-
-        // Goals score
-        int? homeScore;
-        int? awayScore;
-        final scoreMatch = RegExp(
-          r'''class=['"][^'"]*RS-goals[^'"]*['"]>(\d+)<\/span>\s*<span>-<\/span>\s*<span[^>]*class=['"][^'"]*RS-goals[^'"]*['"]>(\d+)<\/span>''',
-          caseSensitive: false,
-        ).firstMatch(body);
-        if (scoreMatch != null) {
-          homeScore = int.tryParse(scoreMatch.group(1) ?? '');
-          awayScore = int.tryParse(scoreMatch.group(2) ?? '');
-        }
-
-        // Info chyron: channel, commentator, league
-        final infoMatches = RegExp(
-          r'''<li><span>([^<]+)<\/span><\/li>''',
-          caseSensitive: false,
-        ).allMatches(body).map((m) => m.group(1)?.trim() ?? '').toList();
-
-        String channelName = '';
-        String commentatorName = '';
-        String leagueName = 'مباريات اليوم';
-
-        if (infoMatches.isNotEmpty) {
-          channelName = infoMatches[0];
-          if (infoMatches.length > 1) {
-            commentatorName = infoMatches[1];
-          }
-          if (infoMatches.length > 2) {
-            leagueName = infoMatches[2];
-          }
-        }
-
-        // Normalize league name (strip country prefix if present)
-        if (leagueName.contains(',')) {
-          final parts = leagueName.split(',');
-          if (parts.length > 1 && parts[1].trim().isNotEmpty) {
-            leagueName = parts[1].trim();
-          }
-        }
-
-        final primaryBroadcaster = channelName.isNotEmpty && channelName != 'غير معروف'
-            ? (commentatorName.isNotEmpty && commentatorName != 'غير معروف'
-                ? '$channelName • $commentatorName'
-                : channelName)
-            : 'SIR TV';
-
-        // Normalize status
-        String status = 'scheduled';
-        if (day == 'tomorrow') {
-          status = 'scheduled';
-          homeScore = null;
-          awayScore = null;
-        } else if (day == 'yesterday') {
-          status = 'finished';
-        } else if (body.contains('comming-soon') || statStr.contains('لم تبدأ')) {
-          status = 'scheduled';
-          homeScore = null;
-          awayScore = null;
-        } else if (body.contains('finished') || statStr.contains('انتهت')) {
-          status = 'finished';
-        } else if (body.contains('live') || statStr.contains('مباشر') || statStr.contains('جاري')) {
-          status = 'live';
-        } else {
-          status = 'scheduled';
-          homeScore = null;
-          awayScore = null;
-        }
-
-        final parsedKickoff = parseTimeToUtcIso(timeStr, day: day);
-        final isMatchLive = status == 'live';
-        final hasWatch = isMatchLive || status == 'scheduled';
-        final item = SportMatchItem(
-          id: matchId,
-          kickoffAt: parsedKickoff.isNotEmpty ? parsedKickoff : DateTime.now().toUtc().toIso8601String(),
-          status: status,
-          home: TeamInfo(name: tm1Name, logo: tm1Logo),
-          away: TeamInfo(name: tm2Name, logo: tm2Logo),
-          homeScore: homeScore,
-          awayScore: awayScore,
-          hasWatch: hasWatch,
-          league: leagueName,
-          directUrl: hitUrl,
-          broadcasterName: primaryBroadcaster,
-          broadcasters: [
-            if (hitUrl != null && hitUrl.isNotEmpty)
-              BroadcastChannel(
-                id: 1,
-                name: primaryBroadcaster,
-                image: '',
-                streamUrl: hitUrl,
-              ),
-          ],
-        );
-
-        groupedByLeague.putIfAbsent(leagueName, () => []).add(item);
-      }
-
-      int leagueCounter = 1;
-      final List<LeagueGroup> groups = [];
-      for (final entry in groupedByLeague.entries) {
-        groups.add(LeagueGroup(
-          leagueId: leagueCounter++,
-          league: entry.key,
-          matches: entry.value,
-        ));
-      }
-
-      return groups;
-    } catch (e) {
-      debugPrint('[SPORTS] fetchSirTvMatches error: $e');
-      return [];
-    }
-  }
 
   /// Official comprehensive fixtures provider from 365Scores
   Future<List<LeagueGroup>> fetch365Matches({String day = 'today'}) async {
@@ -597,138 +403,8 @@ class SportsService {
 
   Future<List<LeagueGroup>> fetchMatches({String day = 'today'}) async {
     try {
-      // 1. Fetch 365Scores fixtures and real-time streaming sources in parallel
-      final results = await Future.wait([
-        fetch365Matches(day: day).catchError((e) {
-          debugPrint('[SPORTS] fetch365Matches error: $e');
-          return <LeagueGroup>[];
-        }),
-        fetchKoraX90Matches(day: day).catchError((e) {
-          debugPrint('[SPORTS] fetchKoraX90Matches error: $e');
-          return <LeagueGroup>[];
-        }),
-        (day == 'today')
-            ? fetchCinamanaMatches().catchError((e) {
-                debugPrint('[SPORTS] fetchCinamanaMatches error: $e');
-                return <SportMatchItem>[];
-              })
-            : Future.value(<SportMatchItem>[]),
-        fetchSirTvMatches(day: day).catchError((e) {
-          debugPrint('[SPORTS] fetchSirTvMatches error: $e');
-          return <LeagueGroup>[];
-        }),
-      ]);
-
-      final scoresGroups = results[0] as List<LeagueGroup>;
-      final koraGroups = results[1] as List<LeagueGroup>;
-      final cinamanaMatches = results[2] as List<SportMatchItem>;
-      final sirGroups = results[3] as List<LeagueGroup>;
-
-      // Collect all broadcast matches that have active streams
-      final broadcastMatches = <SportMatchItem>[
-        ...koraGroups.expand((g) => g.matches),
-        ...cinamanaMatches,
-        ...sirGroups.expand((g) => g.matches),
-      ];
-
-      final matchedBroadcastUrls = <String>{};
-
-      if (scoresGroups.isNotEmpty) {
-        // Enrich 365Scores matches with broadcaster names / streams
-        if (broadcastMatches.isNotEmpty) {
-          for (final g in scoresGroups) {
-            for (int i = 0; i < g.matches.length; i++) {
-              final m = g.matches[i];
-              for (final s in broadcastMatches) {
-                if (matchesTeams(m.home.name, m.away.name, s.home.name, s.away.name)) {
-                  final mergedBroadcasters = <BroadcastChannel>[
-                    ...s.broadcasters,
-                    ...m.broadcasters,
-                  ];
-                  final uniqueBroadcasters = <BroadcastChannel>[];
-                  final seenUrls = <String>{};
-                  for (final b in mergedBroadcasters) {
-                    final u = b.streamUrl ?? '';
-                    if (u.isNotEmpty && !seenUrls.add(u)) continue;
-                    uniqueBroadcasters.add(b);
-                  }
-
-                  if (s.directUrl != null && s.directUrl!.isNotEmpty) {
-                    matchedBroadcastUrls.add(s.directUrl!);
-                  }
-
-                  g.matches[i] = m.copyWith(
-                    broadcasterName: (s.broadcasterName != null && s.broadcasterName!.isNotEmpty && s.broadcasterName != 'غير معروف')
-                        ? s.broadcasterName
-                        : m.broadcasterName,
-                    broadcasters: uniqueBroadcasters.isNotEmpty ? uniqueBroadcasters : m.broadcasters,
-                    directUrl: s.directUrl ?? m.directUrl,
-                    hasWatch: true,
-                  );
-                  break;
-                }
-              }
-            }
-          }
-        }
-
-        // Add any featured Kora x90 groups with live streams that were not already in 365Scores
-        final unmergedKoraGroups = <LeagueGroup>[];
-        for (final kg in koraGroups) {
-          final unmergedMatches = kg.matches.where((km) => !matchedBroadcastUrls.contains(km.directUrl)).toList();
-          if (unmergedMatches.isNotEmpty) {
-            unmergedKoraGroups.add(LeagueGroup(
-              leagueId: kg.leagueId,
-              league: kg.league,
-              logo: kg.logo,
-              matches: unmergedMatches,
-            ));
-          }
-        }
-
-        // Place featured stream leagues first, followed by international 365Scores groups
-        final combinedGroups = <LeagueGroup>[
-          ...unmergedKoraGroups,
-          ...scoresGroups,
-        ];
-
-        // Post-processing safety for days
-        if (day == 'tomorrow') {
-          return combinedGroups.map((g) => LeagueGroup(
-            leagueId: g.leagueId,
-            cid: g.cid,
-            league: g.league,
-            logo: g.logo,
-            matches: g.matches.map((m) => m.copyWith(
-              status: 'scheduled',
-              homeScore: null,
-              awayScore: null,
-              hasWatch: true,
-            )).toList(),
-          )).toList();
-        } else if (day == 'yesterday') {
-          return combinedGroups.map((g) => LeagueGroup(
-            leagueId: g.leagueId,
-            cid: g.cid,
-            league: g.league,
-            logo: g.logo,
-            matches: g.matches.map((m) => m.copyWith(
-              status: 'finished',
-            )).toList(),
-          )).toList();
-        }
-
-        return combinedGroups;
-      }
-
-      // Fallback to Kora x90 or SIR TV if 365Scores is unavailable
-      if (koraGroups.isNotEmpty) {
-        return koraGroups;
-      }
-      if (sirGroups.isNotEmpty) {
-        return sirGroups;
-      }
-      return [];
+      final koraGroups = await fetchKoraX90Matches(day: day);
+      return koraGroups;
     } catch (e) {
       debugPrint('[SPORTS] fetchMatches error: $e');
       return [];
@@ -895,7 +571,7 @@ class SportsService {
         // Parse goals if scoreTime has a dash
         int? homeScore;
         int? awayScore;
-        if (scoreTime.contains('-')) {
+        if (day != 'tomorrow' && scoreTime.contains('-')) {
           final parts = scoreTime.split('-');
           if (parts.length >= 2) {
             homeScore = int.tryParse(parts[0].trim());
@@ -949,16 +625,7 @@ class SportsService {
           league: rawLeague,
           directUrl: link,
           broadcasterName: 'بث Kora x90 HD',
-          broadcasters: link.isNotEmpty
-              ? [
-                  BroadcastChannel(
-                    id: matchId,
-                    name: 'سيرفر البث الرئيسي HD',
-                    image: '',
-                    streamUrl: link,
-                  ),
-                ]
-              : const [],
+          broadcasters: const [],
         );
 
         groupedByLeague.putIfAbsent(groupLeague, () => []).add(item);
@@ -994,12 +661,20 @@ class SportsService {
         },
       ));
 
-      final matchRes = await dio.get<String>(matchUrl);
-      if (matchRes.statusCode != 200 || matchRes.data == null) return [];
-      final matchHtml = matchRes.data!;
+      final frameUrls = <String>{};
+      if (matchUrl.contains('boomstreaming.com')) {
+        frameUrls.add(matchUrl);
+      } else {
+        final matchRes = await dio.get<String>(matchUrl);
+        if (matchRes.statusCode != 200 || matchRes.data == null) return [];
+        final matchHtml = matchRes.data!;
 
-      final frameMatches = RegExp(r'data-frame="([^"]+)"', caseSensitive: false).allMatches(matchHtml);
-      final frameUrls = frameMatches.map((m) => m.group(1)?.trim() ?? '').where((u) => u.startsWith('http')).toSet().toList();
+        final frameMatches = RegExp(r'data-frame="([^"]+)"', caseSensitive: false).allMatches(matchHtml);
+        for (final m in frameMatches) {
+          final u = m.group(1)?.trim() ?? '';
+          if (u.startsWith('http')) frameUrls.add(u);
+        }
+      }
 
       final results = <({String name, String streamUrl, String type, String frameUrl})>[];
 

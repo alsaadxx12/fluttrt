@@ -540,8 +540,6 @@ class _SportsPlayerScreenState extends ConsumerState<SportsPlayerScreen> with Wi
           final isAllowed = host.contains('matchlivehd.com') ||
               host.contains('r2.dev') ||
               host.contains('yassirtv.com') ||
-              host.contains('siiir.tv') ||
-              host.contains('sira.website') ||
               host.contains('koora-l.live') ||
               host.contains('korax90.co') ||
               host.contains('boomstreaming.com') ||
@@ -759,26 +757,7 @@ class _SportsPlayerScreenState extends ConsumerState<SportsPlayerScreen> with Wi
     final direct = widget.directUrl ?? match.directUrl;
     final sportsService = ref.read(sportsServiceProvider);
 
-    // 1. Direct Broadcasters on the match model (e.g. from SIR TV or merged stream feeds)
-    if (match.broadcasters.isNotEmpty) {
-      for (final b in match.broadcasters) {
-        if (b.streamUrl != null && b.streamUrl!.isNotEmpty) {
-          final isHls = b.streamUrl!.contains('.m3u8');
-          channelList.add(
-            PlayerChannelItem(
-              id: 'match_broadcaster_${b.id}',
-              name: b.name.isNotEmpty ? b.name : 'قناة البث المباشر HD',
-              streamUrl: b.streamUrl,
-              isAppSource: true,
-              isWebStream: !isHls && (b.streamUrl!.contains('http') && !b.streamUrl!.endsWith('.m3u8')),
-              subtitle: isHls ? 'بث HLS مباشر فائق السرعة' : 'مشغل البث المباشر',
-            ),
-          );
-        }
-      }
-    }
-
-    // 2. Kora x90 Streaming Sources (Authoritative source)
+    // 1. Kora x90 / BoomStreaming servers (authoritative live source via resolveKoraX90Servers)
     if (direct != null && (direct.contains('korax90.co') || direct.contains('boomstreaming.com'))) {
       try {
         final koraServers = await sportsService.resolveKoraX90Servers(direct);
@@ -795,7 +774,8 @@ class _SportsPlayerScreenState extends ConsumerState<SportsPlayerScreen> with Wi
               isWebStream: !isHls && (s.type == 'iframe' || s.streamUrl.contains('.php')),
               headers: isHls
                   ? const {
-                      'User-Agent': 'Mozilla/5.0 (Linux; Android 14; SmartTV; SM-A266B) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+                      'User-Agent':
+                          'Mozilla/5.0 (Linux; Android 14; SmartTV; SM-A266B) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
                       'Referer': 'https://9.boomstreaming.com/',
                     }
                   : null,
@@ -807,54 +787,7 @@ class _SportsPlayerScreenState extends ConsumerState<SportsPlayerScreen> with Wi
       }
     }
 
-    // 3. AlbaPlayer / Cinamana / KoraLive streams (e.g. beIN Sports / AD Sports)
-    if (direct != null && (direct.contains('koralive1.cc') || direct.contains('matchlivehd.com') || direct.contains('cinamana.cc') || direct.contains('sedgg325') || direct.contains('meung.app'))) {
-      try {
-        final resolved = await sportsService.resolveLiveStream(direct);
-        if (resolved != null && resolved.streamUrl.isNotEmpty) {
-          final isHls = resolved.streamUrl.contains('.m3u8') || resolved.streamUrl.endsWith('.css');
-          channelList.add(
-            PlayerChannelItem(
-              id: 'cinamana_server_main',
-              name: (match.broadcasterName != null && match.broadcasterName!.isNotEmpty && match.broadcasterName != 'غير معروف')
-                  ? match.broadcasterName!
-                  : 'سيرفر البث المباشر beIN HD',
-              isAppSource: true,
-              streamUrl: resolved.streamUrl,
-              subtitle: isHls ? 'بث HLS مباشر فائق السرعة' : 'مشغل البث المباشر',
-              isWebStream: !isHls,
-              headers: resolved.headers,
-            ),
-          );
-        }
-      } catch (e) {
-        debugPrint('[SPORTS_PLAYER] AlbaPlayer stream resolve error: $e');
-      }
-    }
-
-    // 4. Match against live sports channels in the app (e.g. beIN Sports 1, Alkass, SSC)
-    final bName = (match.broadcasterName ?? '').trim();
-    if (bName.isNotEmpty && bName != 'غير معروف') {
-      final allChannels = ref.read(sportsChannelsProvider).valueOrNull ?? [];
-      for (final ch in allChannels) {
-        final chName = ch.channelName.toLowerCase();
-        final cleanBName = bName.toLowerCase();
-        if (chName.contains(cleanBName) || cleanBName.contains(chName)) {
-          channelList.add(
-            PlayerChannelItem(
-              id: 'tv_channel_${ch.channelId}',
-              name: ch.channelName,
-              logo: ch.channelImage,
-              streamUrl: ch.channelUrl,
-              subtitle: 'بث القناة الناقلة للمباراة',
-              isWebStream: ch.channelType == 'YOUTUBE_LIVE' || ch.channelUrl.contains('youtube.com'),
-            ),
-          );
-        }
-      }
-    }
-
-    // 5. Dynamic Fallback: Look up Kora x90 and Cinamana live matches on-the-fly
+    // 2. Dynamic Fallback: Look up match in Kora x90 on-the-fly if channelList is still empty
     if (channelList.isEmpty) {
       try {
         final koraMatches = await sportsService.fetchKoraX90Matches(day: 'today');
@@ -876,7 +809,8 @@ class _SportsPlayerScreenState extends ConsumerState<SportsPlayerScreen> with Wi
                     isWebStream: !isHls && (s.type == 'iframe' || s.streamUrl.contains('.php')),
                     headers: isHls
                         ? const {
-                            'User-Agent': 'Mozilla/5.0 (Linux; Android 14; SmartTV; SM-A266B) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+                            'User-Agent':
+                                'Mozilla/5.0 (Linux; Android 14; SmartTV; SM-A266B) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
                             'Referer': 'https://9.boomstreaming.com/',
                           }
                         : null,
@@ -885,34 +819,6 @@ class _SportsPlayerScreenState extends ConsumerState<SportsPlayerScreen> with Wi
               }
             }
             break;
-          }
-        }
-
-        if (channelList.isEmpty) {
-          final cinamanaMatches = await sportsService.fetchCinamanaMatches();
-          for (final cm in cinamanaMatches) {
-            if (sportsService.matchesTeams(match.home.name, match.away.name, cm.home.name, cm.away.name)) {
-              if (cm.directUrl != null && cm.directUrl!.isNotEmpty) {
-                final resolved = await sportsService.resolveLiveStream(cm.directUrl!);
-                if (resolved != null && resolved.streamUrl.isNotEmpty) {
-                  final isHls = resolved.streamUrl.contains('.m3u8') || resolved.streamUrl.endsWith('.css');
-                  channelList.add(
-                    PlayerChannelItem(
-                      id: 'cinamana_fallback_main',
-                      name: (cm.broadcasterName != null && cm.broadcasterName!.isNotEmpty)
-                          ? cm.broadcasterName!
-                          : 'سيرفر البث المباشر beIN HD',
-                      isAppSource: true,
-                      streamUrl: resolved.streamUrl,
-                      subtitle: isHls ? 'بث HLS مباشر فائق السرعة' : 'مشغل البث المباشر',
-                      isWebStream: !isHls,
-                      headers: resolved.headers,
-                    ),
-                  );
-                }
-              }
-              break;
-            }
           }
         }
       } catch (e) {
