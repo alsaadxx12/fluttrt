@@ -2,10 +2,11 @@
   "version": "0.0.1",
   "configurations": [
     {
-      "name": "download-page",
+      "name": "cast-receiver",
       "runtimeExecutable": "python",
-      "runtimeArgs": ["-m", "http.server", "8765", "--directory", "netlify/public"],
-      "port": 8765
+      "runtimeArgs": ["-m", "http.server", "8787", "--directory", "netlify/public"],
+      "port": 8787,
+      "url": "http://localhost:8787"
     }
   ]
 }

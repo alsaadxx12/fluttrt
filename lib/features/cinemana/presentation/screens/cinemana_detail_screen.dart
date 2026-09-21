@@ -105,7 +105,7 @@ class _CinemanaDetailScreenState extends ConsumerState<CinemanaDetailScreen> {
     final palette = AppPalette.of(context);
 
     return Scaffold(
-      backgroundColor: isDark ? const Color(0xFF0F0F13) : Colors.white,
+      backgroundColor: palette.bg,
       body: CustomScrollView(
         slivers: [
           // Collapsible Hero App Bar with Poster
@@ -119,7 +119,7 @@ class _CinemanaDetailScreenState extends ConsumerState<CinemanaDetailScreen> {
               return target.clamp(minH, maxH);
             }(),
             pinned: true,
-            backgroundColor: isDark ? const Color(0xFF14141A) : Colors.white,
+            backgroundColor: palette.bg,
             leading: IconButton(
               icon: Container(
                 padding: const EdgeInsets.all(6),
@@ -166,6 +166,13 @@ class _CinemanaDetailScreenState extends ConsumerState<CinemanaDetailScreen> {
               background: Stack(
                 fit: StackFit.expand,
                 children: [
+                  // The artwork, its bottom edge curved around the play
+                  // button below.
+                  ClipPath(
+                    clipper: const _PosterNotchClipper(),
+                    child: Stack(
+                      fit: StackFit.expand,
+                      children: [
                   if (item.bestPosterUrl.isNotEmpty || item.bestBackdropUrl.isNotEmpty)
                     CachedNetworkImage(
                       imageUrl: item.bestPosterUrl.isNotEmpty ? item.bestPosterUrl : item.bestBackdropUrl,
@@ -180,18 +187,34 @@ class _CinemanaDetailScreenState extends ConsumerState<CinemanaDetailScreen> {
                     )
                   else
                     Container(color: isDark ? Colors.black26 : palette.skeleton),
-                  // Gradient Overlay
-                  DecoratedBox(
+                  // A scrim at the very top only, so the back and favourite
+                  // buttons read over a bright poster. The picture used to
+                  // fade into the page across its lower half; the edge is
+                  // what the curve is cut into now, so it has to stay.
+                  const DecoratedBox(
                     decoration: BoxDecoration(
                       gradient: LinearGradient(
-                        colors: [
-                          Colors.transparent,
-                          (isDark ? const Color(0xFF0F0F13) : Colors.white).withOpacity(0.9),
-                          (isDark ? const Color(0xFF0F0F13) : Colors.white),
-                        ],
-                        stops: const [0.55, 0.9, 1.0],
+                        colors: [Color(0x73000000), Colors.transparent],
+                        stops: [0, 0.28],
                         begin: Alignment.topCenter,
                         end: Alignment.bottomCenter,
+                      ),
+                    ),
+                  ),
+                      ],
+                    ),
+                  ),
+
+                  // The play button, its centre on the edge the curve is cut
+                  // into: half of it over the artwork, half over the page.
+                  Positioned(
+                    left: 0,
+                    right: 0,
+                    bottom: _kEdgeInset - _RoundPlayButton.diameter / 2,
+                    child: Center(
+                      child: _RoundPlayButton(
+                        onTap: _watchItem,
+                        tooltip: item.isSeries ? 'مشاهدة المسلسل' : 'شاهد الآن',
                       ),
                     ),
                   ),
@@ -322,28 +345,7 @@ class _CinemanaDetailScreenState extends ConsumerState<CinemanaDetailScreen> {
                       }).toList(),
                     ),
 
-                  const SizedBox(height: 18),
-
-                  // Big Watch Now Action Button
-                  SizedBox(
-                    width: double.infinity,
-                    height: 50,
-                    child: ElevatedButton.icon(
-                      onPressed: () => _watchItem(),
-                      icon: const Icon(Icons.play_arrow_rounded, size: 24, color: Colors.white),
-                      label: Text(
-                        item.isSeries ? 'مشاهدة المسلسل' : 'شاهد الآن',
-                        style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.white),
-                      ),
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: AppColors.primary,
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                        elevation: 0,
-                      ),
-                    ),
-                  ),
-
-                  const SizedBox(height: 20),
+                  const SizedBox(height: 4),
 
                   // Description Section
                   Text(
@@ -683,4 +685,76 @@ class _CinemanaDetailScreenState extends ConsumerState<CinemanaDetailScreen> {
     );
   }
 
+}
+
+
+/// How far the artwork stops short of the bottom of its box.
+///
+/// The lower half of the play button stands in that gap, over the page's own
+/// colour. The button cannot hang outside the box — the collapsing app bar
+/// clips whatever its background draws — so the artwork gives up the room
+/// instead.
+const double _kEdgeInset = 36;
+
+/// The artwork's outline: a rectangle whose bottom edge dips smoothly around
+/// the play button, so the button sits in a bite taken out of the picture.
+///
+/// The curve is Flutter's own [CircularNotchedRectangle] — the shape a
+/// floating action button makes in a bottom bar. Drawing the dip by hand as
+/// a half-circle against a straight edge left a sharp corner where the two
+/// met; this eases in and out of the circle instead. It notches the top edge,
+/// so the path is flipped to put the bite at the foot.
+class _PosterNotchClipper extends CustomClipper<Path> {
+  const _PosterNotchClipper();
+
+  /// The bite's radius: the button, plus a little air all round it.
+  static const double notchRadius = _RoundPlayButton.diameter / 2 + 9;
+
+  @override
+  Path getClip(Size size) {
+    final w = size.width;
+    final edge = size.height - _kEdgeInset;
+    final notched = const CircularNotchedRectangle().getOuterPath(
+      Rect.fromLTWH(0, 0, w, edge),
+      Rect.fromCircle(center: Offset(w / 2, 0), radius: notchRadius),
+    );
+    // (x, y) -> (x, edge - y): the notch moves from the top edge to the foot.
+    final flip = Matrix4.identity()
+      ..translate(0.0, edge)
+      ..scale(1.0, -1.0);
+    return notched.transform(flip.storage);
+  }
+
+  @override
+  bool shouldReclip(_PosterNotchClipper oldClipper) => false;
+}
+
+/// The round play button that sits in the artwork's curve.
+class _RoundPlayButton extends StatelessWidget {
+  const _RoundPlayButton({required this.onTap, required this.tooltip});
+
+  final VoidCallback onTap;
+  final String tooltip;
+
+  static const double diameter = 64;
+
+  @override
+  Widget build(BuildContext context) {
+    return Tooltip(
+      message: tooltip,
+      child: Material(
+        color: AppColors.primary,
+        shape: const CircleBorder(),
+        clipBehavior: Clip.antiAlias,
+        child: InkWell(
+          onTap: onTap,
+          child: const SizedBox(
+            width: diameter,
+            height: diameter,
+            child: Icon(Icons.play_arrow_rounded, color: Colors.white, size: 38),
+          ),
+        ),
+      ),
+    );
+  }
 }

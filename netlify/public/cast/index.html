@@ -1,0 +1,453 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="robots" content="noindex">
+<title>CINEBALL — البث إلى هذه الشاشة</title>
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Arabic:wght@400;600;800;900&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #04060A;
+    --card: #0D121D;
+    --line: rgba(255,255,255,.07);
+    --text: #FFFFFF;
+    --muted: #94A3B8;
+    --faint: #64748B;
+    --brand: #E50914;
+  }
+  * { box-sizing: border-box; }
+  html, body {
+    margin: 0; height: 100%; background: var(--bg); color: var(--text);
+    font-family: 'Noto Sans Arabic', system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
+    -webkit-font-smoothing: antialiased;
+  }
+  body { display: grid; place-items: center; overflow: hidden; }
+
+  .wrap { width: min(560px, 92vw); text-align: center; padding: 24px; }
+
+  .brand {
+    font-size: 40px; font-weight: 900; letter-spacing: 2px; margin: 0 0 6px;
+    direction: ltr;
+  }
+  .brand span { color: var(--brand); }
+  .tagline { color: var(--muted); font-size: 15px; margin: 0 0 30px; }
+
+  .panel {
+    background: var(--card); border-radius: 22px; padding: 28px 24px 26px;
+  }
+
+  .qr {
+    width: 208px; height: 208px; margin: 0 auto 22px; background: #fff;
+    border-radius: 16px; padding: 12px; display: grid; place-items: center;
+  }
+  .qr canvas, .qr img { width: 100%; height: 100%; display: block; }
+
+  .code-label { color: var(--faint); font-size: 13px; margin-bottom: 8px; }
+  .code {
+    font-size: 44px; font-weight: 900; letter-spacing: 10px; direction: ltr;
+    font-variant-numeric: tabular-nums; margin-bottom: 4px;
+  }
+
+  .status { margin-top: 20px; color: var(--muted); font-size: 14px; }
+  .status.err { color: #FF6B75; }
+  .dot {
+    display: inline-block; width: 8px; height: 8px; border-radius: 50%;
+    background: var(--brand); margin-inline-end: 8px; vertical-align: 1px;
+    animation: pulse 1.4s ease-in-out infinite;
+  }
+  @keyframes pulse { 0%,100% { opacity: .25 } 50% { opacity: 1 } }
+
+  button.retry {
+    margin-top: 18px; background: var(--brand); color: #fff; border: 0;
+    border-radius: 999px; padding: 11px 26px; font: inherit; font-weight: 800;
+    cursor: pointer;
+  }
+
+  /* ----------------------------------------------------------- player */
+  #stage { position: fixed; inset: 0; background: #000; display: none; }
+  #stage.on { display: block; }
+  video { width: 100%; height: 100%; object-fit: contain; background: #000; }
+
+  #bar {
+    position: absolute; inset-inline: 0; bottom: 0; padding: 40px 28px 22px;
+    background: linear-gradient(to top, rgba(0,0,0,.88), transparent);
+    opacity: 0; transition: opacity .25s; pointer-events: none;
+  }
+  #stage.show-ui #bar { opacity: 1; pointer-events: auto; }
+  #stage.show-ui { cursor: default; }
+  #stage { cursor: none; }
+
+  #title { font-size: 19px; font-weight: 900; margin-bottom: 10px; }
+  .row { display: flex; align-items: center; gap: 12px; direction: ltr; }
+  .time { color: var(--muted); font-size: 12.5px; font-variant-numeric: tabular-nums; min-width: 52px; }
+  .track { flex: 1; height: 4px; background: rgba(255,255,255,.22); border-radius: 3px; overflow: hidden; }
+  .fill { height: 100%; width: 0; background: var(--brand); }
+  .live {
+    background: var(--brand); color: #fff; font-size: 11px; font-weight: 900;
+    padding: 3px 9px; border-radius: 6px; letter-spacing: .5px;
+  }
+
+  #toast {
+    position: fixed; inset-inline: 0; top: 26px; display: flex; justify-content: center;
+    pointer-events: none; opacity: 0; transition: opacity .3s;
+  }
+  #toast.on { opacity: 1; }
+  #toast span {
+    background: rgba(13,18,29,.95); border: 1px solid var(--line);
+    padding: 10px 18px; border-radius: 999px; font-size: 13.5px;
+  }
+</style>
+</head>
+<body>
+
+<div class="wrap" id="pairing">
+  <h1 class="brand">CINE<span>BALL</span></h1>
+  <p class="tagline">امسح الرمز بتطبيق سينبول لتشغيل المحتوى على هذه الشاشة</p>
+  <div class="panel">
+    <div class="qr" id="qr"></div>
+    <div class="code-label">أو أدخل هذا الرمز في التطبيق</div>
+    <div class="code" id="code">— — — — — —</div>
+  </div>
+  <div class="status" id="status"><span class="dot"></span>في انتظار الاتصال…</div>
+  <button class="retry" id="retry" hidden>إعادة المحاولة</button>
+</div>
+
+<div id="stage">
+  <video id="v" playsinline></video>
+  <div id="bar">
+    <div id="title"></div>
+    <div class="row">
+      <span class="time" id="t-now">0:00</span>
+      <div class="track"><div class="fill" id="fill"></div></div>
+      <span class="time" id="t-end">0:00</span>
+      <span class="live" id="live" hidden>LIVE</span>
+    </div>
+  </div>
+</div>
+
+<div id="toast"><span id="toast-text"></span></div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/hls.js@1.5.17/dist/hls.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.4/build/qrcode.min.js"></script>
+<script>
+(function () {
+  'use strict';
+
+  // The project's public anon key — the same one the app ships. It grants
+  // nothing beyond the row-level policies in 03_cast_sessions.sql.
+  var SUPABASE_URL = 'https://kjpztermkiazjfveqgot.supabase.co';
+  var SUPABASE_ANON = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImtqcHp0ZXJta2lhempmdmVxZ290Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODk5NzQ0MTAsImV4cCI6MjEwNTU1MDQxMH0.fmM6K6ZANmfmZcif6tek6x0S0VPG2R9uz5Zg9MuEPzY';
+
+  var db = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON, {
+    auth: { persistSession: false },
+  });
+
+  var el = function (id) { return document.getElementById(id); };
+  var pairing = el('pairing'), stage = el('stage'), video = el('v');
+  var statusEl = el('status'), retryBtn = el('retry');
+
+  var session = null;     // the row we opened
+  var channel = null;     // realtime channel for this session
+  var hls = null;         // hls.js instance, when one is needed
+  var media = null;       // what is loaded: {title, poster, isLive, ...}
+  var uiTimer = null, stateTimer = null, beatTimer = null;
+
+  // ------------------------------------------------------------- helpers
+  function say(text, isError) {
+    statusEl.innerHTML = isError ? '' : '<span class="dot"></span>';
+    statusEl.appendChild(document.createTextNode(text));
+    statusEl.className = 'status' + (isError ? ' err' : '');
+    retryBtn.hidden = !isError;
+  }
+
+  function toast(text) {
+    el('toast-text').textContent = text;
+    el('toast').classList.add('on');
+    setTimeout(function () { el('toast').classList.remove('on'); }, 2200);
+  }
+
+  function clock(seconds) {
+    if (!isFinite(seconds) || seconds < 0) seconds = 0;
+    var s = Math.floor(seconds % 60), m = Math.floor(seconds / 60) % 60, h = Math.floor(seconds / 3600);
+    var mm = (h > 0 && m < 10 ? '0' : '') + m;
+    return (h > 0 ? h + ':' : '') + mm + ':' + (s < 10 ? '0' : '') + s;
+  }
+
+  function describeBrowser() {
+    var ua = navigator.userAgent;
+    var os = /Windows/.test(ua) ? 'Windows'
+           : /Mac OS X|Macintosh/.test(ua) ? 'Mac'
+           : /Linux/.test(ua) ? 'Linux'
+           : /Android/.test(ua) ? 'Android' : 'الكمبيوتر';
+    var app = /Edg\//.test(ua) ? 'Edge'
+            : /OPR\//.test(ua) ? 'Opera'
+            : /Chrome\//.test(ua) ? 'Chrome'
+            : /Firefox\//.test(ua) ? 'Firefox'
+            : /Safari\//.test(ua) ? 'Safari' : 'المتصفح';
+    return app + ' — ' + os;
+  }
+
+  function sixDigits() {
+    var n = new Uint32Array(1);
+    crypto.getRandomValues(n);
+    return String(100000 + (n[0] % 900000));
+  }
+
+  // ------------------------------------------------------- opening a session
+  function openSession(attempt) {
+    attempt = attempt || 0;
+    say('جارٍ فتح جلسة…');
+    var code = sixDigits();
+    db.from('cast_sessions')
+      .insert({ pairing_code: code, device_name: describeBrowser(), device_kind: 'web' })
+      .select()
+      .single()
+      .then(function (res) {
+        if (res.error) {
+          // The unique index rejects a code already waiting: pick another.
+          if (attempt < 5 && res.error.code === '23505') return openSession(attempt + 1);
+          throw res.error;
+        }
+        session = res.data;
+        showCode(session.pairing_code);
+        listen();
+        heartbeat();
+        say('في انتظار الاتصال…');
+      })
+      .catch(function (e) {
+        say('تعذّر فتح جلسة البث — تحقّق من اتصالك بالإنترنت', true);
+        console.error('[cast] open failed', e);
+      });
+  }
+
+  function showCode(code) {
+    el('code').textContent = code.split('').join(' ');
+    // The QR carries the pairing handles only: the session id and its code.
+    // No stream URL, no token, nothing that plays anything on its own.
+    var payload = JSON.stringify({ v: 1, s: session.id, c: code });
+    window.QRCode.toCanvas(payload, { width: 184, margin: 0 }, function (err, canvas) {
+      if (err) { console.error('[cast] qr', err); return; }
+      var box = el('qr');
+      box.innerHTML = '';
+      box.appendChild(canvas);
+    });
+  }
+
+  // ------------------------------------------------------------- realtime
+  function listen() {
+    channel = db.channel('cast:' + session.id, { config: { broadcast: { self: false } } });
+
+    channel.on('broadcast', { event: 'command' }, function (msg) {
+      handle(msg.payload || {});
+    });
+
+    // The phone claims the session by code, which changes the row; that is
+    // how this page learns it has been paired.
+    channel.on('postgres_changes',
+      { event: 'UPDATE', schema: 'public', table: 'cast_sessions', filter: 'id=eq.' + session.id },
+      function (msg) {
+        var row = msg.new;
+        if (!row) return;
+        if (row.status === 'disconnected') return teardown('انتهى البث');
+        if (session.status === 'waiting' && row.status !== 'waiting') {
+          session = row;
+          say('تم الاتصال');
+          toast('تم ربط الهاتف');
+        }
+      });
+
+    channel.subscribe(function (state) {
+      if (state === 'CHANNEL_ERROR' || state === 'TIMED_OUT') {
+        say('انقطع الاتصال بالخادم — جارٍ إعادة المحاولة…', false);
+      }
+    });
+  }
+
+  function report(extra) {
+    if (!channel || !media) return;
+    var payload = {
+      type: 'STATE',
+      position: video.currentTime || 0,
+      duration: isFinite(video.duration) ? video.duration : null,
+      paused: video.paused,
+      muted: video.muted,
+      volume: video.volume,
+      ended: video.ended,
+      isLive: !!media.isLive,
+    };
+    if (extra) for (var k in extra) payload[k] = extra[k];
+    channel.send({ type: 'broadcast', event: 'state', payload: payload });
+  }
+
+  function heartbeat() {
+    clearInterval(beatTimer);
+    beatTimer = setInterval(function () {
+      if (!session) return;
+      db.rpc('touch_cast_session', { session_id: session.id }).then(function () {}, function () {});
+    }, 60000);
+  }
+
+  // --------------------------------------------------------------- commands
+  function handle(cmd) {
+    switch (cmd.type) {
+      case 'LOAD_MEDIA':
+      case 'CHANGE_MEDIA':
+        return load(cmd);
+      case 'PLAY':   return video.play().catch(function () {});
+      case 'PAUSE':  return video.pause();
+      case 'SEEK':
+        if (media && media.isLive) return;
+        if (typeof cmd.position === 'number') video.currentTime = cmd.position;
+        return;
+      case 'VOLUME':
+        if (typeof cmd.value === 'number') video.volume = Math.max(0, Math.min(1, cmd.value));
+        return report();
+      case 'MUTE':   video.muted = true; return report();
+      case 'UNMUTE': video.muted = false; return report();
+      case 'SUBTITLE':   return pickTrack('text', cmd.index);
+      case 'AUDIO_TRACK': return pickTrack('audio', cmd.index);
+      case 'STOP':   return teardown('تم إيقاف البث من الهاتف');
+      case 'PING':   return report({ type: 'PONG' });
+      default: return;
+    }
+  }
+
+  function pickTrack(kind, index) {
+    if (kind === 'text') {
+      var tracks = video.textTracks || [];
+      for (var i = 0; i < tracks.length; i++) {
+        tracks[i].mode = (i === index) ? 'showing' : 'disabled';
+      }
+      return;
+    }
+    if (hls && hls.audioTracks && hls.audioTracks.length > index) hls.audioTrack = index;
+  }
+
+  // ------------------------------------------------------------- playback
+  function load(cmd) {
+    if (!cmd.url) return;
+    media = {
+      title: cmd.title || '',
+      poster: cmd.poster || '',
+      isLive: !!cmd.isLive,
+      mediaId: cmd.mediaId || null,
+    };
+
+    pairing.style.display = 'none';
+    stage.classList.add('on');
+    el('title').textContent = media.title;
+    el('live').hidden = !media.isLive;
+
+    if (hls) { hls.destroy(); hls = null; }
+    video.removeAttribute('src');
+    while (video.firstChild) video.removeChild(video.firstChild);
+
+    var isHls = /\.m3u8(\?|$)/i.test(cmd.url) || cmd.contentType === 'application/x-mpegURL';
+    var nativeHls = video.canPlayType('application/vnd.apple.mpegurl') !== '';
+
+    if (isHls && window.Hls && window.Hls.isSupported() && !nativeHls) {
+      hls = new window.Hls({ enableWorker: true, lowLatencyMode: !!media.isLive });
+      hls.on(window.Hls.Events.ERROR, function (_, data) {
+        if (!data.fatal) return;
+        if (data.type === window.Hls.ErrorTypes.NETWORK_ERROR) return hls.startLoad();
+        if (data.type === window.Hls.ErrorTypes.MEDIA_ERROR) return hls.recoverMediaError();
+        fail('تعذّر تشغيل هذا المصدر');
+      });
+      hls.loadSource(cmd.url);
+      hls.attachMedia(video);
+    } else {
+      video.src = cmd.url;
+    }
+
+    if (cmd.subtitleUrl) {
+      var track = document.createElement('track');
+      track.kind = 'subtitles';
+      track.label = cmd.subtitleLabel || 'الترجمة';
+      track.src = cmd.subtitleUrl;
+      track.default = true;
+      video.appendChild(track);
+    }
+
+    video.play().then(function () {
+      if (typeof cmd.position === 'number' && cmd.position > 0 && !media.isLive) {
+        video.currentTime = cmd.position;
+      }
+    }).catch(function () {
+      // Some browsers refuse sound-on autoplay until the page is touched.
+      video.muted = true;
+      video.play().catch(function () { fail('المتصفح منع التشغيل التلقائي — انقر الصفحة'); });
+    });
+
+    db.from('cast_sessions').update({
+      status: 'playing',
+      media_title: media.title,
+      media_poster: media.poster,
+      media_id: media.mediaId,
+      is_live: media.isLive,
+    }).eq('id', session.id).then(function () {}, function () {});
+
+    flashUi();
+    report();
+  }
+
+  function fail(text) {
+    toast(text);
+    report({ type: 'ERROR', message: text });
+  }
+
+  function teardown(text) {
+    if (hls) { hls.destroy(); hls = null; }
+    video.pause();
+    video.removeAttribute('src');
+    media = null;
+    stage.classList.remove('on');
+    pairing.style.display = '';
+    say(text || 'انتهى البث');
+    if (session) {
+      db.from('cast_sessions').update({ status: 'paired' }).eq('id', session.id)
+        .then(function () {}, function () {});
+    }
+  }
+
+  // ------------------------------------------------------------------ ui
+  function flashUi() {
+    stage.classList.add('show-ui');
+    clearTimeout(uiTimer);
+    uiTimer = setTimeout(function () { stage.classList.remove('show-ui'); }, 3000);
+  }
+
+  document.addEventListener('mousemove', flashUi);
+  stage.addEventListener('dblclick', function () {
+    if (document.fullscreenElement) document.exitFullscreen();
+    else document.documentElement.requestFullscreen().catch(function () {});
+  });
+
+  video.addEventListener('timeupdate', function () {
+    var d = isFinite(video.duration) ? video.duration : 0;
+    el('t-now').textContent = clock(video.currentTime);
+    el('t-end').textContent = media && media.isLive ? '' : clock(d);
+    el('fill').style.width = d > 0 ? (video.currentTime / d * 100) + '%' : '0';
+  });
+  video.addEventListener('play', function () { report(); });
+  video.addEventListener('pause', function () { report(); });
+  video.addEventListener('ended', function () { report({ type: 'MEDIA_ENDED' }); });
+
+  // State goes back to the phone on a steady beat while something plays, so
+  // the remote's clock tracks the picture without a request per frame.
+  stateTimer = setInterval(function () { if (media && !video.paused) report(); }, 2000);
+
+  retryBtn.addEventListener('click', function () { retryBtn.hidden = true; openSession(); });
+
+  window.addEventListener('beforeunload', function () {
+    if (!session) return;
+    db.from('cast_sessions').update({ status: 'disconnected' }).eq('id', session.id);
+  });
+
+  openSession();
+})();
+</script>
+</body>
+</html>

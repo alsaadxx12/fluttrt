@@ -32,6 +32,16 @@ class DynamicFranchise {
   DynamicFranchise withParts(List<CinemanaItem> p) =>
       DynamicFranchise(id: id, name: name, lead: lead, parts: p, partsResolved: true);
 
+  /// Whether [item] belongs in [section]'s row.
+  ///
+  /// Only the anime row is choosy. Its parts are found by searching the
+  /// catalogue for the lead's keywords, and a live-action film often shares
+  /// a name with an anime, which is how ordinary films turned up among the
+  /// anime series. Every entry of the catalogue's anime section carries the
+  /// Animation category, so in that row nothing without it counts.
+  static bool belongsTo(FranchiseSection section, CinemanaItem item) =>
+      section != FranchiseSection.anime || item.hasCategoryEn('Animation');
+
   /// The parts of a franchise as every screen shows them: newest release
   /// first, de-duplicated by id.
   ///
@@ -111,6 +121,19 @@ class FranchiseFeedNotifier extends StateNotifier<FranchiseFeedState> {
 
   bool get _isAnime => _section == FranchiseSection.anime;
 
+  /// [parts] less anything that does not belong in this section.
+  ///
+  /// A franchise's parts are found by searching the catalogue for the lead's
+  /// keywords, and a live-action film often shares a name with an anime —
+  /// which is how ordinary films turned up inside «سلاسل الأنمي». Every entry
+  /// of the catalogue's anime section carries the Animation category
+  /// (checked against the live catalogue), so in that row nothing else
+  /// counts. The other rows take what the search gave them.
+  List<CinemanaItem> _ofSection(List<CinemanaItem> parts) => [
+        for (final p in parts)
+          if (DynamicFranchise.belongsTo(_section, p)) p,
+      ];
+
   Future<void> _init() async {
     // Curated head: resolve the hand-listed franchises through a small pool
     // of workers, so the home page's own requests are never queued behind
@@ -128,7 +151,7 @@ class FranchiseFeedNotifier extends StateNotifier<FranchiseFeedState> {
     await Future.wait(List.generate(4, (_) => worker()));
     final head = <DynamicFranchise>[];
     for (var i = 0; i < curated.length; i++) {
-      final parts = DynamicFranchise.ordered(lists[i]);
+      final parts = DynamicFranchise.ordered(_ofSection(lists[i]));
       // Hand-listed or not, a franchise that resolved to fewer than three
       // parts is not a series worth a card.
       if (parts.length < DynamicFranchise.minParts) continue;
@@ -186,7 +209,7 @@ class FranchiseFeedNotifier extends StateNotifier<FranchiseFeedState> {
         );
         for (var j = 0; j < chunk.length; j++) {
           final it = chunk[j];
-          final parts = DynamicFranchise.ordered([it, ...related[j]]);
+          final parts = DynamicFranchise.ordered(_ofSection([it, ...related[j]]));
           if (parts.length < DynamicFranchise.minParts) continue;
           final ids = parts.map((p) => p.id).toSet();
           if (ids.any(_covered.contains)) continue; // same series already shown
@@ -215,7 +238,7 @@ class FranchiseFeedNotifier extends StateNotifier<FranchiseFeedState> {
     try {
       final rel = await _service.fetchFranchiseParts(f.lead).catchError((_) => <CinemanaItem>[]);
       if (!mounted) return;
-      final parts = DynamicFranchise.ordered([f.lead, ...rel]);
+      final parts = DynamicFranchise.ordered(_ofSection([f.lead, ...rel]));
       _covered.addAll(parts.map((p) => p.id));
       final items = [...state.items];
       final i = items.indexWhere((x) => x.id == id);

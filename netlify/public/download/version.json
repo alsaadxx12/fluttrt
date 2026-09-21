@@ -1,15 +1,15 @@
 {
   "updateEnabled": true,
-  "versionCode": 2104,
-  "versionName": "1.0.98",
-  "apkUrl": "https://cineball.netlify.app/download/app.apk?v=104",
-  "apkUrlArm64": "https://cineball.netlify.app/download/app-arm64-v8a-release.apk?v=104",
-  "apkUrlArm32": "https://cineball.netlify.app/download/app-armeabi-v7a-release.apk?v=104",
-  "sha256": "d1fb683cd147a1365fdcae06be23f48ed51447f98ac116f6f92dd53e63fa4cf3",
-  "sha256Arm64": "d1fb683cd147a1365fdcae06be23f48ed51447f98ac116f6f92dd53e63fa4cf3",
-  "sha256Arm32": "0ee0caa0017cdc439f21c5ace19812c7ffff1a4cb1c8c75b0490ecf8ee632013",
-  "sizeBytes": 20164930,
+  "versionCode": 2109,
+  "versionName": "1.0.103",
+  "apkUrl": "https://cineball.netlify.app/download/app.apk?v=109",
+  "apkUrlArm64": "https://cineball.netlify.app/download/app-arm64-v8a-release.apk?v=109",
+  "apkUrlArm32": "https://cineball.netlify.app/download/app-armeabi-v7a-release.apk?v=109",
+  "sha256": "8987325a034bbfc75c56adab7f031236e2f0483f90851f289742ff6f341d9474",
+  "sha256Arm64": "8987325a034bbfc75c56adab7f031236e2f0483f90851f289742ff6f341d9474",
+  "sha256Arm32": "9104bd2e68fde496d9e6fbff8cd78c08bfc4ff034d20db1e7a9baa3d87badd39",
+  "sizeBytes": 20165227,
   "forceUpdate": false,
   "minSupportedVersion": 1,
-  "notes": "إضافة أحدث المسلسلات والأفلام الحصرية بدون إعلانات وتحديث القائمة الجانبية بالثيم الأسود الفاخر"
+  "notes": "انحناء وميلان شريط التنقل السفلي مع زر مشاهد وتحسينات عامة"
 }

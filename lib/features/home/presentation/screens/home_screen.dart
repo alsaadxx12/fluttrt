@@ -9,6 +9,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:window_manager/window_manager.dart';
 import '../../../../presentation/widgets/window_caption_buttons.dart';
+import 'package:youtube_downloader/features/casting/controllers/cast_controller.dart';
+import 'package:youtube_downloader/features/casting/widgets/cast_device_sheet.dart';
 import 'package:youtube_downloader/features/search/presentation/screens/search_screen.dart';
 import 'package:youtube_downloader/features/cinemana/data/models/cinemana_models.dart';
 import 'package:youtube_downloader/features/cinemana/presentation/providers/cinemana_provider.dart';
@@ -1013,18 +1015,14 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
           ),
           const SizedBox(width: 8),
 
-          // Cast to a screen. The picker is not built yet, so it says so
-          // rather than doing nothing when pressed.
-          _buildTranslucentIconButton(
-            icon: Icons.cast_rounded,
-            onTap: () {
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(
-                  content: Text('المشاركة عبر الشاشة قيد التطوير', style: TextStyle(fontSize: 12.5)),
-                  duration: Duration(seconds: 2),
-                  behavior: SnackBarBehavior.floating,
-                  backgroundColor: Color(0xFF1B2232),
-                ),
+          // Cast to a screen. The icon fills in while a device is connected,
+          // so the bar says at a glance that something is playing elsewhere.
+          Consumer(
+            builder: (context, ref, _) {
+              final casting = ref.watch(isCastingProvider);
+              return _buildTranslucentIconButton(
+                icon: casting ? Icons.cast_connected_rounded : Icons.cast_rounded,
+                onTap: () => showCastDeviceSheet(context),
               );
             },
           ),

@@ -1,4 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
+import 'package:youtube_downloader/features/cinemana/data/cinemana_franchises.dart';
 import 'package:youtube_downloader/features/cinemana/data/dynamic_franchises.dart';
 import 'package:youtube_downloader/features/cinemana/data/models/cinemana_models.dart';
 
@@ -57,5 +58,38 @@ void main() {
   test('a franchise needs more than two parts to be one', () {
     // A card offering a single title is not a series, and two is a pair.
     expect(DynamicFranchise.minParts, greaterThan(2));
+  });
+
+  group('the anime row takes anime only', () {
+    CinemanaItem titled(String en, List<String> cats) => CinemanaItem.fromJson({
+          'nb': en,
+          'en_title': en,
+          'ar_title': en,
+          'year': '2020',
+          'kind': '2',
+          'categories': [for (final c in cats) {'en_title': c, 'ar_title': c}],
+        });
+
+    test('an animated title belongs', () {
+      expect(
+        DynamicFranchise.belongsTo(FranchiseSection.anime, titled('Oshi No Ko', ['Animation', 'Drama'])),
+        isTrue,
+      );
+    });
+
+    test('a live-action film of the same name does not', () {
+      // This is the bug: the parts of a franchise are found by searching the
+      // catalogue for the lead's keywords, and a film often shares a name.
+      expect(
+        DynamicFranchise.belongsTo(FranchiseSection.anime, titled('Monster', ['Horror', 'Thriller'])),
+        isFalse,
+      );
+    });
+
+    test('the other rows take whatever the search found', () {
+      for (final s in [FranchiseSection.films, FranchiseSection.series]) {
+        expect(DynamicFranchise.belongsTo(s, titled('Monster', ['Horror'])), isTrue, reason: '$s');
+      }
+    });
   });
 }
