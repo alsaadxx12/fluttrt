@@ -285,6 +285,13 @@ class _AppSidebarState extends ConsumerState<AppSidebar> {
                   onTap: () => context.push('/cinemana/anime'),
                 ),
                 _buildSidebarItem(
+                  icon: Icons.tv_rounded,
+                  title: 'الدراما الآسيوية (Asia2TV)',
+                  isSelected: currentPath == '/asia2tv',
+                  isDark: isDark,
+                  onTap: () => context.push('/asia2tv'),
+                ),
+                _buildSidebarItem(
                   icon: Icons.sports_soccer_rounded,
                   title: 'المباريات',
                   badgeText: null,

@@ -686,6 +686,72 @@ class CinemanaService {
     }
   }
 
+  /// The languages this app counts as "آسيوية": East and South-East Asia.
+  ///
+  /// Turkish and Indian series are their own thing and are not what the row
+  /// means, so 25 and 10 are deliberately absent.
+  static const Set<String> asianLanguageIds = {
+    '21', // Chinese
+    '22', // Japanese
+    '23', // Korean
+    '41', // Indonesian
+    '47', // Taiwan
+    '52', // Mandarin
+    '68', // Filipino
+    '80', // Thai
+    '85', // Malay
+    '88', // Vietnamese
+  };
+
+  /// Whether [item] belongs in "أحدث المسلسلات الآسيوية".
+  ///
+  /// Animation is left out on purpose: a Japanese animated series is anime,
+  /// and the page already carries two rows of that. Without this the row
+  /// filled up with the same titles.
+  static bool isAsianSeries(CinemanaItem item) =>
+      asianLanguageIds.contains(item.languageId) && !item.hasCategoryEn('Animation');
+
+  /// One raw page of the latest-series feed.
+  ///
+  /// Straight from Cinemana, without the Krmzi titles [fetchSeries] merges
+  /// in: those carry no language, so they can never be placed.
+  Future<List<CinemanaItem>> _latestSeriesPage(int page, {int itemsPerPage = 35}) async {
+    final response = await _dio.get('latestSeries/level/0/itemsPerPage/$itemsPerPage/page/$page/');
+    if (response.statusCode == 200 && response.data is List) {
+      return (response.data as List)
+          .map((item) => CinemanaItem.fromJson(item as Map<String, dynamic>))
+          .toList();
+    }
+    return const [];
+  }
+
+  /// أحدث المسلسلات الآسيوية — Korean, Japanese, Chinese and their neighbours.
+  ///
+  /// Cinemana has no Asian category; it files a series by language, so the
+  /// only way to ask is to read the latest series and keep the ones that
+  /// belong. About one series in nine qualifies, so a batch of pages is read
+  /// at once rather than one at a time - eight pages yields a full row.
+  Future<List<CinemanaItem>> fetchAsianSeries({int page = 0, int itemsPerPage = 24}) async {
+    const pagesPerBatch = 8;
+    final firstPage = page * pagesPerBatch;
+    try {
+      final pages = await Future.wait([
+        for (var i = 0; i < pagesPerBatch; i++)
+          _latestSeriesPage(firstPage + i).catchError((_) => <CinemanaItem>[]),
+      ]);
+      final byId = <String, CinemanaItem>{};
+      for (final list in pages) {
+        for (final it in list) {
+          if (isAsianSeries(it)) byId.putIfAbsent(it.id, () => it);
+        }
+      }
+      final sorted = sortLatestReleases(byId.values.toList(), isSeries: true);
+      return sorted.length > itemsPerPage ? sorted.sublist(0, itemsPerPage) : sorted;
+    } catch (_) {
+      return [];
+    }
+  }
+
   /// 5. أحدث الحلقات (Latest Episodes: on-air series)
   Future<List<CinemanaItem>> fetchLatestEpisodes({int page = 0, int itemsPerPage = 24}) async {
     try {

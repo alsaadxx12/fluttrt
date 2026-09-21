@@ -24,6 +24,7 @@ import 'package:youtube_downloader/features/viu/data/viu_models.dart';
 import 'package:youtube_downloader/features/viu/presentation/viu_widgets.dart';
 import 'package:youtube_downloader/features/viu/presentation/other_films.dart';
 import 'package:youtube_downloader/core/constants/app_palette.dart';
+import 'package:youtube_downloader/core/constants/app_colors.dart';
 import 'package:youtube_downloader/core/network/http_cache.dart';
 import 'package:youtube_downloader/core/network/image_cache.dart';
 import '../widgets/subscription_plans_showcase.dart';
@@ -40,6 +41,10 @@ import '../../../trailers/presentation/trailers_showcase.dart';
 import 'package:youtube_downloader/core/scroll/app_scroll_physics.dart';
 import 'package:youtube_downloader/features/update/presentation/update_controller.dart';
 import 'package:youtube_downloader/features/subscription/presentation/providers/subscription_provider.dart';
+import 'package:youtube_downloader/features/asia2tv/data/models/asia2tv_models.dart';
+import 'package:youtube_downloader/features/asia2tv/presentation/providers/asia2tv_providers.dart';
+import 'package:youtube_downloader/features/asia2tv/presentation/screens/asia2tv_category_screen.dart';
+import 'package:youtube_downloader/features/asia2tv/presentation/widgets/asia2tv_card.dart';
 
 class HomeScreen extends ConsumerStatefulWidget {
   const HomeScreen({super.key});
@@ -101,6 +106,11 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
       franchiseFilmsProvider('batman'),
       franchiseFilmsProvider('james-bond'),
       homeLatestSeriesProvider,
+      homeAsianSeriesProvider,
+      asia2tvLatestEpisodesProvider,
+      asia2tvKoreanDramasProvider,
+      asia2tvChineseDramasProvider,
+      asia2tvMoviesProvider,
       homeAnimeProvider,
       homeMostViewedProvider,
       homeArabicMoviesProvider,
@@ -301,6 +311,11 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
       quiet(ref.refresh(homeRecentlyAddedProvider.future)),
       quiet(ref.refresh(homeLatestMoviesProvider.future)),
       quiet(ref.refresh(homeLatestSeriesProvider.future)),
+      quiet(ref.refresh(homeAsianSeriesProvider.future)),
+      quiet(ref.refresh(asia2tvLatestEpisodesProvider.future)),
+      quiet(ref.refresh(asia2tvKoreanDramasProvider.future)),
+      quiet(ref.refresh(asia2tvChineseDramasProvider.future)),
+      quiet(ref.refresh(asia2tvMoviesProvider.future)),
       quiet(ref.refresh(homeAnimeProvider.future)),
       quiet(ref.refresh(sportsChannelsProvider.future)),
       quiet(ref.refresh(homeMostViewedProvider.future)),
@@ -473,6 +488,30 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     );
   }
 
+  /// One horizontal Asia2TV row fed by [provider]; opens category or details.
+  Widget _asia2tvRowSection({
+    required ProviderListenable<AsyncValue<List<Asia2TvItem>>> provider,
+    required String title,
+    required Asia2TvCategory category,
+  }) {
+    return RepaintBoundary(
+      child: Consumer(
+        builder: (context, ref, _) => ref.watch(provider).when(
+              data: (items) {
+                if (items.isEmpty) return const SizedBox.shrink();
+                return _buildAsia2TvHorizontalSection(
+                  title: title,
+                  items: items,
+                  category: category,
+                );
+              },
+              loading: () => const SizedBox.shrink(),
+              error: (_, __) => const SizedBox.shrink(),
+            ),
+      ),
+    );
+  }
+
   /// Everything under the hero, in order, each entry built only once it
   /// scrolls near. Built once for the life of the page: no entry closes over
   /// anything from [build], so a rebuild never has to make this list again.
@@ -559,6 +598,42 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     (_) => const RepaintBoundary(child: DynamicFranchisesShowcase(section: FranchiseSection.films)),
     (_) => const SizedBox(height: 24),
 
+    // أحدث المسلسلات الآسيوية (كورية، يابانية، صينية…)
+    (_) => _wideSeriesRowSection(
+          provider: homeAsianSeriesProvider,
+          title: 'أحدث المسلسلات الآسيوية',
+          badge: 'آسيوي',
+        ),
+
+    (_) => const SizedBox(height: 24),
+
+    // أحدث حلقات Asia2TV
+    (_) => _asia2tvRowSection(
+          provider: asia2tvLatestEpisodesProvider,
+          title: 'أحدث حلقات Asia2TV',
+          category: Asia2TvCategory.newEpisodes,
+        ),
+
+    (_) => const SizedBox(height: 24),
+
+    // الدراما الكورية (Asia2TV)
+    (_) => _asia2tvRowSection(
+          provider: asia2tvKoreanDramasProvider,
+          title: 'الدراما الكورية (Asia2TV)',
+          category: Asia2TvCategory.korean,
+        ),
+
+    (_) => const SizedBox(height: 24),
+
+    // الدراما الصينية واليابانية (Asia2TV)
+    (_) => _asia2tvRowSection(
+          provider: asia2tvChineseDramasProvider,
+          title: 'الدراما الصينية واليابانية (Asia2TV)',
+          category: Asia2TvCategory.chinese,
+        ),
+
+    (_) => const SizedBox(height: 24),
+
     // سلسلة سبايدر مان
     (_) => _posterRowSection(
           provider: franchiseFilmsProvider('spider-man'),
@@ -610,6 +685,15 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
           provider: homeArabicMoviesProvider,
           title: 'الأفلام العربية',
           onViewAll: () => _openCatalog(kind: 'movies', categoryId: 130),
+        ),
+
+    (_) => const SizedBox(height: 24),
+
+    // الأفلام الآسيوية (Asia2TV)
+    (_) => _asia2tvRowSection(
+          provider: asia2tvMoviesProvider,
+          title: 'الأفلام الآسيوية (Asia2TV)',
+          category: Asia2TvCategory.movies,
         ),
 
     (_) => const SizedBox(height: 24),
@@ -2024,6 +2108,108 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
         ),
       );
     }
+  }
+
+  Widget _buildAsia2TvHorizontalSection({
+    required String title,
+    required List<Asia2TvItem> items,
+    required Asia2TvCategory category,
+  }) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Row(
+                children: [
+                  Container(
+                    width: 3.5,
+                    height: 18,
+                    margin: const EdgeInsetsDirectional.only(end: 9),
+                    decoration: BoxDecoration(
+                      color: AppColors.primary,
+                      borderRadius: BorderRadius.circular(2),
+                    ),
+                  ),
+                  Text(
+                    title,
+                    style: TextStyle(
+                      fontSize: 16.5,
+                      fontWeight: FontWeight.w900,
+                      color: isDark ? Colors.white : const Color(0xFF111827),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                    decoration: BoxDecoration(
+                      color: AppColors.primary.withOpacity(0.14),
+                      borderRadius: BorderRadius.circular(5),
+                      border: Border.all(color: AppColors.primary.withOpacity(0.4), width: 0.8),
+                    ),
+                    child: const Text(
+                      'Asia2TV',
+                      style: TextStyle(
+                        color: AppColors.primary,
+                        fontSize: 10,
+                        fontWeight: FontWeight.w900,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+              TextButton(
+                onPressed: () {
+                  Navigator.of(context).push(
+                    MaterialPageRoute(
+                      builder: (_) => Asia2TvCategoryScreen(initialCategory: category),
+                    ),
+                  );
+                },
+                style: TextButton.styleFrom(
+                  foregroundColor: isDark ? Colors.white70 : Colors.black87,
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                  visualDensity: VisualDensity.compact,
+                ),
+                child: const Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(
+                      'عرض الكل',
+                      style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.bold),
+                    ),
+                    SizedBox(width: 2),
+                    Icon(Icons.arrow_forward_ios_rounded, size: 11),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(height: 12),
+        SizedBox(
+          height: 250,
+          child: ListView.separated(
+            padding: const EdgeInsets.symmetric(horizontal: 16),
+            scrollDirection: Axis.horizontal,
+            itemCount: items.length,
+            separatorBuilder: (_, __) => const SizedBox(width: 12),
+            itemBuilder: (context, index) {
+              return Asia2TvCard(
+                item: items[index],
+                width: 135,
+                height: 195,
+              );
+            },
+          ),
+        ),
+      ],
+    );
   }
 
   // ==========================================

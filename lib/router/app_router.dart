@@ -21,6 +21,9 @@ import '../features/cinemana/data/models/cinemana_models.dart';
 import '../features/auth/presentation/screens/login_screen.dart';
 import '../features/auth/presentation/screens/register_screen.dart';
 import '../features/subscription/presentation/screens/sports_activation_screen.dart';
+import '../features/asia2tv/data/models/asia2tv_models.dart';
+import '../features/asia2tv/presentation/screens/asia2tv_category_screen.dart';
+import '../features/asia2tv/presentation/screens/asia2tv_details_screen.dart';
 
 final GlobalKey<NavigatorState> _rootNavigatorKey = GlobalKey<NavigatorState>();
 // One navigator per page of the main shell. The pages sit side by side in an
@@ -237,6 +240,22 @@ final appRouter = GoRouter(
       path: '/register',
       parentNavigatorKey: _rootNavigatorKey,
       pageBuilder: (context, state) => CupertinoPage(key: state.pageKey, child: const RegisterScreen()),
+    ),
+    GoRoute(
+      path: '/asia2tv',
+      parentNavigatorKey: _rootNavigatorKey,
+      pageBuilder: (context, state) {
+        final cat = state.extra is Asia2TvCategory ? state.extra as Asia2TvCategory : Asia2TvCategory.newEpisodes;
+        return CupertinoPage(key: state.pageKey, child: Asia2TvCategoryScreen(initialCategory: cat));
+      },
+    ),
+    GoRoute(
+      path: '/asia2tv/details',
+      parentNavigatorKey: _rootNavigatorKey,
+      builder: (context, state) {
+        final item = state.extra as Asia2TvItem;
+        return Asia2TvDetailsScreen(item: item);
+      },
     ),
   ],
 );

@@ -322,6 +322,15 @@ class _AppDrawerState extends ConsumerState<AppDrawer> {
                     },
                   ),
                   _DrawerItem(
+                    icon: Icons.tv_rounded,
+                    title: 'الدراما الآسيوية (Asia2TV)',
+                    isSelected: currentPath == '/asia2tv',
+                    onTap: () {
+                      Navigator.pop(context);
+                      context.push('/asia2tv');
+                    },
+                  ),
+                  _DrawerItem(
                     icon: Icons.sports_soccer_rounded,
                     title: 'المباريات',
                     badgeText: null,

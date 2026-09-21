@@ -128,6 +128,9 @@ class _DynCarouselState extends ConsumerState<_DynCarousel> {
     if (!mounted || _ancestorPos == null) return;
     if (!_ancestorPos!.isScrollingNotifier.value) {
       _checkVisibility();
+      // The page has come to rest: now is the time to fetch, if the deck has
+      // run its cards out.
+      _maybeLoadMore(_currentIndex);
     }
   }
 
@@ -173,11 +176,22 @@ class _DynCarouselState extends ConsumerState<_DynCarousel> {
     super.dispose();
   }
 
+  /// Ask the feed for more franchises, but never while the page is moving.
+  ///
+  /// Scanning for a franchise is expensive - every candidate title costs a
+  /// search and a parse, and a page of them costs dozens - and it used to be
+  /// kicked off from `itemBuilder`, which runs on every frame the trailing
+  /// loader card is on screen. So the scan ran right through the scroll it
+  /// was stuttering. It waits for the page to come to rest instead.
   void _maybeLoadMore(int index) {
-    if (!widget.done && index >= widget.items.length - 3) {
-      ref.read(franchiseFeedProvider(widget.section).notifier).loadMore();
-    }
+    if (widget.done || index < widget.items.length - 3) return;
+    if (_ancestorPos?.isScrollingNotifier.value ?? false) return;
+    ref.read(franchiseFeedProvider(widget.section).notifier).loadMore();
   }
+
+  /// The page the deck is showing, for deciding whether more are needed.
+  int get _currentIndex =>
+      _controller?.hasClients == true ? (_controller!.page ?? 0).round() : _middleIndex;
 
   @override
   Widget build(BuildContext context) {
@@ -226,7 +240,6 @@ class _DynCarouselState extends ConsumerState<_DynCarousel> {
                       isActive: isCurrent,
                       onReturned: () => _resetToMiddle(animate: true),
                     );
-              if (i >= widget.items.length) _maybeLoadMore(i);
               return Center(
                 child: Transform.translate(
                   offset: Offset(0, 10 * (1 - t)),

@@ -24,6 +24,12 @@ class CinemanaItem {
   final String? mDate;
   final String? backdropUrl;
 
+  /// Cinemana's own language id for the title (`language_lighttigerNb`):
+  /// '23' Korean, '22' Japanese, '21' Chinese, '25' Turkish, '9' Arabic, and
+  /// so on. Empty when the feed did not say. It is the only handle the
+  /// catalogue gives on where a series is from - there is no such category.
+  final String languageId;
+
   const CinemanaItem({
     required this.id,
     required this.arTitle,
@@ -47,6 +53,7 @@ class CinemanaItem {
     this.episodeNummer = '0',
     this.itemDate,
     this.mDate,
+    this.languageId = '',
   });
 
   CinemanaItem copyWith({
@@ -72,6 +79,7 @@ class CinemanaItem {
     String? episodeNummer,
     String? itemDate,
     String? mDate,
+    String? languageId,
   }) {
     return CinemanaItem(
       id: id ?? this.id,
@@ -96,6 +104,7 @@ class CinemanaItem {
       episodeNummer: episodeNummer ?? this.episodeNummer,
       itemDate: itemDate ?? this.itemDate,
       mDate: mDate ?? this.mDate,
+      languageId: languageId ?? this.languageId,
     );
   }
 
@@ -212,6 +221,7 @@ class CinemanaItem {
       episodeNummer: json['episodeNummer']?.toString() ?? '0',
       itemDate: json['itemDate']?.toString(),
       mDate: json['mDate']?.toString(),
+      languageId: json['language_lighttigerNb']?.toString() ?? '',
     );
   }
 

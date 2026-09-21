@@ -32,6 +32,25 @@ class DynamicFranchise {
   DynamicFranchise withParts(List<CinemanaItem> p) =>
       DynamicFranchise(id: id, name: name, lead: lead, parts: p, partsResolved: true);
 
+  /// The parts of a franchise as every screen shows them: newest release
+  /// first, de-duplicated by id.
+  ///
+  /// A year that will not parse sorts last rather than first - an unknown
+  /// date is not news - so the end of the list is still where the series
+  /// began. Callers that want the first entry read [List.last].
+  static List<CinemanaItem> ordered(List<CinemanaItem> items) {
+    final byId = <String, CinemanaItem>{};
+    for (final it in items) {
+      byId.putIfAbsent(it.id, () => it);
+    }
+    return byId.values.toList()
+      ..sort((a, b) {
+        final ya = int.tryParse(a.year) ?? -1;
+        final yb = int.tryParse(b.year) ?? -1;
+        return ya != yb ? yb.compareTo(ya) : a.displayTitle.compareTo(b.displayTitle);
+      });
+  }
+
   /// A short franchise name from a title: the part before ":" / " - ", with a
   /// trailing part number stripped ("Harry Potter and the ... 2" → stem).
   static String nameOf(CinemanaItem item) {
@@ -109,7 +128,7 @@ class FranchiseFeedNotifier extends StateNotifier<FranchiseFeedState> {
     await Future.wait(List.generate(4, (_) => worker()));
     final head = <DynamicFranchise>[];
     for (var i = 0; i < curated.length; i++) {
-      final parts = _ordered(lists[i]);
+      final parts = DynamicFranchise.ordered(lists[i]);
       // Hand-listed or not, a franchise that resolved to fewer than three
       // parts is not a series worth a card.
       if (parts.length < DynamicFranchise.minParts) continue;
@@ -135,8 +154,11 @@ class FranchiseFeedNotifier extends StateNotifier<FranchiseFeedState> {
     final before = gathered.length;
     var done = false;
     // Keep going until this call adds at least one card, so a page of films
-    // that are all stand-alone never stalls the row.
-    for (var guard = 0; guard < 4; guard++) {
+    // that are all stand-alone never stalls the row. Two pages, not four: a
+    // page costs a search and a parse per candidate, and the deck asks again
+    // every time the page comes to rest, so there is no need to do it all in
+    // one go while the viewer is waiting.
+    for (var guard = 0; guard < 2; guard++) {
       List<CinemanaItem> page;
       try {
         page = _isAnime
@@ -164,7 +186,7 @@ class FranchiseFeedNotifier extends StateNotifier<FranchiseFeedState> {
         );
         for (var j = 0; j < chunk.length; j++) {
           final it = chunk[j];
-          final parts = _ordered([it, ...related[j]]);
+          final parts = DynamicFranchise.ordered([it, ...related[j]]);
           if (parts.length < DynamicFranchise.minParts) continue;
           final ids = parts.map((p) => p.id).toSet();
           if (ids.any(_covered.contains)) continue; // same series already shown
@@ -193,7 +215,7 @@ class FranchiseFeedNotifier extends StateNotifier<FranchiseFeedState> {
     try {
       final rel = await _service.fetchFranchiseParts(f.lead).catchError((_) => <CinemanaItem>[]);
       if (!mounted) return;
-      final parts = _ordered([f.lead, ...rel]);
+      final parts = DynamicFranchise.ordered([f.lead, ...rel]);
       _covered.addAll(parts.map((p) => p.id));
       final items = [...state.items];
       final i = items.indexWhere((x) => x.id == id);
@@ -206,24 +228,6 @@ class FranchiseFeedNotifier extends StateNotifier<FranchiseFeedState> {
     }
   }
 
-  /// Release order, newest first, de-duplicated by id.
-  ///
-  /// A year that will not parse sorts last rather than first: an unknown date
-  /// is not news. Callers that want the first entry of the series read the
-  /// end of this list.
-  static List<CinemanaItem> _ordered(List<CinemanaItem> items) {
-    final byId = <String, CinemanaItem>{};
-    for (final it in items) {
-      byId.putIfAbsent(it.id, () => it);
-    }
-    final list = byId.values.toList()
-      ..sort((a, b) {
-        final ya = int.tryParse(a.year) ?? -1;
-        final yb = int.tryParse(b.year) ?? -1;
-        return ya != yb ? yb.compareTo(ya) : a.displayTitle.compareTo(b.displayTitle);
-      });
-    return list;
-  }
 }
 
 final franchiseFeedProvider = StateNotifierProvider.family<FranchiseFeedNotifier, FranchiseFeedState, FranchiseSection>(

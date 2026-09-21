@@ -454,6 +454,12 @@ final homeLatestSeriesProvider = FutureProvider<List<CinemanaItem>>((ref) async 
   return service.fetchLatestSeriesRelease(page: 0, itemsPerPage: 24);
 });
 
+/// أحدث المسلسلات الآسيوية (Latest Asian series)
+final homeAsianSeriesProvider = FutureProvider<List<CinemanaItem>>((ref) async {
+  final service = ref.watch(cinemanaServiceProvider);
+  return service.fetchAsianSeries(page: 0, itemsPerPage: 24);
+});
+
 /// 5. أحدث الحلقات (Latest Episodes)
 final homeLatestEpisodesProvider = FutureProvider<List<CinemanaItem>>((ref) async {
   final service = ref.watch(cinemanaServiceProvider);
