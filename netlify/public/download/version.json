@@ -1,11 +1,15 @@
 {
   "updateEnabled": true,
-  "versionCode": 87,
-  "versionName": "1.0.81",
-  "apkUrl": "https://cineball.netlify.app/download/app.apk?v=87",
-  "sha256": "d2f6e238dd0dfdde5588e568c4d00aa2ad35bc1dfeb86f00b3ade22e947cc141",
-  "sizeBytes": 57046575,
+  "versionCode": 2088,
+  "versionName": "1.0.82",
+  "apkUrl": "https://cineball.netlify.app/download/app.apk?v=88",
+  "apkUrlArm64": "https://cineball.netlify.app/download/app-arm64-v8a-release.apk?v=88",
+  "apkUrlArm32": "https://cineball.netlify.app/download/app-armeabi-v7a-release.apk?v=88",
+  "sha256": "020df5f99b1ccc8df64c6ca559717229aab82da455c110551ed68ecdd683c068",
+  "sha256Arm64": "020df5f99b1ccc8df64c6ca559717229aab82da455c110551ed68ecdd683c068",
+  "sha256Arm32": "6f11f3a7970e82202f499b47fc0bc8b6a817e86603d82a3bd7a7b8ab03123969",
+  "sizeBytes": 19325627,
   "forceUpdate": false,
   "minSupportedVersion": 1,
-  "notes": "إصلاح سيرفرات البث المباشر للمباريات، ودعم مسلسلات شاهد المجانية وسلاسل الأعمال"
+  "notes": "إصلاح حجم التحديث وتثبيت التحديث مباشرة، وتفعيل سيرفرات البث المباشر ومسلسلات شاهد"
 }

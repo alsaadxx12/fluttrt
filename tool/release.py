@@ -32,7 +32,9 @@ import zipfile
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 PUBSPEC = os.path.join(ROOT, 'pubspec.yaml')
-APK_SRC = os.path.join(ROOT, 'build', 'app', 'outputs', 'flutter-apk', 'app-release.apk')
+APK_DIR = os.path.join(ROOT, 'build', 'app', 'outputs', 'flutter-apk')
+APK_ARM64_SRC = os.path.join(APK_DIR, 'app-arm64-v8a-release.apk')
+APK_SRC = os.path.join(APK_DIR, 'app-release.apk')
 DL = os.path.join(ROOT, 'netlify', 'public', 'download')
 MANIFEST = os.path.join(DL, 'version.json')
 VERSION_RE = re.compile(r'^version:\s*(\d+)\.(\d+)\.(\d+)\+(\d+)\s*$', re.M)
@@ -133,7 +135,7 @@ def main():
     # build. It is deliberately NOT passed as --dart-define: a release built
     # that way was found to ship WITHOUT the token in libapp.so, which hid the
     # trailers section for users, while the plain build carries it correctly.
-    build_cmd = ['flutter', 'build', 'apk', '--release']
+    build_cmd = ['flutter', 'build', 'apk', '--split-per-abi', '--release']
     # Force the Dart snapshot to be rebuilt so the APK always matches the
     # current source, without a full `flutter clean` (which fails on Windows
     # when another process holds a file in build/). Removing just the compiled
@@ -144,16 +146,17 @@ def main():
         if os.path.isdir(p):
             print(f'== refresh Dart build cache\n$ rm -r {sub}')
             shutil.rmtree(p, ignore_errors=True)
-    run(build_cmd, 'build the signed release APK')
+    run(build_cmd, 'build the signed release APKs (split-per-abi)')
 
-    facts = apk_facts(APK_SRC)
+    target_apk = APK_ARM64_SRC if os.path.exists(APK_ARM64_SRC) else APK_SRC
+    facts = apk_facts(target_apk)
     if facts:
         got_code, got_name = facts
         print(f'\nAPK reports versionCode={got_code} versionName={got_name}')
-        if got_code != code:
+        if got_code != code and (got_code % 1000) != (code % 1000):
             raise SystemExit(f'the APK carries versionCode {got_code}, not {code}. '
                              'The build did not pick up the new version; run it again.')
-    signed = signed_by_release_key(APK_SRC)
+    signed = signed_by_release_key(target_apk)
     if signed is False:
         raise SystemExit('this APK is signed with the DEBUG key. Set up android/key.properties, '
                          'or users cannot install it over their copy.')
