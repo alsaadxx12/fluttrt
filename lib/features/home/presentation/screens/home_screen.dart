@@ -475,7 +475,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                     // Phone only: hidden on TV, desktop, and when TMDB is unset.
                     const TrailersShowcase(),
 
-                    const SizedBox(height: 24),
+                    const SizedBox(height: 4),
 
                     // Subscription Plans (باقات وأنواع الاشتراكات)
                     const SubscriptionPlansShowcase(),

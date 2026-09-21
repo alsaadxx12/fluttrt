@@ -1,11 +1,11 @@
 {
   "updateEnabled": true,
-  "versionCode": 75,
-  "versionName": "1.0.73",
-  "apkUrl": "https://cineball.netlify.app/download/app.apk?v=75",
-  "sha256": "ef2f4bf6ce0b3aff6fb6c2f6578a02c64f0db84e017dabdada2b4bcc8c9dd1d8",
-  "sizeBytes": 57065296,
+  "versionCode": 76,
+  "versionName": "1.0.74",
+  "apkUrl": "https://cineball.netlify.app/download/app.apk?v=76",
+  "sha256": "c5b0c30a8c634e4b76a21c08c5ac14bc82c5ab3e1e6455054f35bc16ab25662a",
+  "sizeBytes": 56946190,
   "forceUpdate": false,
   "minSupportedVersion": 1,
-  "notes": "تحديث صفحة التفعيل: حركة يدوية للبطاقات، ملء عرض الصفحة، وإزالة زر الرجوع"
+  "notes": "إزالة النصوص الثانوية وبادج الاشتراك الفعال، تقليل المسافة مع الإعلانات، وإزالة إعدادات التنزيل"
 }
