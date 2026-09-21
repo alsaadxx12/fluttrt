@@ -9,8 +9,8 @@ import 'package:youtube_downloader/features/update/presentation/update_controlle
 import 'package:youtube_downloader/features/subscription/presentation/providers/subscription_provider.dart';
 import 'package:youtube_downloader/features/auth/presentation/providers/auth_provider.dart';
 
-/// Light red wash behind the active row — replaces the old solid red tile.
-const Color _kActiveFill = Color(0x14E50914);
+/// Subtle neutral wash behind the active row — replaces red active tint.
+const Color _kActiveFill = Color(0x14FFFFFF);
 
 class AppDrawer extends ConsumerStatefulWidget {
   const AppDrawer({super.key});
@@ -108,14 +108,6 @@ class _AppDrawerState extends ConsumerState<AppDrawer> {
                     ? Colors.white.withOpacity(0.04)
                     : const Color(0xFFF8FAFC),
                 borderRadius: BorderRadius.circular(14),
-                border: Border.all(
-                  color: isSportsUnlocked
-                      ? AppColors.primary.withOpacity(0.35)
-                      : (isDark
-                          ? Colors.white.withOpacity(0.08)
-                          : const Color(0xFFE2E8F0)),
-                  width: 1,
-                ),
               ),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -128,26 +120,17 @@ class _AppDrawerState extends ConsumerState<AppDrawer> {
                         height: 38,
                         decoration: BoxDecoration(
                           shape: BoxShape.circle,
-                          color: AppColors.primary.withOpacity(0.15),
-                          border: Border.all(
-                            color: AppColors.primary.withOpacity(0.4),
-                            width: 1.5,
-                          ),
+                          color: Colors.white.withOpacity(0.08),
                         ),
-                        child: Center(
-                          child: Text(
-                            (userProfile?.fullName.isNotEmpty == true)
-                                ? userProfile!.fullName.substring(0, 1).toUpperCase()
-                                : 'ح',
-                            style: const TextStyle(
-                              color: AppColors.primary,
-                              fontSize: 16,
-                              fontWeight: FontWeight.w900,
-                            ),
+                        child: const Center(
+                          child: Icon(
+                            Icons.person_rounded,
+                            color: Colors.white,
+                            size: 22,
                           ),
                         ),
                       ),
-                      const SizedBox(width: 10),
+                      const SizedBox(width: 12),
                       Expanded(
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
@@ -157,25 +140,39 @@ class _AppDrawerState extends ConsumerState<AppDrawer> {
                                   ? userProfile!.fullName
                                   : 'مستخدم CineBall',
                               style: TextStyle(
-                                fontSize: 13.5,
+                                fontSize: 14,
                                 fontWeight: FontWeight.w900,
                                 color: isDark ? Colors.white : Colors.black87,
+                                letterSpacing: -0.2,
                               ),
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,
                             ),
-                            const SizedBox(height: 2),
-                            Text(
-                              userProfile?.phone.isNotEmpty == true
-                                  ? userProfile!.phone
-                                  : 'رقم الهاتف غير متوفر',
-                              style: TextStyle(
-                                fontSize: 11.5,
-                                color: isDark ? Colors.white54 : Colors.black54,
+                            if (userProfile?.phone.isNotEmpty == true) ...[
+                              const SizedBox(height: 6),
+                              Row(
+                                children: [
+                                  Icon(
+                                    Icons.phone_android_rounded,
+                                    size: 13,
+                                    color: isDark ? Colors.white38 : Colors.black38,
+                                  ),
+                                  const SizedBox(width: 4),
+                                  Expanded(
+                                    child: Text(
+                                      userProfile!.phone,
+                                      style: TextStyle(
+                                        fontSize: 11.5,
+                                        fontWeight: FontWeight.w600,
+                                        color: isDark ? Colors.white60 : Colors.black54,
+                                      ),
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                    ),
+                                  ),
+                                ],
                               ),
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                            ),
+                            ],
                           ],
                         ),
                       ),
@@ -251,7 +248,9 @@ class _AppDrawerState extends ConsumerState<AppDrawer> {
                               context.push('/sports-activation');
                             },
                             style: ElevatedButton.styleFrom(
-                              backgroundColor: AppColors.primary,
+                              backgroundColor: isDark
+                                  ? Colors.white.withOpacity(0.12)
+                                  : const Color(0xFF1E293B),
                               foregroundColor: Colors.white,
                               elevation: 0,
                               padding: const EdgeInsets.symmetric(
@@ -431,7 +430,7 @@ class _AppDrawerState extends ConsumerState<AppDrawer> {
                         child: Icon(
                           Icons.play_circle_fill_rounded,
                           size: 24,
-                          color: AppColors.primary,
+                          color: Colors.white,
                         ),
                       ),
                     ),
@@ -520,8 +519,8 @@ class _DrawerItem extends StatelessWidget {
   Widget build(BuildContext context) {
     const iconColor = Colors.white;
     final labelColor = isSelected
-        ? AppColors.primary
-        : Colors.white;
+        ? Colors.white
+        : Colors.white70;
 
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 1),
@@ -538,7 +537,7 @@ class _DrawerItem extends StatelessWidget {
             ),
             child: Stack(
               children: [
-                // Active marker: a slim red bar hugging the start edge.
+                // Active marker: a slim white bar hugging the start edge.
                 if (isSelected)
                   PositionedDirectional(
                     start: 0,
@@ -549,7 +548,7 @@ class _DrawerItem extends StatelessWidget {
                         width: 3,
                         height: 22,
                         decoration: BoxDecoration(
-                          color: AppColors.primary,
+                          color: Colors.white,
                           borderRadius: BorderRadius.circular(2),
                         ),
                       ),
@@ -609,8 +608,9 @@ class _Pill extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2.5),
       decoration: BoxDecoration(
-        color: AppColors.primary,
+        color: Colors.white.withOpacity(0.12),
         borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: Colors.white24, width: 0.8),
       ),
       child: Text(
         text,

@@ -102,14 +102,6 @@ class _AppSidebarState extends ConsumerState<AppSidebar> {
                     ? Colors.white.withOpacity(0.04)
                     : const Color(0xFFF8FAFC),
                 borderRadius: BorderRadius.circular(12),
-                border: Border.all(
-                  color: isSportsUnlocked
-                      ? AppColors.primary.withOpacity(0.35)
-                      : (isDark
-                          ? Colors.white.withOpacity(0.08)
-                          : const Color(0xFFE2E8F0)),
-                  width: 1,
-                ),
               ),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -117,30 +109,21 @@ class _AppSidebarState extends ConsumerState<AppSidebar> {
                   Row(
                     children: [
                       Container(
-                        width: 32,
-                        height: 32,
+                        width: 34,
+                        height: 34,
                         decoration: BoxDecoration(
                           shape: BoxShape.circle,
-                          color: AppColors.primary.withOpacity(0.15),
-                          border: Border.all(
-                            color: AppColors.primary.withOpacity(0.4),
-                            width: 1.5,
-                          ),
+                          color: Colors.white.withOpacity(0.08),
                         ),
-                        child: Center(
-                          child: Text(
-                            (userProfile?.fullName.isNotEmpty == true)
-                                ? userProfile!.fullName.substring(0, 1).toUpperCase()
-                                : 'ح',
-                            style: const TextStyle(
-                              color: AppColors.primary,
-                              fontSize: 14,
-                              fontWeight: FontWeight.w900,
-                            ),
+                        child: const Center(
+                          child: Icon(
+                            Icons.person_rounded,
+                            color: Colors.white,
+                            size: 20,
                           ),
                         ),
                       ),
-                      const SizedBox(width: 8),
+                      const SizedBox(width: 10),
                       Expanded(
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
@@ -150,24 +133,39 @@ class _AppSidebarState extends ConsumerState<AppSidebar> {
                                   ? userProfile!.fullName
                                   : 'مستخدم CineBall',
                               style: TextStyle(
-                                fontSize: 12.5,
+                                fontSize: 13,
                                 fontWeight: FontWeight.w900,
                                 color: isDark ? Colors.white : Colors.black87,
+                                letterSpacing: -0.2,
                               ),
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,
                             ),
-                            Text(
-                              userProfile?.phone.isNotEmpty == true
-                                  ? userProfile!.phone
-                                  : '',
-                              style: TextStyle(
-                                fontSize: 10.5,
-                                color: isDark ? Colors.white54 : Colors.black54,
+                            if (userProfile?.phone.isNotEmpty == true) ...[
+                              const SizedBox(height: 5),
+                              Row(
+                                children: [
+                                  Icon(
+                                    Icons.phone_android_rounded,
+                                    size: 11.5,
+                                    color: isDark ? Colors.white38 : Colors.black38,
+                                  ),
+                                  const SizedBox(width: 3),
+                                  Expanded(
+                                    child: Text(
+                                      userProfile!.phone,
+                                      style: TextStyle(
+                                        fontSize: 10.5,
+                                        fontWeight: FontWeight.w600,
+                                        color: isDark ? Colors.white60 : Colors.black54,
+                                      ),
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                    ),
+                                  ),
+                                ],
                               ),
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                            ),
+                            ],
                           ],
                         ),
                       ),
@@ -223,7 +221,9 @@ class _AppSidebarState extends ConsumerState<AppSidebar> {
                           child: ElevatedButton(
                             onPressed: () => context.push('/sports-activation'),
                             style: ElevatedButton.styleFrom(
-                              backgroundColor: AppColors.primary,
+                              backgroundColor: isDark
+                                  ? Colors.white.withOpacity(0.12)
+                                  : const Color(0xFF1E293B),
                               foregroundColor: Colors.white,
                               elevation: 0,
                               padding: const EdgeInsets.symmetric(horizontal: 8),
@@ -420,7 +420,7 @@ class _AppSidebarState extends ConsumerState<AppSidebar> {
           child: Icon(
             Icons.play_circle_fill_rounded,
             size: 24,
-            color: AppColors.primary,
+            color: Colors.white,
           ),
         ),
       ),
@@ -489,8 +489,9 @@ class _AppSidebarState extends ConsumerState<AppSidebar> {
                       child: Container(
                         padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2.5),
                         decoration: BoxDecoration(
-                          color: AppColors.primary,
+                          color: Colors.white.withOpacity(0.15),
                           borderRadius: BorderRadius.circular(8),
+                          border: Border.all(color: Colors.white30, width: 0.8),
                         ),
                         child: const Text(
                           'تحديث متاح',
@@ -554,13 +555,11 @@ class _AppSidebarState extends ConsumerState<AppSidebar> {
     String? badgeText,
     required VoidCallback onTap,
   }) {
-    const activeColor = AppColors.primary;
-
-    final unselectedTextColor =
-        isDark ? const Color(0xFFCBD5E1) : const Color(0xFF334155);
+    final textColor = isSelected
+        ? Colors.white
+        : (isDark ? const Color(0xFFCBD5E1) : const Color(0xFF334155));
 
     const iconColor = Colors.white;
-    final textColor = isSelected ? activeColor : unselectedTextColor;
 
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 2.0),
@@ -569,10 +568,14 @@ class _AppSidebarState extends ConsumerState<AppSidebar> {
         child: InkWell(
           onTap: onTap,
           borderRadius: BorderRadius.circular(10),
-          hoverColor: activeColor.withOpacity(0.04),
-          child: Padding(
-            // The 72 px rail minus the list's 10 px sides leaves 52 px; the
-            // 32 px icon slot needs the row's own sides at 8 px to fit.
+          hoverColor: Colors.white.withOpacity(0.04),
+          child: Container(
+            decoration: BoxDecoration(
+              color: isSelected
+                  ? (isDark ? Colors.white.withOpacity(0.08) : Colors.black.withOpacity(0.06))
+                  : Colors.transparent,
+              borderRadius: BorderRadius.circular(10),
+            ),
             padding: EdgeInsets.symmetric(
               horizontal: _collapsed ? 8 : 12,
               vertical: 8,
@@ -601,7 +604,7 @@ class _AppSidebarState extends ConsumerState<AppSidebar> {
                       overflow: TextOverflow.ellipsis,
                       style: TextStyle(
                         fontSize: 13.5,
-                        fontWeight: isSelected ? FontWeight.w800 : FontWeight.w600,
+                        fontWeight: isSelected ? FontWeight.w900 : FontWeight.w600,
                         color: textColor,
                       ),
                     ),
@@ -610,8 +613,9 @@ class _AppSidebarState extends ConsumerState<AppSidebar> {
                     Container(
                       padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
                       decoration: BoxDecoration(
-                        color: activeColor,
+                        color: Colors.white.withOpacity(0.12),
                         borderRadius: BorderRadius.circular(6),
+                        border: Border.all(color: Colors.white24, width: 0.8),
                       ),
                       child: Text(
                         badgeText,
@@ -626,8 +630,9 @@ class _AppSidebarState extends ConsumerState<AppSidebar> {
                     Container(
                       padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
                       decoration: BoxDecoration(
-                        color: activeColor,
+                        color: Colors.white.withOpacity(0.12),
                         borderRadius: BorderRadius.circular(6),
+                        border: Border.all(color: Colors.white24, width: 0.8),
                       ),
                       child: Text(
                         '$badgeCount',
