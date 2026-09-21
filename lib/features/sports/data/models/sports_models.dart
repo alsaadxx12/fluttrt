@@ -53,6 +53,16 @@ class SportMatchItem {
   /// or the kick-off was more than ~115 minutes ago (or 105 min with scores present).
   bool get isEnded {
     final s = status.trim().toLowerCase();
+
+    // 1. Explicitly NOT ended if marked as scheduled, not started, or upcoming
+    if (s.contains('لم تبدأ') ||
+        s.contains('scheduled') ||
+        s.contains('not_started') ||
+        s.contains('upcoming')) {
+      return false;
+    }
+
+    // 2. Explicitly ended if status says finished / ended
     if (s.contains('انتهت') ||
         s.contains('منتهي') ||
         s.contains('نهائي') ||
@@ -70,9 +80,15 @@ class SportMatchItem {
         }.contains(s)) {
       return true;
     }
+
     final ko = DateTime.tryParse(kickoffAt);
     if (ko != null) {
-      final sinceKickoff = DateTime.now().toUtc().difference(ko.toUtc());
+      final nowUtc = DateTime.now().toUtc();
+      // If kickoff time is in the future, it definitely cannot have ended!
+      if (ko.toUtc().isAfter(nowUtc)) {
+        return false;
+      }
+      final sinceKickoff = nowUtc.difference(ko.toUtc());
       // Match kicked off >= 105 mins ago with scores recorded => ended
       if (sinceKickoff >= const Duration(minutes: 105) &&
           homeScore != null &&
@@ -91,6 +107,12 @@ class SportMatchItem {
   bool get isLive {
     if (isEnded) return false;
     final s = status.trim().toLowerCase();
+    if (s.contains('لم تبدأ') ||
+        s.contains('scheduled') ||
+        s.contains('not_started') ||
+        s.contains('upcoming')) {
+      return false;
+    }
     const liveWords = {
       'live',
       'in_progress',

@@ -374,16 +374,30 @@ class SportsService {
             : 'SIR TV';
 
         // Normalize status
-        String status = statStr;
-        if (body.contains('comming-soon') || statStr.contains('لم تبدأ')) {
-          status = 'لم تبدأ بعد';
+        String status = 'scheduled';
+        if (day == 'tomorrow') {
+          status = 'scheduled';
+          homeScore = null;
+          awayScore = null;
+        } else if (day == 'yesterday') {
+          status = 'finished';
+        } else if (body.contains('comming-soon') || statStr.contains('لم تبدأ')) {
+          status = 'scheduled';
+          homeScore = null;
+          awayScore = null;
         } else if (body.contains('finished') || statStr.contains('انتهت')) {
           status = 'finished';
         } else if (body.contains('live') || statStr.contains('مباشر') || statStr.contains('جاري')) {
           status = 'live';
+        } else {
+          status = 'scheduled';
+          homeScore = null;
+          awayScore = null;
         }
 
         final parsedKickoff = parseTimeToUtcIso(timeStr, day: day);
+        final isMatchLive = status == 'live';
+        final hasWatch = isMatchLive || status == 'scheduled';
         final item = SportMatchItem(
           id: matchId,
           kickoffAt: parsedKickoff.isNotEmpty ? parsedKickoff : DateTime.now().toUtc().toIso8601String(),
@@ -392,7 +406,7 @@ class SportsService {
           away: TeamInfo(name: tm2Name, logo: tm2Logo),
           homeScore: homeScore,
           awayScore: awayScore,
-          hasWatch: true,
+          hasWatch: hasWatch,
           league: leagueName,
           directUrl: hitUrl,
           broadcasterName: primaryBroadcaster,
@@ -427,78 +441,8 @@ class SportsService {
     }
   }
 
-  Future<List<LeagueGroup>> fetchMatches({String day = 'today'}) async {
-    try {
-      // Unify match fetching to the EXACT source that broadcasts the streams: Kora x90 (korax90.co)
-      final baseGroups = await fetchKoraX90Matches(day: day);
-      if (baseGroups.isEmpty) return [];
-
-      // Enrich with 365Scores for real-time scores / live timer if available
-      List<LeagueGroup> enrichedGroups = baseGroups;
-      if (day == 'yesterday' || day == 'today') {
-        try {
-          final scoresList = await _fetch365ScoresForDay(day);
-          if (scoresList.isNotEmpty) {
-            enrichedGroups = baseGroups.map((g) {
-              final updatedMatches = g.matches.map((m) {
-                final found = _lookup365Score(m.home.name, m.away.name, scoresList);
-                if (found != null) {
-                  return m.copyWith(
-                    homeScore: found.homeScore,
-                    awayScore: found.awayScore,
-                    status: (day == 'yesterday' || found.isEnded)
-                        ? 'finished'
-                        : (found.isLive ? 'live' : m.status),
-                  );
-                }
-                return m;
-              }).toList();
-              return LeagueGroup(
-                leagueId: g.leagueId,
-                cid: g.cid,
-                league: g.league,
-                logo: g.logo,
-                matches: updatedMatches,
-              );
-            }).toList();
-          }
-        } catch (e) {
-          debugPrint('[SPORTS] Enrich 365scores error: $e');
-        }
-      }
-
-      if (day == 'tomorrow') {
-        return enrichedGroups.map((g) => LeagueGroup(
-          leagueId: g.leagueId,
-          cid: g.cid,
-          league: g.league,
-          logo: g.logo,
-          matches: g.matches.map((m) => m.copyWith(
-            status: 'scheduled',
-            hasWatch: false,
-          )).toList(),
-        )).toList();
-      } else if (day == 'yesterday') {
-        return enrichedGroups.map((g) => LeagueGroup(
-          leagueId: g.leagueId,
-          cid: g.cid,
-          league: g.league,
-          logo: g.logo,
-          matches: g.matches.map((m) => m.copyWith(
-            status: 'finished',
-            hasWatch: false,
-          )).toList(),
-        )).toList();
-      }
-
-      return enrichedGroups;
-    } catch (e) {
-      debugPrint('[SPORTS] fetchMatches error: $e');
-      return [];
-    }
-  }
-
-  Future<List<({String home, String away, int homeScore, int awayScore, bool isLive, bool isEnded})>> _fetch365ScoresForDay(String day) async {
+  /// Official comprehensive fixtures provider from 365Scores
+  Future<List<LeagueGroup>> fetch365Matches({String day = 'today'}) async {
     try {
       final now = DateTime.now();
       DateTime target = now;
@@ -513,9 +457,13 @@ class SportsService {
       final dateParam = '$d/$m/$y';
 
       final dio = createDio(BaseOptions(
-        connectTimeout: const Duration(seconds: 7),
-        receiveTimeout: const Duration(seconds: 7),
-        headers: {'User-Agent': 'Mozilla/5.0'},
+        connectTimeout: const Duration(seconds: 8),
+        receiveTimeout: const Duration(seconds: 8),
+        headers: {
+          'User-Agent':
+              'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
+          'Referer': 'https://webws.365scores.com/',
+        },
       ));
 
       final res = await dio.get(
@@ -523,6 +471,8 @@ class SportsService {
         queryParameters: {
           'appTypeId': 5,
           'langId': 27,
+          'timezoneName': 'Asia/Baghdad',
+          'userCountryId': 101,
           'startDate': dateParam,
           'endDate': dateParam,
           'sports': 1,
@@ -530,42 +480,212 @@ class SportsService {
       );
 
       if (res.statusCode != 200 || res.data is! Map) return [];
-      final games = res.data['games'] as List?;
-      if (games == null || games.isEmpty) return [];
+      final data = res.data as Map;
+      final games = data['games'] as List? ?? [];
+      if (games.isEmpty) return [];
 
-      final list = <({String home, String away, int homeScore, int awayScore, bool isLive, bool isEnded})>[];
+      final comps = {
+        for (var c in (data['competitions'] as List? ?? []))
+          if (c is Map && c['id'] != null) c['id']: c
+      };
+
+      final Map<String, List<SportMatchItem>> groupedByLeague = {};
+      final Set<String> seenTeams = {};
+      int matchCounter = 0;
+
       for (final g in games) {
         if (g is! Map) continue;
         final hComp = g['homeCompetitor'] as Map?;
         final aComp = g['awayCompetitor'] as Map?;
         if (hComp == null || aComp == null) continue;
 
-        final hName = hComp['name']?.toString() ?? '';
-        final aName = aComp['name']?.toString() ?? '';
-        final hScoreNum = hComp['score'];
-        final aScoreNum = aComp['score'];
+        final hName = hComp['name']?.toString().trim() ?? '';
+        final aName = aComp['name']?.toString().trim() ?? '';
+        if (hName.isEmpty || aName.isEmpty) continue;
 
-        if (hName.isEmpty || aName.isEmpty || hScoreNum == null || aScoreNum == null) continue;
-        final hScore = (hScoreNum as num).toInt();
-        final aScore = (aScoreNum as num).toInt();
+        final teamKey = '${hName.toLowerCase()}_${aName.toLowerCase()}';
+        if (!seenTeams.add(teamKey)) continue;
 
-        final statusText = g['statusText']?.toString() ?? '';
-        final gameTime = (g['gameTime'] as num?)?.toInt() ?? -1;
-        final isEnded = statusText.contains('انتهت') || statusText.contains('نهائي') || statusText.contains('بعد') || (g['completion'] == 100);
-        final isLive = gameTime > 0 && !isEnded;
+        final hId = hComp['id'];
+        final aId = aComp['id'];
+        final hLogo = hId != null
+            ? 'https://imagecache.365scores.com/image/upload/f_png,w_48,h_48,c_limit,q_auto:eco,dpr_2/v1/competitors/$hId'
+            : null;
+        final aLogo = aId != null
+            ? 'https://imagecache.365scores.com/image/upload/f_png,w_48,h_48,c_limit,q_auto:eco,dpr_2/v1/competitors/$aId'
+            : null;
 
-        list.add((
-          home: hName,
-          away: aName,
-          homeScore: hScore,
-          awayScore: aScore,
-          isLive: isLive,
-          isEnded: isEnded,
+        final compId = g['competitionId'];
+        final compMap = comps[compId];
+        final rawLeague = compMap?['name']?.toString() ?? g['competitionDisplayName']?.toString() ?? 'مباريات اليوم';
+
+        final statusGroup = g['statusGroup'];
+        final statusText = g['statusText']?.toString().trim() ?? '';
+        final gameTime = (g['gameTime'] as num?)?.toDouble() ?? -1.0;
+
+        String status = 'scheduled';
+        int? homeScore;
+        int? awayScore;
+
+        if (day == 'yesterday') {
+          status = 'finished';
+          homeScore = (hComp['score'] as num?)?.toInt();
+          awayScore = (aComp['score'] as num?)?.toInt();
+        } else if (day == 'tomorrow') {
+          status = 'scheduled';
+          homeScore = null;
+          awayScore = null;
+        } else {
+          // today
+          if (statusGroup == 4 || statusText.contains('انتهت') || statusText.contains('نهائي')) {
+            status = 'finished';
+            homeScore = (hComp['score'] as num?)?.toInt();
+            awayScore = (aComp['score'] as num?)?.toInt();
+          } else if (statusText.contains('لم تبدأ')) {
+            status = 'scheduled';
+            homeScore = null;
+            awayScore = null;
+          } else if (statusGroup == 2 || statusGroup == 3 || gameTime > 0) {
+            status = 'live';
+            homeScore = (hComp['score'] as num?)?.toInt();
+            awayScore = (aComp['score'] as num?)?.toInt();
+          } else {
+            status = 'scheduled';
+            homeScore = null;
+            awayScore = null;
+          }
+        }
+
+        final startTimeStr = g['startTime']?.toString() ?? '';
+        final matchId = (g['id'] as num?)?.toInt() ?? (900000 + matchCounter);
+        matchCounter++;
+
+        final isMatchLive = status == 'live';
+        final hasWatch = isMatchLive || status == 'scheduled';
+
+        final item = SportMatchItem(
+          id: matchId,
+          kickoffAt: startTimeStr.isNotEmpty ? startTimeStr : DateTime.now().toUtc().toIso8601String(),
+          status: status,
+          home: TeamInfo(name: hName, logo: hLogo),
+          away: TeamInfo(name: aName, logo: aLogo),
+          homeScore: homeScore,
+          awayScore: awayScore,
+          minute: isMatchLive && gameTime > 0 ? gameTime.toInt() : null,
+          hasWatch: hasWatch,
+          league: rawLeague,
+        );
+
+        groupedByLeague.putIfAbsent(rawLeague, () => []).add(item);
+      }
+
+      int leagueCounter = 1;
+      final List<LeagueGroup> groups = [];
+      for (final entry in groupedByLeague.entries) {
+        groups.add(LeagueGroup(
+          leagueId: leagueCounter++,
+          league: entry.key,
+          matches: entry.value,
         ));
       }
-      return list;
+      return groups;
     } catch (e) {
-      debugPrint('[SPORTS] _fetch365ScoresForDay error: $e');
+      debugPrint('[SPORTS] fetch365Matches error: $e');
+      return [];
+    }
+  }
+
+  Future<List<LeagueGroup>> fetchMatches({String day = 'today'}) async {
+    try {
+      // 1. Fetch real-time schedule from 365Scores (authoritative fixtures)
+      final scoresGroups = await fetch365Matches(day: day);
+
+      // 2. Fetch SIR TV featured broadcast schedule
+      final sirGroups = await fetchSirTvMatches(day: day);
+
+      if (scoresGroups.isNotEmpty) {
+        // Enrich 365Scores matches with broadcaster names / streams from SIR TV
+        if (sirGroups.isNotEmpty) {
+          final sirFlat = sirGroups.expand((g) => g.matches).toList();
+          for (final g in scoresGroups) {
+            for (int i = 0; i < g.matches.length; i++) {
+              final m = g.matches[i];
+              for (final s in sirFlat) {
+                if (_teamsMatch(m.home.name, m.away.name, s.home.name, s.away.name)) {
+                  g.matches[i] = m.copyWith(
+                    broadcasterName: s.broadcasterName,
+                    broadcasters: s.broadcasters.isNotEmpty ? s.broadcasters : m.broadcasters,
+                    directUrl: s.directUrl ?? m.directUrl,
+                  );
+                  break;
+                }
+              }
+            }
+          }
+        }
+
+        // Post-processing safety for days
+        if (day == 'tomorrow') {
+          return scoresGroups.map((g) => LeagueGroup(
+            leagueId: g.leagueId,
+            cid: g.cid,
+            league: g.league,
+            logo: g.logo,
+            matches: g.matches.map((m) => m.copyWith(
+              status: 'scheduled',
+              homeScore: null,
+              awayScore: null,
+              hasWatch: true,
+            )).toList(),
+          )).toList();
+        } else if (day == 'yesterday') {
+          return scoresGroups.map((g) => LeagueGroup(
+            leagueId: g.leagueId,
+            cid: g.cid,
+            league: g.league,
+            logo: g.logo,
+            matches: g.matches.map((m) => m.copyWith(
+              status: 'finished',
+            )).toList(),
+          )).toList();
+        }
+
+        return scoresGroups;
+      }
+
+      // Fallback to SIR TV if 365Scores is unavailable
+      if (sirGroups.isNotEmpty) {
+        if (day == 'tomorrow') {
+          return sirGroups.map((g) => LeagueGroup(
+            leagueId: g.leagueId,
+            cid: g.cid,
+            league: g.league,
+            logo: g.logo,
+            matches: g.matches.map((m) => m.copyWith(
+              status: 'scheduled',
+              homeScore: null,
+              awayScore: null,
+              hasWatch: true,
+            )).toList(),
+          )).toList();
+        } else if (day == 'yesterday') {
+          return sirGroups.map((g) => LeagueGroup(
+            leagueId: g.leagueId,
+            cid: g.cid,
+            league: g.league,
+            logo: g.logo,
+            matches: g.matches.map((m) => m.copyWith(
+              status: 'finished',
+            )).toList(),
+          )).toList();
+        }
+        return sirGroups;
+      }
+
+      // Final fallback
+      return await fetchKoraX90Matches(day: day);
+    } catch (e) {
+      debugPrint('[SPORTS] fetchMatches error: $e');
       return [];
     }
   }
@@ -583,29 +703,17 @@ class SportsService {
         .toLowerCase();
   }
 
-  ({int homeScore, int awayScore, bool isLive, bool isEnded})? _lookup365Score(
-    String home,
-    String away,
-    List<({String home, String away, int homeScore, int awayScore, bool isLive, bool isEnded})> scores,
-  ) {
-    final ch = _cleanTeamNameForMatch(home);
-    final ca = _cleanTeamNameForMatch(away);
-    if (ch.isEmpty || ca.isEmpty) return null;
-
-    for (final s in scores) {
-      final sh = _cleanTeamNameForMatch(s.home);
-      final sa = _cleanTeamNameForMatch(s.away);
-
-      final homeMatches = ch == sh || ch.contains(sh) || sh.contains(ch) ||
-          (ch.length > 3 && sh.length > 3 && (ch.startsWith(sh.substring(0, 3)) || sh.startsWith(ch.substring(0, 3))));
-      final awayMatches = ca == sa || ca.contains(sa) || sa.contains(ca) ||
-          (ca.length > 3 && sa.length > 3 && (ca.startsWith(sa.substring(0, 3)) || sa.startsWith(ca.substring(0, 3))));
-
-      if (homeMatches && awayMatches) {
-        return (homeScore: s.homeScore, awayScore: s.awayScore, isLive: s.isLive, isEnded: s.isEnded);
-      }
-    }
-    return null;
+  bool _teamsMatch(String h1, String a1, String h2, String a2) {
+    final ch1 = _cleanTeamNameForMatch(h1);
+    final ch2 = _cleanTeamNameForMatch(h2);
+    final ca1 = _cleanTeamNameForMatch(a1);
+    final ca2 = _cleanTeamNameForMatch(a2);
+    if (ch1.isEmpty || ch2.isEmpty || ca1.isEmpty || ca2.isEmpty) return false;
+    final homeMatches = ch1 == ch2 || ch1.contains(ch2) || ch2.contains(ch1) ||
+        (ch1.length > 3 && ch2.length > 3 && (ch1.startsWith(ch2.substring(0, 3)) || ch2.startsWith(ch1.substring(0, 3))));
+    final awayMatches = ca1 == ca2 || ca1.contains(ca2) || ca2.contains(ca1) ||
+        (ca1.length > 3 && ca2.length > 3 && (ca1.startsWith(ca2.substring(0, 3)) || ca2.startsWith(ca1.substring(0, 3))));
+    return homeMatches && awayMatches;
   }
 
   Future<List<SportMatchItem>> fetchLiveMatches({String day = 'today'}) async {

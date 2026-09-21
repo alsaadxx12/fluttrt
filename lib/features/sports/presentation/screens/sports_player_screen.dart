@@ -541,6 +541,7 @@ class _SportsPlayerScreenState extends ConsumerState<SportsPlayerScreen> with Wi
               host.contains('r2.dev') ||
               host.contains('yassirtv.com') ||
               host.contains('siiir.tv') ||
+              host.contains('sira.website') ||
               host.contains('koora-l.live') ||
               host.contains('korax90.co') ||
               host.contains('boomstreaming.com') ||
@@ -709,6 +710,22 @@ class _SportsPlayerScreenState extends ConsumerState<SportsPlayerScreen> with Wi
     _scheduleHideControls();
   }
 
+  String _formatKickoffLocal(String raw) {
+    if (raw.trim().isEmpty) return '';
+    try {
+      final dt = DateTime.tryParse(raw.trim());
+      if (dt != null) {
+        final local = dt.toLocal();
+        final h = local.hour;
+        final m = local.minute.toString().padLeft(2, '0');
+        final period = h >= 12 ? 'م' : 'ص';
+        final h12 = h == 0 ? 12 : (h > 12 ? h - 12 : h);
+        return '$h12:$m $period';
+      }
+    } catch (_) {}
+    return raw;
+  }
+
   Future<void> _setupChannelsAndStream() async {
     final channelList = <PlayerChannelItem>[];
 
@@ -742,7 +759,26 @@ class _SportsPlayerScreenState extends ConsumerState<SportsPlayerScreen> with Wi
     final direct = widget.directUrl ?? match.directUrl;
     final sportsService = ref.read(sportsServiceProvider);
 
-    // Kora x90 Streaming Sources (Authoritative source)
+    // 1. Direct Broadcasters on the match model (e.g. from SIR TV or merged stream feeds)
+    if (match.broadcasters.isNotEmpty) {
+      for (final b in match.broadcasters) {
+        if (b.streamUrl != null && b.streamUrl!.isNotEmpty) {
+          final isHls = b.streamUrl!.contains('.m3u8');
+          channelList.add(
+            PlayerChannelItem(
+              id: 'match_broadcaster_${b.id}',
+              name: b.name.isNotEmpty ? b.name : 'قناة البث المباشر HD',
+              streamUrl: b.streamUrl,
+              isAppSource: true,
+              isWebStream: !isHls && (b.streamUrl!.contains('http') && !b.streamUrl!.endsWith('.m3u8')),
+              subtitle: isHls ? 'بث HLS مباشر فائق السرعة' : 'مشغل البث المباشر',
+            ),
+          );
+        }
+      }
+    }
+
+    // 2. Kora x90 Streaming Sources (Authoritative source)
     if (direct != null && (direct.contains('korax90.co') || direct.contains('boomstreaming.com'))) {
       try {
         final koraServers = await sportsService.resolveKoraX90Servers(direct);
@@ -771,6 +807,28 @@ class _SportsPlayerScreenState extends ConsumerState<SportsPlayerScreen> with Wi
       }
     }
 
+    // 3. Match against live sports channels in the app (e.g. beIN Sports 1, Alkass, SSC)
+    final bName = (match.broadcasterName ?? '').trim();
+    if (bName.isNotEmpty && bName != 'غير معروف') {
+      final allChannels = ref.read(sportsChannelsProvider).valueOrNull ?? [];
+      for (final ch in allChannels) {
+        final chName = ch.channelName.toLowerCase();
+        final cleanBName = bName.toLowerCase();
+        if (chName.contains(cleanBName) || cleanBName.contains(chName)) {
+          channelList.add(
+            PlayerChannelItem(
+              id: 'tv_channel_${ch.channelId}',
+              name: ch.channelName,
+              logo: ch.channelImage,
+              streamUrl: ch.channelUrl,
+              subtitle: 'بث القناة الناقلة للمباراة',
+              isWebStream: ch.channelType == 'YOUTUBE_LIVE' || ch.channelUrl.contains('youtube.com'),
+            ),
+          );
+        }
+      }
+    }
+
     if (channelList.isEmpty) {
       if (mounted) {
         setState(() {
@@ -779,8 +837,11 @@ class _SportsPlayerScreenState extends ConsumerState<SportsPlayerScreen> with Wi
           _isLoadingStream = false;
           if (match.isEnded || match.status == 'finished') {
             _streamErrorMessage = 'انتهت هذه المباراة، ولا يتوفر بث مباشر حالياً.';
-          } else if (match.status == 'scheduled') {
-            _streamErrorMessage = 'لم تبدأ المباراة بعد. سيبدأ البث المباشر قبل انطلاق المباراة.';
+          } else if (match.isScheduled || match.status == 'scheduled' || match.status.contains('لم تبدأ')) {
+            final t = _formatKickoffLocal(match.kickoffAt);
+            _streamErrorMessage = t.isNotEmpty
+                ? 'لم تبدأ المباراة بعد • موعد انطلاق البث: $t'
+                : 'لم تبدأ المباراة بعد. سيبدأ البث المباشر قبل انطلاق المباراة.';
           } else {
             _streamErrorMessage = 'سيرفرات البث المباشر غير متاحة حالياً، يرجى إعادة المحاولة لاحقاً.';
           }

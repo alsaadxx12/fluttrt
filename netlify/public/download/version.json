@@ -1,15 +1,15 @@
 {
   "updateEnabled": true,
-  "versionCode": 2083,
+  "versionCode": 2084,
   "versionName": "1.0.80",
-  "apkUrl": "https://cineball.netlify.app/download/app.apk?v=83",
-  "apkUrlArm64": "https://cineball.netlify.app/download/app-arm64-v8a-release.apk?v=83",
-  "apkUrlArm32": "https://cineball.netlify.app/download/app-armeabi-v7a-release.apk?v=83",
-  "sha256": "5aa3cefedf8f6ba0b81e1939fd048d90d2d7da4fd830ea5dee0183e257bef413",
-  "sha256Arm64": "5aa3cefedf8f6ba0b81e1939fd048d90d2d7da4fd830ea5dee0183e257bef413",
-  "sha256Arm32": "e3dd4e6819557b4c968b7d2496d99e0ccd6d5c7b1ad6bddb80c5710fe4036da1",
-  "sizeBytes": 19282885,
+  "apkUrl": "https://cineball.netlify.app/download/app.apk?v=84",
+  "apkUrlArm64": "https://cineball.netlify.app/download/app-arm64-v8a-release.apk?v=84",
+  "apkUrlArm32": "https://cineball.netlify.app/download/app-armeabi-v7a-release.apk?v=84",
+  "sha256": "e629f837d3a09e3eb498f15142956ca386a5b06591b39cd69b8b96530ebf6095",
+  "sha256Arm64": "e629f837d3a09e3eb498f15142956ca386a5b06591b39cd69b8b96530ebf6095",
+  "sha256Arm32": "e82edc79bf6178c690ffaf7632809bb05948aa4fc201bf430d29a425bf5a926a",
+  "sizeBytes": 19296855,
   "forceUpdate": false,
   "minSupportedVersion": 1,
-  "notes": "إصلاح التحقق من التحديث ومنع تكرار ظهور نافذة التحديث بعد التثبيت، مع توحيد مصدر المباريات والبث المباشر."
+  "notes": "إصلاح جدول المباريات لليوم والغد والأمس بشكل دقيق وتحديث حالة المباريات ومصادر البث المباشر."
 }
