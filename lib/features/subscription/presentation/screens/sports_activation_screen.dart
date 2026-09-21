@@ -276,38 +276,37 @@ class _SportsActivationScreenState
               ),
               const SizedBox(height: 16),
 
-              // Manual Horizontal Scrollable Plans List
+              // Two Plans Display (Side-by-Side)
               SizedBox(
                 height: 175,
-                child: ListView.separated(
-                  scrollDirection: Axis.horizontal,
-                  physics: const ClampingScrollPhysics(),
-                  itemCount: SubscriptionPlan.defaultPlans.length,
-                  separatorBuilder: (_, __) => const SizedBox(width: 8),
-                  itemBuilder: (context, idx) {
-                    final plan = SubscriptionPlan.defaultPlans[idx];
-                    final isSelected = _selectedPlan.id == plan.id;
-                    return SubscriptionPlanCard(
-                      plan: plan,
-                      isSelected: isSelected,
-                      isDark: isDark,
-                      width: 140,
-                      onTap: () {
-                        setState(() {
-                          _selectedPlan = plan;
-                        });
-                      },
-                      onWhatsApp: () {
-                        setState(() {
-                          _selectedPlan = plan;
-                        });
-                        SubscriptionPlan.openWhatsAppSales(
-                          plan: plan,
-                          context: context,
-                        );
-                      },
-                    );
-                  },
+                child: Row(
+                  children: [
+                    for (int idx = 0; idx < SubscriptionPlan.defaultPlans.length; idx++) ...[
+                      if (idx > 0) const SizedBox(width: 12),
+                      Expanded(
+                        child: SubscriptionPlanCard(
+                          plan: SubscriptionPlan.defaultPlans[idx],
+                          isSelected: _selectedPlan.id == SubscriptionPlan.defaultPlans[idx].id,
+                          isDark: isDark,
+                          width: double.infinity,
+                          onTap: () {
+                            setState(() {
+                              _selectedPlan = SubscriptionPlan.defaultPlans[idx];
+                            });
+                          },
+                          onWhatsApp: () {
+                            setState(() {
+                              _selectedPlan = SubscriptionPlan.defaultPlans[idx];
+                            });
+                            SubscriptionPlan.openWhatsAppSales(
+                              plan: SubscriptionPlan.defaultPlans[idx],
+                              context: context,
+                            );
+                          },
+                        ),
+                      ),
+                    ],
+                  ],
                 ),
               ),
               const SizedBox(height: 20),

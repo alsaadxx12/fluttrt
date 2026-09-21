@@ -1,15 +1,15 @@
 {
   "updateEnabled": true,
-  "versionCode": 2084,
+  "versionCode": 2085,
   "versionName": "1.0.80",
-  "apkUrl": "https://cineball.netlify.app/download/app.apk?v=84",
-  "apkUrlArm64": "https://cineball.netlify.app/download/app-arm64-v8a-release.apk?v=84",
-  "apkUrlArm32": "https://cineball.netlify.app/download/app-armeabi-v7a-release.apk?v=84",
-  "sha256": "e629f837d3a09e3eb498f15142956ca386a5b06591b39cd69b8b96530ebf6095",
-  "sha256Arm64": "e629f837d3a09e3eb498f15142956ca386a5b06591b39cd69b8b96530ebf6095",
-  "sha256Arm32": "e82edc79bf6178c690ffaf7632809bb05948aa4fc201bf430d29a425bf5a926a",
-  "sizeBytes": 19296855,
+  "apkUrl": "https://cineball.netlify.app/download/app.apk?v=85",
+  "apkUrlArm64": "https://cineball.netlify.app/download/app-arm64-v8a-release.apk?v=85",
+  "apkUrlArm32": "https://cineball.netlify.app/download/app-armeabi-v7a-release.apk?v=85",
+  "sha256": "b3a7665ae2abccf2dc7e53158eecedd16853024d14e3393a5c68d2b58ef476cb",
+  "sha256Arm64": "b3a7665ae2abccf2dc7e53158eecedd16853024d14e3393a5c68d2b58ef476cb",
+  "sha256Arm32": "4ef10e78cd3ac012843872fb1bae6d52a6c8eb9c3bbd88103d1f2de032bc4012",
+  "sizeBytes": 19292962,
   "forceUpdate": false,
   "minSupportedVersion": 1,
-  "notes": "إصلاح جدول المباريات لليوم والغد والأمس بشكل دقيق وتحديث حالة المباريات ومصادر البث المباشر."
+  "notes": "تعديل تسعيرة الاشتراكات (6 أشهر بـ 5 آلاف، وسنوياً بـ 10 آلاف)، إزالة الإطار الأحمر من بطاقات المقاطع، وتوسيط سلاسل المسلسلات والأفلام مع إعادة الضبط عند الخروج."
 }

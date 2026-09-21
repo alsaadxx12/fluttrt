@@ -527,7 +527,7 @@ class _TrailerCard extends StatelessWidget {
               height: imageH,
               decoration: BoxDecoration(
                 borderRadius: BorderRadius.circular(18),
-                border: Border.all(color: isActive ? const Color(0xFFE50914) : p.border, width: isActive ? 1.6 : 1),
+                border: Border.all(color: p.border, width: 1),
               ),
               clipBehavior: Clip.antiAlias,
               child: Stack(

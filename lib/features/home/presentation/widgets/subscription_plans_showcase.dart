@@ -76,28 +76,30 @@ class SubscriptionPlansShowcase extends ConsumerWidget {
 
           const SizedBox(height: 10),
 
-          // Horizontal scroll of plan cards
+          // Two subscription plan cards side-by-side
           SizedBox(
             height: 172,
-            child: ListView.separated(
+            child: Padding(
               padding: const EdgeInsets.symmetric(horizontal: 16),
-              scrollDirection: Axis.horizontal,
-              physics: const ClampingScrollPhysics(),
-              itemCount: SubscriptionPlan.defaultPlans.length,
-              separatorBuilder: (_, __) => const SizedBox(width: 10),
-              itemBuilder: (context, index) {
-                final plan = SubscriptionPlan.defaultPlans[index];
-                return SubscriptionPlanCard(
-                  plan: plan,
-                  isDark: isDark,
-                  width: 136,
-                  onWhatsApp: () => SubscriptionPlan.openWhatsAppSales(
-                    plan: plan,
-                    context: context,
-                  ),
-                  onTap: () => context.push('/sports-activation'),
-                );
-              },
+              child: Row(
+                children: [
+                  for (int index = 0; index < SubscriptionPlan.defaultPlans.length; index++) ...[
+                    if (index > 0) const SizedBox(width: 12),
+                    Expanded(
+                      child: SubscriptionPlanCard(
+                        plan: SubscriptionPlan.defaultPlans[index],
+                        isDark: isDark,
+                        width: double.infinity,
+                        onWhatsApp: () => SubscriptionPlan.openWhatsAppSales(
+                          plan: SubscriptionPlan.defaultPlans[index],
+                          context: context,
+                        ),
+                        onTap: () => context.push('/sports-activation'),
+                      ),
+                    ),
+                  ],
+                ],
+              ),
             ),
           ),
         ],

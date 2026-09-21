@@ -104,9 +104,72 @@ class _DynCarouselState extends ConsumerState<_DynCarousel> {
   PageController? _controller;
   double _fraction = 0;
   bool _kicked = false;
+  ScrollPosition? _ancestorPos;
+  bool _wasVisible = false;
+
+  int get _middleIndex =>
+      widget.items.isNotEmpty ? widget.items.length ~/ 2 : 0;
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    _attachAncestor();
+  }
+
+  void _attachAncestor() {
+    final pos = Scrollable.maybeOf(context)?.position;
+    if (pos != _ancestorPos) {
+      _ancestorPos?.isScrollingNotifier.removeListener(_onScrollChanged);
+      _ancestorPos = pos;
+      _ancestorPos?.isScrollingNotifier.addListener(_onScrollChanged);
+    }
+  }
+
+  void _onScrollChanged() {
+    if (!mounted || _ancestorPos == null) return;
+    if (!_ancestorPos!.isScrollingNotifier.value) {
+      _checkVisibility();
+    }
+  }
+
+  void _checkVisibility() {
+    if (!mounted) return;
+    final renderObject = context.findRenderObject();
+    if (renderObject is! RenderBox || !renderObject.hasSize) return;
+    final ancestor = Scrollable.maybeOf(context)?.context.findRenderObject();
+    if (ancestor is! RenderBox || !ancestor.hasSize) return;
+
+    final localTop =
+        renderObject.localToGlobal(Offset.zero, ancestor: ancestor).dy;
+    final localBottom = localTop + renderObject.size.height;
+    final viewH = ancestor.size.height;
+    final isVis = localBottom > 0 && localTop < viewH;
+
+    if (!_wasVisible && isVis) {
+      _resetToMiddle(animate: false);
+    }
+    _wasVisible = isVis;
+  }
+
+  void _resetToMiddle({bool animate = true}) {
+    if (!mounted || _controller == null || !_controller!.hasClients) return;
+    if (widget.items.isEmpty) return;
+    final middle = _middleIndex;
+    if (_controller!.page?.round() == middle) return;
+    if (animate) {
+      _controller!.animateToPage(
+        middle,
+        duration: const Duration(milliseconds: 380),
+        curve: Curves.easeOutCubic,
+      );
+    } else {
+      _controller!.jumpToPage(middle);
+    }
+  }
 
   @override
   void dispose() {
+    _ancestorPos?.isScrollingNotifier.removeListener(_onScrollChanged);
     _controller?.dispose();
     super.dispose();
   }
@@ -123,7 +186,7 @@ class _DynCarouselState extends ConsumerState<_DynCarousel> {
     return LayoutBuilder(
       builder: (context, box) {
         final fraction = ((_DynCard.width + 18) / box.maxWidth).clamp(0.1, 1.0);
-        final defaultInitial = widget.items.length > 2 ? 1 : 0;
+        final defaultInitial = _middleIndex;
         if (_controller == null || (fraction - _fraction).abs() > 0.001) {
           final page = _controller?.hasClients == true
               ? (_controller!.page ?? defaultInitial.toDouble()).round()
@@ -158,7 +221,12 @@ class _DynCarouselState extends ConsumerState<_DynCarousel> {
               final isCurrent = d < 0.4;
               final Widget card = i >= widget.items.length
                   ? const _LoaderCard()
-                  : _DynCard(section: widget.section, franchise: widget.items[i], isActive: isCurrent);
+                  : _DynCard(
+                      section: widget.section,
+                      franchise: widget.items[i],
+                      isActive: isCurrent,
+                      onReturned: () => _resetToMiddle(animate: true),
+                    );
               if (i >= widget.items.length) _maybeLoadMore(i);
               return Center(
                 child: Transform.translate(
@@ -217,7 +285,13 @@ class _DynCard extends ConsumerStatefulWidget {
   final FranchiseSection section;
   final DynamicFranchise franchise;
   final bool isActive;
-  const _DynCard({required this.section, required this.franchise, this.isActive = false});
+  final VoidCallback? onReturned;
+  const _DynCard({
+    required this.section,
+    required this.franchise,
+    this.isActive = false,
+    this.onReturned,
+  });
 
   static const width = 252.0;
 
@@ -257,9 +331,12 @@ class _DynCardState extends ConsumerState<_DynCard> {
         : (f.lead.isSeries ? 'مسلسل • جارٍ جلب الأجزاء…' : 'جارٍ جلب الأجزاء…');
 
     return FranchisePressable(
-      onTap: () => Navigator.of(context, rootNavigator: true).push(
-        MaterialPageRoute(builder: (_) => DynamicFranchiseScreen(section: widget.section, franchise: f)),
-      ),
+      onTap: () async {
+        await Navigator.of(context, rootNavigator: true).push(
+          MaterialPageRoute(builder: (_) => DynamicFranchiseScreen(section: widget.section, franchise: f)),
+        );
+        widget.onReturned?.call();
+      },
       child: Container(
         width: _DynCard.width,
         decoration: BoxDecoration(

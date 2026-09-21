@@ -78,9 +78,72 @@ class _FranchiseCarouselState extends State<_FranchiseCarousel> {
   PageController? _controller;
   double _fraction = 0;
   bool _kicked = false;
+  ScrollPosition? _ancestorPos;
+  bool _wasVisible = false;
+
+  int get _middleIndex =>
+      widget.franchises.isNotEmpty ? widget.franchises.length ~/ 2 : 0;
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    _attachAncestor();
+  }
+
+  void _attachAncestor() {
+    final pos = Scrollable.maybeOf(context)?.position;
+    if (pos != _ancestorPos) {
+      _ancestorPos?.isScrollingNotifier.removeListener(_onScrollChanged);
+      _ancestorPos = pos;
+      _ancestorPos?.isScrollingNotifier.addListener(_onScrollChanged);
+    }
+  }
+
+  void _onScrollChanged() {
+    if (!mounted || _ancestorPos == null) return;
+    if (!_ancestorPos!.isScrollingNotifier.value) {
+      _checkVisibility();
+    }
+  }
+
+  void _checkVisibility() {
+    if (!mounted) return;
+    final renderObject = context.findRenderObject();
+    if (renderObject is! RenderBox || !renderObject.hasSize) return;
+    final ancestor = Scrollable.maybeOf(context)?.context.findRenderObject();
+    if (ancestor is! RenderBox || !ancestor.hasSize) return;
+
+    final localTop =
+        renderObject.localToGlobal(Offset.zero, ancestor: ancestor).dy;
+    final localBottom = localTop + renderObject.size.height;
+    final viewH = ancestor.size.height;
+    final isVis = localBottom > 0 && localTop < viewH;
+
+    if (!_wasVisible && isVis) {
+      _resetToMiddle(animate: false);
+    }
+    _wasVisible = isVis;
+  }
+
+  void _resetToMiddle({bool animate = true}) {
+    if (!mounted || _controller == null || !_controller!.hasClients) return;
+    if (widget.franchises.isEmpty) return;
+    final middle = _middleIndex;
+    if (_controller!.page?.round() == middle) return;
+    if (animate) {
+      _controller!.animateToPage(
+        middle,
+        duration: const Duration(milliseconds: 380),
+        curve: Curves.easeOutCubic,
+      );
+    } else {
+      _controller!.jumpToPage(middle);
+    }
+  }
 
   @override
   void dispose() {
+    _ancestorPos?.isScrollingNotifier.removeListener(_onScrollChanged);
     _controller?.dispose();
     super.dispose();
   }
@@ -91,7 +154,7 @@ class _FranchiseCarouselState extends State<_FranchiseCarousel> {
       builder: (context, box) {
         // One card plus its gap per page, so the gaps are even.
         final fraction = ((_FranchiseCard.width + 18) / box.maxWidth).clamp(0.1, 1.0);
-        final defaultInitial = widget.franchises.length > 2 ? 1 : 0;
+        final defaultInitial = _middleIndex;
         if (_controller == null || (fraction - _fraction).abs() > 0.001) {
           final page = _controller?.hasClients == true
               ? (_controller!.page ?? defaultInitial.toDouble()).round()
@@ -140,6 +203,7 @@ class _FranchiseCarouselState extends State<_FranchiseCarousel> {
                           child: _FranchiseCard(
                             franchise: widget.franchises[i],
                             isActive: isCurrent,
+                            onReturned: () => _resetToMiddle(animate: true),
                           ),
                         ),
                         // Side cards sit a little in shade.
@@ -169,7 +233,12 @@ class _FranchiseCarouselState extends State<_FranchiseCarousel> {
 class _FranchiseCard extends ConsumerWidget {
   final FilmFranchise franchise;
   final bool isActive;
-  const _FranchiseCard({required this.franchise, this.isActive = false});
+  final VoidCallback? onReturned;
+  const _FranchiseCard({
+    required this.franchise,
+    this.isActive = false,
+    this.onReturned,
+  });
 
   static const width = 252.0;
 
@@ -188,9 +257,12 @@ class _FranchiseCard extends ConsumerWidget {
     return FranchisePressable(
       onTap: films.isEmpty
           ? null
-          : () => Navigator.of(context, rootNavigator: true).push(
+          : () async {
+              await Navigator.of(context, rootNavigator: true).push(
                 MaterialPageRoute(builder: (_) => FranchiseScreen(franchise: franchise)),
-              ),
+              );
+              onReturned?.call();
+            },
       child: Container(
         width: width,
         decoration: BoxDecoration(

@@ -163,7 +163,7 @@ class _InlineTrailerPlayerState extends State<InlineTrailerPlayer> {
               child: LinearProgressIndicator(
                 minHeight: 3,
                 backgroundColor: Colors.white10,
-                valueColor: AlwaysStoppedAnimation(Color(0xFFE50914)),
+                valueColor: AlwaysStoppedAnimation(Colors.white38),
               ),
             ),
         ],
