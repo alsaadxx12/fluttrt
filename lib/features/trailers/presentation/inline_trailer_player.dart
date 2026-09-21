@@ -23,7 +23,18 @@ class InlineTrailerPlayer extends StatefulWidget {
   /// Called when this trailer cannot be played (no stream, or init failed),
   /// so a feed can skip past it.
   final VoidCallback? onFailed;
-  const InlineTrailerPlayer({super.key, required this.videoId, this.playing = true, this.onFailed});
+
+  /// Called when this trailer finishes playback, allowing the feed to
+  /// automatically advance to the next trailer card.
+  final VoidCallback? onEnded;
+
+  const InlineTrailerPlayer({
+    super.key,
+    required this.videoId,
+    this.playing = true,
+    this.onFailed,
+    this.onEnded,
+  });
 
   @override
   State<InlineTrailerPlayer> createState() => _InlineTrailerPlayerState();
@@ -32,6 +43,7 @@ class InlineTrailerPlayer extends StatefulWidget {
 class _InlineTrailerPlayerState extends State<InlineTrailerPlayer> {
   VideoPlayerController? _controller;
   bool _failed = false;
+  bool _endedFired = false;
 
   @override
   void initState() {
@@ -51,10 +63,15 @@ class _InlineTrailerPlayerState extends State<InlineTrailerPlayer> {
         await controller.dispose();
         return;
       }
-      await controller.setLooping(true);
+      // If onEnded is configured, do not loop so we can detect completion
+      final shouldLoop = widget.onEnded == null;
+      await controller.setLooping(shouldLoop);
+      controller.addListener(_onVideoChanged);
+
       // `widget` is read after the awaits, so a flip during init is honoured.
       if (widget.playing) await controller.play();
       if (!mounted) {
+        controller.removeListener(_onVideoChanged);
         await controller.dispose();
         return;
       }
@@ -68,9 +85,29 @@ class _InlineTrailerPlayerState extends State<InlineTrailerPlayer> {
     }
   }
 
+  void _onVideoChanged() {
+    final c = _controller;
+    if (c == null || !c.value.isInitialized || _endedFired || widget.onEnded == null) return;
+    final duration = c.value.duration;
+    final position = c.value.position;
+    if (duration > Duration.zero) {
+      final nearEnd = position >= duration - const Duration(milliseconds: 250);
+      final stoppedAtEnd = !c.value.isPlaying &&
+          position >= duration - const Duration(milliseconds: 600) &&
+          position > Duration.zero;
+      if (nearEnd || stoppedAtEnd) {
+        _endedFired = true;
+        widget.onEnded?.call();
+      }
+    }
+  }
+
   @override
   void didUpdateWidget(InlineTrailerPlayer old) {
     super.didUpdateWidget(old);
+    if (old.videoId != widget.videoId) {
+      _endedFired = false;
+    }
     if (old.playing == widget.playing) return;
     final c = _controller;
     if (c == null || !c.value.isInitialized) return;
@@ -83,7 +120,9 @@ class _InlineTrailerPlayerState extends State<InlineTrailerPlayer> {
 
   @override
   void dispose() {
-    _controller?.dispose();
+    final c = _controller;
+    c?.removeListener(_onVideoChanged);
+    c?.dispose();
     super.dispose();
   }
 

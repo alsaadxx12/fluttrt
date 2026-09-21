@@ -1,11 +1,15 @@
 {
   "updateEnabled": true,
-  "versionCode": 77,
-  "versionName": "1.0.75",
-  "apkUrl": "https://cineball.netlify.app/download/app.apk?v=77",
-  "sha256": "b8f38ff91e1653fd1a292e535b4bce9d14edaffe40c5fa07a458cdb4b13a1fa0",
-  "sizeBytes": 56932760,
+  "versionCode": 78,
+  "versionName": "1.0.76",
+  "apkUrl": "https://cineball.netlify.app/download/app.apk?v=78",
+  "apkUrlArm64": "https://cineball.netlify.app/download/app-arm64-v8a-release.apk?v=78",
+  "apkUrlArm32": "https://cineball.netlify.app/download/app-armeabi-v7a-release.apk?v=78",
+  "sha256": "2703d93e03ba6f8804d2736b8f3426aa324055b94a28ee92fa4064d4235e307a",
+  "sha256Arm64": "2703d93e03ba6f8804d2736b8f3426aa324055b94a28ee92fa4064d4235e307a",
+  "sha256Arm32": "d3b2d63af7089e644267b78f73e4a208d37d51d18a7db34dca7c35298d56a8e6",
+  "sizeBytes": 19293485,
   "forceUpdate": false,
   "minSupportedVersion": 1,
-  "notes": "تخزين المفضلة سحابياً لكل مستخدم في قاعدة البيانات وضمان ظهور المباريات المنتهية بشكل صحيح"
+  "notes": "تسريع تحميل التحديث بنسبة 70% (تقليص الحجم من 55 إلى 18 ميغابايت) وتحريك بطاقات المقاطع والإعلانات بطاقة بطاقة مع الانتقال التلقائي للبطاقة التالية عند انتهاء الفيديو"
 }

@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:convert';
+import 'dart:ffi';
 import 'dart:io';
 
 import 'package:crypto/crypto.dart';
@@ -143,6 +144,42 @@ class UpdateService {
   /// file from an earlier attempt is resumed with a Range request. Older
   /// downloads are removed first. When [info.sha256] is set the finished
   /// file is verified and deleted on mismatch. Returns the verified file.
+  /// Resolves the optimal APK URL based on device architecture (e.g. ARM64 for 18MB download)
+  String resolvedApkUrl(AppUpdateInfo info) {
+    if (Platform.isAndroid) {
+      try {
+        final abi = Abi.current();
+        if (abi == Abi.androidArm64 && info.apkUrlArm64 != null && info.apkUrlArm64!.isNotEmpty) {
+          return info.apkUrlArm64!;
+        }
+        if (abi == Abi.androidArm && info.apkUrlArm32 != null && info.apkUrlArm32!.isNotEmpty) {
+          return info.apkUrlArm32!;
+        }
+      } catch (_) {}
+    }
+    return info.apkUrl;
+  }
+
+  /// Resolves the expected SHA-256 hash matching the chosen APK
+  String? resolvedSha256(AppUpdateInfo info) {
+    if (Platform.isAndroid) {
+      try {
+        final abi = Abi.current();
+        if (abi == Abi.androidArm64 && info.sha256Arm64 != null) {
+          return info.sha256Arm64;
+        }
+        if (abi == Abi.androidArm && info.sha256Arm32 != null) {
+          return info.sha256Arm32;
+        }
+      } catch (_) {}
+    }
+    return info.sha256;
+  }
+
+  /// Downloads the APK, reporting [onProgress] from 0.0 to 1.0. A partial
+  /// file from an earlier attempt is resumed with a Range request. Older
+  /// downloads are removed first. When [info.sha256] is set the finished
+  /// file is verified and deleted on mismatch. Returns the verified file.
   Future<File> downloadUpdate(
     AppUpdateInfo info, {
     void Function(double progress, int received, int? total)? onProgress,
@@ -154,6 +191,8 @@ class UpdateService {
     final dir = await _updatesDir();
     final file = await apkFileFor(info);
     final part = File('${file.path}.part');
+    final targetUrl = resolvedApkUrl(info);
+    final expectedSha = resolvedSha256(info);
 
     // Room to spare: the old copies of other versions go first.
     await for (final f in dir.list()) {
@@ -166,7 +205,7 @@ class UpdateService {
 
     // Already there and good.
     if (await file.exists()) {
-      if (info.sha256 == null || await _sha256Of(file) == info.sha256) {
+      if (expectedSha == null || await _sha256Of(file) == expectedSha) {
         onProgress?.call(1, await file.length(), await file.length());
         return file;
       }
@@ -177,7 +216,7 @@ class UpdateService {
     for (var attempt = 0; attempt < 3; attempt++) {
       try {
         final res = await _dio.get<ResponseBody>(
-          info.apkUrl,
+          targetUrl,
           cancelToken: cancelToken,
           options: Options(
             responseType: ResponseType.stream,
@@ -193,11 +232,17 @@ class UpdateService {
 
         final sink = part.openWrite(mode: resumed ? FileMode.append : FileMode.write);
         var received = start;
+        var lastProgressTime = 0;
         try {
           await for (final chunk in res.data!.stream) {
             sink.add(chunk);
             received += chunk.length;
-            onProgress?.call(total == null ? 0 : (received / total).clamp(0.0, 1.0), received, total);
+            final now = DateTime.now().millisecondsSinceEpoch;
+            // Throttle UI progress callbacks to avoid choking rendering and allow max socket throughput
+            if (now - lastProgressTime > 80 || received == total) {
+              lastProgressTime = now;
+              onProgress?.call(total == null ? 0 : (received / total).clamp(0.0, 1.0), received, total);
+            }
           }
           await sink.flush();
         } finally {
@@ -208,11 +253,11 @@ class UpdateService {
           throw const UpdateException(UpdateFailure.downloadFailed, 'incomplete');
         }
 
-        if (info.sha256 != null) {
+        if (expectedSha != null) {
           final got = await _sha256Of(part);
-          if (got != info.sha256) {
+          if (got != expectedSha) {
             await part.delete();
-            throw UpdateException(UpdateFailure.checksumMismatch, 'expected ${info.sha256}, got $got');
+            throw UpdateException(UpdateFailure.checksumMismatch, 'expected $expectedSha, got $got');
           }
         }
         await part.rename(file.path);

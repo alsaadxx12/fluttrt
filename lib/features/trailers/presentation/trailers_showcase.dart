@@ -99,11 +99,10 @@ class TrailersShowcase extends ConsumerStatefulWidget {
 
 class _TrailersShowcaseState extends ConsumerState<TrailersShowcase> with WidgetsBindingObserver {
   static const double cardW = 360, imageH = 250, rowH = 330, gap = 12, lead = 16;
-  static const double itemExtent = cardW + gap;
 
   bool get _isPhone => (Platform.isAndroid || Platform.isIOS);
 
-  final ScrollController _scroll = ScrollController();
+  late final PageController _pageController = PageController(viewportFraction: 0.90);
 
   int _activeIndex = 0;
   int _warmedTo = 0;
@@ -136,7 +135,6 @@ class _TrailersShowcaseState extends ConsumerState<TrailersShowcase> with Widget
   @override
   void initState() {
     super.initState();
-    _scroll.addListener(_onScroll);
     WidgetsBinding.instance.addObserver(this);
     WidgetsBinding.instance.addPostFrameCallback((_) => _attachAncestor());
   }
@@ -146,8 +144,7 @@ class _TrailersShowcaseState extends ConsumerState<TrailersShowcase> with Widget
     WidgetsBinding.instance.removeObserver(this);
     _settleTimer?.cancel();
     _ancestorPos?.removeListener(_onAncestorScroll);
-    _scroll.removeListener(_onScroll);
-    _scroll.dispose();
+    _pageController.dispose();
     super.dispose();
   }
 
@@ -231,22 +228,30 @@ class _TrailersShowcaseState extends ConsumerState<TrailersShowcase> with Widget
 
   List<MovieTrailer> get _items => ref.read(trailerFeedProvider).items;
 
-  void _onScroll() {
-    if (!_scroll.hasClients) return;
-    final pos = _scroll.position;
-    if (pos.pixels > pos.maxScrollExtent - cardW * 3) {
-      ref.read(trailerFeedProvider.notifier).loadMore();
-    }
-    final items = _items;
-    if (items.isEmpty) return;
-    final center = pos.pixels + pos.viewportDimension / 2;
-    final idx = ((center - lead - cardW / 2) / itemExtent).round().clamp(0, items.length - 1);
+  void _onPageChanged(int idx) {
     if (idx != _activeIndex) {
       setState(() {
         _activeIndex = idx;
         _userPaused = false; // a freshly fronted card plays on its own
       });
       if (_settled) _prewarmAround(idx);
+      final items = _items;
+      if (idx >= items.length - 2) {
+        ref.read(trailerFeedProvider.notifier).loadMore();
+      }
+    }
+  }
+
+  void _onVideoEnded(int index) {
+    if (!mounted || index != _activeIndex) return;
+    final next = index + 1;
+    final items = _items;
+    if (next < items.length) {
+      _pageController.animateToPage(
+        next,
+        duration: const Duration(milliseconds: 450),
+        curve: Curves.easeInOutCubic,
+      );
     }
   }
 
@@ -289,11 +294,11 @@ class _TrailersShowcaseState extends ConsumerState<TrailersShowcase> with Widget
   }
 
   void _scrollTo(int index) {
-    if (!_scroll.hasClients) return;
-    _scroll.animateTo(
-      (index * itemExtent).clamp(0.0, _scroll.position.maxScrollExtent),
-      duration: const Duration(milliseconds: 320),
-      curve: Curves.easeOutCubic,
+    if (!_pageController.hasClients) return;
+    _pageController.animateToPage(
+      index,
+      duration: const Duration(milliseconds: 380),
+      curve: Curves.easeInOutCubic,
     );
   }
 
@@ -376,18 +381,19 @@ class _TrailersShowcaseState extends ConsumerState<TrailersShowcase> with Widget
       p,
       child: SizedBox(
         height: rowH,
-        child: ListView.separated(
-          controller: _scroll,
-          padding: const EdgeInsets.symmetric(horizontal: lead),
-          scrollDirection: Axis.horizontal,
-          physics: const BouncingScrollPhysics(),
+        child: PageView.builder(
+          controller: _pageController,
+          physics: const PageScrollPhysics(),
+          onPageChanged: _onPageChanged,
           itemCount: count,
-          separatorBuilder: (_, __) => const SizedBox(width: gap),
           itemBuilder: (context, i) {
             if (i >= feed.items.length) {
-              return const SizedBox(
-                width: 120,
-                child: Center(child: CircularProgressIndicator(color: Color(0xFFE50914), strokeWidth: 2.4)),
+              return const Center(
+                child: SizedBox(
+                  width: 32,
+                  height: 32,
+                  child: CircularProgressIndicator(color: Color(0xFFE50914), strokeWidth: 2.4),
+                ),
               );
             }
             final trailer = feed.items[i];
@@ -401,6 +407,7 @@ class _TrailersShowcaseState extends ConsumerState<TrailersShowcase> with Widget
               onTap: () => _tap(i),
               onOpen: () => _open(trailer),
               onFailed: () => _skipFailed(trailer.youtubeId),
+              onEnded: () => _onVideoEnded(i),
             );
           },
         ),
@@ -475,6 +482,7 @@ class _TrailerCard extends StatelessWidget {
   final VoidCallback onTap;
   final VoidCallback onOpen;
   final VoidCallback onFailed;
+  final VoidCallback? onEnded;
 
   const _TrailerCard({
     required this.trailer,
@@ -485,25 +493,26 @@ class _TrailerCard extends StatelessWidget {
     required this.onTap,
     required this.onOpen,
     required this.onFailed,
+    this.onEnded,
   });
 
   @override
   Widget build(BuildContext context) {
     final p = AppPalette.of(context);
-    const width = _TrailersShowcaseState.cardW, imageH = _TrailersShowcaseState.imageH;
-    final cacheW = (width * MediaQuery.of(context).devicePixelRatio).round();
+    const imageH = _TrailersShowcaseState.imageH;
+    final cacheW = (_TrailersShowcaseState.cardW * MediaQuery.of(context).devicePixelRatio).round();
     final mountVideo = showVideo && trailer.youtubeId != null;
 
     return GestureDetector(
       onTap: onTap,
       onDoubleTap: onOpen,
-      child: SizedBox(
-        width: width,
+      child: Container(
+        margin: const EdgeInsets.symmetric(horizontal: 6),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Container(
-              width: width,
+              width: double.infinity,
               height: imageH,
               decoration: BoxDecoration(
                 borderRadius: BorderRadius.circular(18),
@@ -553,6 +562,7 @@ class _TrailerCard extends StatelessWidget {
                       videoId: trailer.youtubeId!,
                       playing: play,
                       onFailed: onFailed,
+                      onEnded: onEnded,
                     ),
 
                   // A play badge when the fronted card is paused by a tap.
