@@ -229,7 +229,7 @@ class _FilmCard extends StatelessWidget {
               imageUrl: posterUrl,
               cacheManager: appImageCache,
               fit: BoxFit.cover,
-              filterQuality: FilterQuality.high,
+              filterQuality: FilterQuality.medium,
               // The card is 380 lp tall at 2:3; decode at its own pixel width.
               memCacheWidth: (380 * 2 / 3 * dpr).round(),
               fadeInDuration: Duration.zero,

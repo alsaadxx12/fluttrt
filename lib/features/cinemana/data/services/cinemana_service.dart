@@ -1084,72 +1084,31 @@ class CinemanaService {
       return cached;
     }
 
-    // Fast Path: Query the primary franchise search keyword first.
-    // For 90%+ of franchises, this single fast request yields all or most films in < 150ms!
-    final primaryQuery = franchise.queries.first;
-    final primaryResults = await searchCinemanaTitles(primaryQuery, page: 0);
-    final initialPicked = franchise.pick(primaryResults);
-
-    // If we got enough items for the card (or franchise only has 1 query), cache and return immediately!
-    if (initialPicked.length >= math.min(3, franchise.entries.length) || franchise.queries.length <= 1) {
-      _franchiseMemoryCache[franchise.id] = initialPicked;
-
-      // Fetch any remaining queries in background without delaying the UI
-      if (franchise.queries.length > 1) {
-        _fetchRemainingFranchiseInBackground(franchise, primaryResults);
-      }
-      return initialPicked;
-    }
-
-    // Fallback: If primary query returned too few matches, query the remaining queries with controlled concurrency
-    final allResults = List<CinemanaItem>.from(primaryResults);
-    final remainingJobs = [
-      for (var i = 1; i < franchise.queries.length; i++)
-        (franchise.queries[i], 0),
+    final allResults = <CinemanaItem>[];
+    final jobs = <(String, int)>[
+      for (final q in franchise.queries) (q, 0),
       if (franchise.deepSearch)
-        for (final q in franchise.queries.take(2))
-          (q, 1),
+        for (final q in franchise.queries.take(3)) (q, 1),
     ];
 
     var next = 0;
     Future<void> worker() async {
-      while (next < remainingJobs.length) {
-        final (q, page) = remainingJobs[next++];
+      while (next < jobs.length) {
+        final (q, page) = jobs[next++];
         try {
           allResults.addAll(await searchCinemanaTitles(q, page: page));
         } catch (_) {}
       }
     }
 
-    await Future.wait(List.generate(3, (_) => worker()));
+    final concurrency = math.min(6, jobs.length);
+    await Future.wait(List.generate(concurrency, (_) => worker()));
+
     final picked = franchise.pick(allResults);
     if (picked.isNotEmpty) {
       _franchiseMemoryCache[franchise.id] = picked;
     }
     return picked;
-  }
-
-  void _fetchRemainingFranchiseInBackground(FilmFranchise franchise, List<CinemanaItem> existing) async {
-    try {
-      // Held back so the extra searches never compete with the first screen.
-      await Future<void>.delayed(const Duration(seconds: 10));
-      final allResults = List<CinemanaItem>.from(existing);
-      final remainingJobs = [
-        for (var i = 1; i < franchise.queries.length; i++)
-          (franchise.queries[i], 0),
-        if (franchise.deepSearch)
-          for (final q in franchise.queries.take(2))
-            (q, 1),
-      ];
-
-      for (final (q, page) in remainingJobs) {
-        allResults.addAll(await searchCinemanaTitles(q, page: page));
-      }
-      final complete = franchise.pick(allResults);
-      if (complete.length > (_franchiseMemoryCache[franchise.id]?.length ?? 0)) {
-        _franchiseMemoryCache[franchise.id] = complete;
-      }
-    } catch (_) {}
   }
 
   /// Fetch all related movie parts / franchise sequels (e.g. Harry Potter, Batman, Spider-Man, James Bond, Anime sequels)

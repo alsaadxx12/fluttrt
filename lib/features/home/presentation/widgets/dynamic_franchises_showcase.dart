@@ -233,7 +233,6 @@ class _DynCarouselState extends ConsumerState<_DynCarousel> {
                   offset: Offset(0, 10 * (1 - t)),
                   child: Transform.scale(
                     scale: scale,
-                    filterQuality: FilterQuality.high,
                     child: Stack(
                       fit: StackFit.passthrough,
                       children: [

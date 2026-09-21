@@ -46,7 +46,7 @@ class ViuPosterCard extends StatelessWidget {
                   imageUrl: poster,
                   cacheManager: appImageCache,
                   fit: BoxFit.cover,
-                  filterQuality: FilterQuality.high,
+                  filterQuality: FilterQuality.medium,
                   // Decode at the card's own pixel size.
                   memCacheWidth: (width * dpr).round(),
                   fadeInDuration: Duration.zero,

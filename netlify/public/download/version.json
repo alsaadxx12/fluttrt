@@ -1,15 +1,15 @@
 {
   "updateEnabled": true,
-  "versionCode": 2091,
-  "versionName": "1.0.85",
-  "apkUrl": "https://cineball.netlify.app/download/app.apk?v=91",
-  "apkUrlArm64": "https://cineball.netlify.app/download/app-arm64-v8a-release.apk?v=91",
-  "apkUrlArm32": "https://cineball.netlify.app/download/app-armeabi-v7a-release.apk?v=91",
-  "sha256": "5aaf191b9fad11d001885cfd06831912260a7072fbddbfa161c0a8ae07f8e8a2",
-  "sha256Arm64": "5aaf191b9fad11d001885cfd06831912260a7072fbddbfa161c0a8ae07f8e8a2",
-  "sha256Arm32": "1a1400b423deb1a2b25e279c84daff5227c48d930ba0e4701f93354b463759e9",
-  "sizeBytes": 19291156,
+  "versionCode": 2092,
+  "versionName": "1.0.86",
+  "apkUrl": "https://cineball.netlify.app/download/app.apk?v=92",
+  "apkUrlArm64": "https://cineball.netlify.app/download/app-arm64-v8a-release.apk?v=92",
+  "apkUrlArm32": "https://cineball.netlify.app/download/app-armeabi-v7a-release.apk?v=92",
+  "sha256": "d5eff13027f902514dbfb07966119f9d993c2bbb7e1165e0c0df397d900dbd51",
+  "sha256Arm64": "d5eff13027f902514dbfb07966119f9d993c2bbb7e1165e0c0df397d900dbd51",
+  "sha256Arm32": "c1457c3dbea084df6afb523399f803a730df59e169402fd4fd3598d77f1e87d4",
+  "sizeBytes": 19291273,
   "forceUpdate": false,
   "minSupportedVersion": 1,
-  "notes": "معالجة جدول مباريات اليوم وإظهار حالة المباريات المنتهية بدقة"
+  "notes": "إضافة أقسام سلاسل سبايدر مان وباتمان وجيمس بوند"
 }

@@ -60,6 +60,10 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
   // What the last precache covered, so a rebuild alone never re-warms it.
   int _precachedPage = -1;
   List<CinemanaItem>? _precachedList;
+  // Holds the warm-up off the first frames; see _precacheNextHeroSlides.
+  Timer? _heroPrecacheTimer;
+  // Starts the lower rows' feeds once the top of the page has settled.
+  Timer? _prefetchTimer;
 
   // Number of slides the hero is actually rendering, kept in sync from build so
   // the auto-slide timer advances over the same list the user sees.
@@ -84,6 +88,33 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     _searchController = TextEditingController();
 
     _startAutoSlideTimer();
+    _prefetchTimer = Timer(const Duration(milliseconds: 900), _prefetchRows);
+  }
+
+  /// Starts the feeds for the rows further down, without subscribing this
+  /// page to any of them.
+  ///
+  /// Each row watches its own provider and is now built only once it scrolls
+  /// near, so without this its request would not leave until the viewer got
+  /// there. Reading them here keeps the data ready - but after a pause, so
+  /// the banners and the matches, which are what is actually on screen, get
+  /// the connection and the decoder to themselves first.
+  void _prefetchRows() {
+    if (!mounted) return;
+    for (final feed in <ProviderListenable<Object?>>[
+      homeRecentlyAddedProvider,
+      homeLatestMoviesProvider,
+      franchiseFilmsProvider('spider-man'),
+      franchiseFilmsProvider('batman'),
+      franchiseFilmsProvider('james-bond'),
+      homeLatestSeriesProvider,
+      homeAnimeProvider,
+      homeMostViewedProvider,
+      homeArabicMoviesProvider,
+      homeArabicSeriesProvider,
+    ]) {
+      ref.read(feed);
+    }
   }
 
   @override
@@ -119,6 +150,18 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     if (page == _precachedPage && listEquals(movies, _precachedList)) return;
     _precachedPage = page;
     _precachedList = movies;
+    // Warming the next two banners means two more full-width decodes and two
+    // more downloads. Fired straight after the first frame they competed with
+    // the posters the viewer is actually looking at, and the page filled in
+    // in fits. The slides are not needed for eight seconds, so they wait.
+    _heroPrecacheTimer?.cancel();
+    _heroPrecacheTimer = Timer(const Duration(milliseconds: 1200), () {
+      if (mounted) _warmHeroSlides(movies, width, page);
+    });
+  }
+
+  void _warmHeroSlides(List<CinemanaItem> movies, double width, int page) {
+    if (!mounted || movies.isEmpty) return;
     final isDesktop = width >= 700;
     for (var i = 1; i <= 2; i++) {
       final m = movies[(page + i) % movies.length];
@@ -161,6 +204,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
   void dispose() {
     _barScrolled.dispose();
     _heroAutoSlideTimer?.cancel();
+    _heroPrecacheTimer?.cancel();
+    _prefetchTimer?.cancel();
     _searchDebounceTimer?.cancel();
     _searchCancelToken?.cancel('disposed');
     _heroPageController.dispose();
@@ -301,6 +346,18 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     );
   }
 
+  void _openFranchiseById(String id) {
+    final franchise = FilmFranchise.all.firstWhere(
+      (f) => f.id == id,
+      orElse: () => FilmFranchise.all.first,
+    );
+    Navigator.of(context, rootNavigator: true).push(
+      MaterialPageRoute(
+        builder: (_) => FranchiseScreen(franchise: franchise),
+      ),
+    );
+  }
+
   // Format kickoff ISO timestamp into clean local time (e.g. 7:45 م) and small date (e.g. 09/09)
   Map<String, String> _formatMatchTimeAndDate(String rawKickoff) {
     if (rawKickoff.trim().isEmpty) {
@@ -391,12 +448,15 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     return RepaintBoundary(
       child: Consumer(
         builder: (context, ref, _) => ref.watch(provider).when(
-              data: (items) => _buildHorizontalCategorySection(
-                title: title,
-                items: items,
-                isLoading: false,
-                onViewAll: onViewAll,
-              ),
+              data: (items) {
+                if (items.isEmpty) return const SizedBox.shrink();
+                return _buildHorizontalCategorySection(
+                  title: title,
+                  items: items,
+                  isLoading: false,
+                  onViewAll: onViewAll,
+                );
+              },
               loading: () => _buildHorizontalCategorySection(
                 title: title,
                 items: const [],
@@ -520,6 +580,30 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     // The big film series, each complete and in order.
     // Live, endless film franchises (seeded with the curated ones).
     (_) => const RepaintBoundary(child: DynamicFranchisesShowcase(section: FranchiseSection.films)),
+    (_) => const SizedBox(height: 24),
+
+    // سلسلة سبايدر مان
+    (_) => _posterRowSection(
+          provider: franchiseFilmsProvider('spider-man'),
+          title: 'سلسلة سبايدر مان',
+          onViewAll: () => _openFranchiseById('spider-man'),
+        ),
+    (_) => const SizedBox(height: 24),
+
+    // سلسلة باتمان
+    (_) => _posterRowSection(
+          provider: franchiseFilmsProvider('batman'),
+          title: 'سلسلة باتمان',
+          onViewAll: () => _openFranchiseById('batman'),
+        ),
+    (_) => const SizedBox(height: 24),
+
+    // سلسلة جيمس بوند
+    (_) => _posterRowSection(
+          provider: franchiseFilmsProvider('james-bond'),
+          title: 'سلسلة جيمس بوند',
+          onViewAll: () => _openFranchiseById('james-bond'),
+        ),
     (_) => const SizedBox(height: 12),
 
     // 5. Anime.
@@ -1499,7 +1583,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                       height: 70,
                       memCacheWidth: _decodeWidthFor(55),
                       fit: BoxFit.cover,
-                      filterQuality: FilterQuality.high,
+                      filterQuality: FilterQuality.medium,
                       fadeInDuration: Duration.zero,
                       fadeOutDuration: Duration.zero,
                       placeholderFadeInDuration: Duration.zero,
@@ -2146,7 +2230,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                   imageUrl: movie.imageForWidth(_decodeWidthFor(130).toDouble(), hiRes: preferFullArtwork),
                   cacheManager: appImageCache,
                   fit: BoxFit.cover,
-                  filterQuality: FilterQuality.high,
+                  filterQuality: FilterQuality.medium,
                   memCacheWidth: _hiResDecodeWidth(130),
                   fadeInDuration: Duration.zero,
                   fadeOutDuration: Duration.zero,
@@ -2418,7 +2502,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                       imageUrl: series.imageForWidth(_decodeWidthFor(posterW).toDouble(), hiRes: preferFullArtwork),
                       cacheManager: appImageCache,
                       fit: BoxFit.cover,
-                      filterQuality: FilterQuality.high,
+                      filterQuality: FilterQuality.medium,
                       memCacheWidth: _hiResDecodeWidth(posterW),
                       fadeInDuration: Duration.zero,
                       fadeOutDuration: Duration.zero,

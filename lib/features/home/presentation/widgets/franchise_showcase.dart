@@ -194,7 +194,6 @@ class _FranchiseCarouselState extends State<_FranchiseCarousel> {
                   offset: Offset(0, 10 * (1 - t)),
                   child: Transform.scale(
                     scale: scale,
-                    filterQuality: FilterQuality.high,
                     child: Stack(
                       fit: StackFit.passthrough,
                       children: [
@@ -653,7 +652,7 @@ class _FranchiseFilmTileState extends State<FranchiseFilmTile> {
                 imageUrl: posterUrl,
                 cacheManager: appImageCache,
                 fit: BoxFit.cover,
-                filterQuality: FilterQuality.high,
+                filterQuality: FilterQuality.medium,
                 // Decode at the tile's own pixel width.
                 memCacheWidth: (260 * dpr).round(),
                 fadeInDuration: Duration.zero,
