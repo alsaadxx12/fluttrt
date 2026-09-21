@@ -25,46 +25,9 @@ class _SportsActivationScreenState
   bool _isLoading = false;
   String? _errorMessage;
   SubscriptionPlan _selectedPlan = SubscriptionPlan.defaultPlans[0];
-  late final ScrollController _marqueeScrollController;
-  Timer? _marqueeTimer;
-  bool _isUserInteracting = false;
-
-  @override
-  void initState() {
-    super.initState();
-    _marqueeScrollController = ScrollController();
-    WidgetsBinding.instance.addPostFrameCallback((_) => _startMarquee());
-  }
-
-  void _startMarquee() {
-    _marqueeTimer?.cancel();
-    _marqueeTimer = Timer.periodic(const Duration(milliseconds: 35), (_) {
-      if (!_marqueeScrollController.hasClients || _isUserInteracting) return;
-      final max = _marqueeScrollController.position.maxScrollExtent;
-      final current = _marqueeScrollController.offset;
-      if (current >= max - 10) {
-        _marqueeScrollController.jumpTo(0);
-      } else {
-        _marqueeScrollController.jumpTo(current + 1.2);
-      }
-    });
-  }
-
-  void _pauseMarquee() {
-    _isUserInteracting = true;
-    _marqueeTimer?.cancel();
-    Future.delayed(const Duration(seconds: 4), () {
-      if (mounted) {
-        _isUserInteracting = false;
-        _startMarquee();
-      }
-    });
-  }
 
   @override
   void dispose() {
-    _marqueeTimer?.cancel();
-    _marqueeScrollController.dispose();
     _codeController.dispose();
     super.dispose();
   }
@@ -247,139 +210,107 @@ class _SportsActivationScreenState
 
     return Scaffold(
       backgroundColor: palette.bg,
-      appBar: AppBar(
-        backgroundColor: Colors.transparent,
-        elevation: 0,
-        leading: IconButton(
-          icon: Icon(
-            Icons.arrow_back_ios_new_rounded,
-            size: 18,
-            color: isDark ? Colors.white70 : Colors.black87,
-          ),
-          onPressed: () {
-            if (context.canPop()) {
-              context.pop();
-            } else {
-              context.go('/');
-            }
-          },
-        ),
-      ),
       body: SafeArea(
-        child: Center(
-          child: SingleChildScrollView(
-            padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
-            child: ConstrainedBox(
-              constraints: const BoxConstraints(maxWidth: 460),
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  // Lock / Sports Graphic
-                  Center(
-                    child: Container(
-                      width: 90,
-                      height: 90,
-                      decoration: BoxDecoration(
-                        shape: BoxShape.circle,
-                        color: isDark ? AppColors.darkCard : Colors.white,
-                        border: Border.all(
-                          color: AppColors.primary.withOpacity(0.4),
-                          width: 2.5,
-                        ),
-                        boxShadow: [
-                          BoxShadow(
-                            color: AppColors.primary.withOpacity(0.25),
-                            blurRadius: 20,
-                            spreadRadius: 2,
-                          ),
-                        ],
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 14),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              const SizedBox(height: 8),
+              // Lock / Sports Graphic
+              Center(
+                child: Container(
+                  width: 86,
+                  height: 86,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    color: isDark ? AppColors.darkCard : Colors.white,
+                    border: Border.all(
+                      color: AppColors.primary.withOpacity(0.4),
+                      width: 2.5,
+                    ),
+                    boxShadow: [
+                      BoxShadow(
+                        color: AppColors.primary.withOpacity(0.25),
+                        blurRadius: 20,
+                        spreadRadius: 2,
                       ),
-                      child: ClipOval(
-                        child: Padding(
-                          padding: const EdgeInsets.all(12),
-                          child: Image.asset(
-                            'assets/images/app_logo.png',
-                            fit: BoxFit.contain,
-                            errorBuilder: (_, __, ___) => const Icon(
-                              Icons.play_circle_fill_rounded,
-                              size: 48,
-                              color: AppColors.primary,
-                            ),
-                          ),
+                    ],
+                  ),
+                  child: ClipOval(
+                    child: Padding(
+                      padding: const EdgeInsets.all(12),
+                      child: Image.asset(
+                        'assets/images/app_logo.png',
+                        fit: BoxFit.contain,
+                        errorBuilder: (_, __, ___) => const Icon(
+                          Icons.play_circle_fill_rounded,
+                          size: 48,
+                          color: AppColors.primary,
                         ),
                       ),
                     ),
                   ),
-                  const SizedBox(height: 20),
+                ),
+              ),
+              const SizedBox(height: 18),
 
-                  Text(
-                    'فعّل قسم المباريات',
-                    textAlign: TextAlign.center,
-                    style: TextStyle(
-                      fontSize: 22,
-                      fontWeight: FontWeight.w900,
-                      letterSpacing: -0.3,
-                      color: isDark ? Colors.white : const Color(0xFF111827),
-                    ),
-                  ),
-                  const SizedBox(height: 6),
-                  Text(
-                    'اختر باقة الاشتراك المناسبة لتفعيل المباريات',
-                    textAlign: TextAlign.center,
-                    style: TextStyle(
-                      fontSize: 12,
-                      color: isDark ? Colors.white60 : Colors.black54,
-                    ),
-                  ),
-                  const SizedBox(height: 14),
+              Text(
+                'فعّل قسم المباريات',
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  fontSize: 22,
+                  fontWeight: FontWeight.w900,
+                  letterSpacing: -0.3,
+                  color: isDark ? Colors.white : const Color(0xFF111827),
+                ),
+              ),
+              const SizedBox(height: 6),
+              Text(
+                'اختر باقة الاشتراك المناسبة لتفعيل المباريات',
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  fontSize: 12,
+                  color: isDark ? Colors.white60 : Colors.black54,
+                ),
+              ),
+              const SizedBox(height: 16),
 
-                  // Continuous Moving Plans Marquee
-                  NotificationListener<ScrollNotification>(
-                    onNotification: (notification) {
-                      if (notification is ScrollStartNotification) {
-                        _pauseMarquee();
-                      }
-                      return false;
-                    },
-                    child: SizedBox(
-                      height: 172,
-                      child: ListView.separated(
-                        controller: _marqueeScrollController,
-                        scrollDirection: Axis.horizontal,
-                        itemCount: SubscriptionPlan.defaultPlans.length * 200,
-                        separatorBuilder: (_, __) => const SizedBox(width: 8),
-                        itemBuilder: (context, idx) {
-                          final plan = SubscriptionPlan.defaultPlans[
-                              idx % SubscriptionPlan.defaultPlans.length];
-                          final isSelected = _selectedPlan.id == plan.id;
-                          return SubscriptionPlanCard(
-                            plan: plan,
-                            isSelected: isSelected,
-                            isDark: isDark,
-                            width: 136,
-                            onTap: () {
-                              _pauseMarquee();
-                              setState(() {
-                                _selectedPlan = plan;
-                              });
-                            },
-                            onWhatsApp: () {
-                              _pauseMarquee();
-                              setState(() {
-                                _selectedPlan = plan;
-                              });
-                              SubscriptionPlan.openWhatsAppSales(
-                                plan: plan,
-                                context: context,
-                              );
-                            },
-                          );
-                        },
-                      ),
-                    ),
-                  ),
-                  const SizedBox(height: 20),
+              // Manual Horizontal Scrollable Plans List
+              SizedBox(
+                height: 175,
+                child: ListView.separated(
+                  scrollDirection: Axis.horizontal,
+                  physics: const BouncingScrollPhysics(),
+                  itemCount: SubscriptionPlan.defaultPlans.length,
+                  separatorBuilder: (_, __) => const SizedBox(width: 8),
+                  itemBuilder: (context, idx) {
+                    final plan = SubscriptionPlan.defaultPlans[idx];
+                    final isSelected = _selectedPlan.id == plan.id;
+                    return SubscriptionPlanCard(
+                      plan: plan,
+                      isSelected: isSelected,
+                      isDark: isDark,
+                      width: 140,
+                      onTap: () {
+                        setState(() {
+                          _selectedPlan = plan;
+                        });
+                      },
+                      onWhatsApp: () {
+                        setState(() {
+                          _selectedPlan = plan;
+                        });
+                        SubscriptionPlan.openWhatsAppSales(
+                          plan: plan,
+                          context: context,
+                        );
+                      },
+                    );
+                  },
+                ),
+              ),
+              const SizedBox(height: 20),
 
                   // Error Banner
                   if (_errorMessage != null) ...[
@@ -603,8 +534,6 @@ class _SportsActivationScreenState
               ),
             ),
           ),
-        ),
-      ),
-    );
+        );
   }
 }

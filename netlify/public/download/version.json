@@ -1,11 +1,11 @@
 {
   "updateEnabled": true,
-  "versionCode": 74,
-  "versionName": "1.0.72",
-  "apkUrl": "https://cineball.netlify.app/download/app.apk?v=74",
-  "sha256": "8cf0015437ed5f3779fba4d7afca54b788938a9b457926a3d87db99cb114db97",
-  "sizeBytes": 57069401,
+  "versionCode": 75,
+  "versionName": "1.0.73",
+  "apkUrl": "https://cineball.netlify.app/download/app.apk?v=75",
+  "sha256": "ef2f4bf6ce0b3aff6fb6c2f6578a02c64f0db84e017dabdada2b4bcc8c9dd1d8",
+  "sizeBytes": 57065296,
   "forceUpdate": false,
   "minSupportedVersion": 1,
-  "notes": "تحديث تصميم بطاقات الاشتراكات والأسعار الجديدة"
+  "notes": "تحديث صفحة التفعيل: حركة يدوية للبطاقات، ملء عرض الصفحة، وإزالة زر الرجوع"
 }
