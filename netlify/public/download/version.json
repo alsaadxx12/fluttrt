@@ -1,11 +1,11 @@
 {
   "updateEnabled": true,
-  "versionCode": 70,
-  "versionName": "1.0.68",
-  "apkUrl": "https://cineball.netlify.app/download/app.apk?v=70",
-  "sha256": "75247edf2130fd7bf5538fd34fa0c73bbb56079645c55570a71e914633a8e166",
-  "sizeBytes": 57121425,
+  "versionCode": 71,
+  "versionName": "1.0.69",
+  "apkUrl": "https://cineball.netlify.app/download/app.apk?v=71",
+  "sha256": "0bb3eba9c75173ece5a52b4b3cd98ccc04f7821f3bb21c83dd04ead150c57ab4",
+  "sizeBytes": 57051571,
   "forceUpdate": false,
   "minSupportedVersion": 1,
-  "notes": "تحديث صفحة كود التفعيل: إضافة السعر وزر واتساب للمبيعات"
+  "notes": "إضافة باقات الاشتراكات (شهر، شهرين، 3 أشهر، 6 أشهر، 12 شهر) وإزالة الأقسام الزائدة"
 }

@@ -26,7 +26,7 @@ import 'package:youtube_downloader/features/viu/presentation/other_films.dart';
 import 'package:youtube_downloader/core/constants/app_palette.dart';
 import 'package:youtube_downloader/core/network/http_cache.dart';
 import 'package:youtube_downloader/core/network/image_cache.dart';
-import 'package:youtube_downloader/features/home/presentation/widgets/football_showcase.dart';
+import '../widgets/subscription_plans_showcase.dart';
 import 'package:youtube_downloader/features/home/presentation/widgets/franchise_showcase.dart';
 import '../widgets/dynamic_franchises_showcase.dart';
 import 'package:youtube_downloader/features/cinemana/data/cinemana_franchises.dart';
@@ -37,7 +37,6 @@ import '../../../sports/data/match_order.dart';
 import '../widgets/film_deck.dart';
 import '../../../../core/video/desktop_video.dart';
 import '../../../trailers/presentation/trailers_showcase.dart';
-import '../../../sports/presentation/widgets/match_highlights_banner.dart';
 import 'package:youtube_downloader/core/scroll/app_scroll_physics.dart';
 import 'package:youtube_downloader/features/subscription/presentation/providers/subscription_provider.dart';
 
@@ -478,9 +477,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
 
                     const SizedBox(height: 24),
 
-                    // Goal-summary reels + search, just below the live channels.
-                    // Phone only.
-                    const MatchHighlightsBanner(),
+                    // Subscription Plans (باقات وأنواع الاشتراكات)
+                    const SubscriptionPlansShowcase(),
 
                     const SizedBox(height: 24),
 
@@ -520,9 +518,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
 
                     const SizedBox(height: 24),
 
-                    // Decorative: the big leagues, tall branded cards.
-                    const LeaguesShowcase(),
-                    const SizedBox(height: 12),
+
 
                     // 4. أحدث المسلسلات (Latest Series) - Wide Card layout
                     latestSeriesAsync.when(
@@ -570,9 +566,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                     const DynamicFranchisesShowcase(section: FranchiseSection.anime),
                     const SizedBox(height: 12),
 
-                    // Decorative: the game's stars, tall portrait cards.
-                    const StarsShowcase(),
-                    const SizedBox(height: 12),
+
 
                     // 6. الأكثر مشاهدة (Most Viewed)
                     mostViewedAsync.when(
@@ -592,9 +586,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
 
                     const SizedBox(height: 24),
 
-                    // Decorative: the Arab leagues.
-                    const LeaguesShowcase(title: 'الدوريات العربية', leagues: FootballLeague.arab),
-                    const SizedBox(height: 12),
+
 
                     // 7. الأفلام العربية (Arabic Movies)
                     arabicMoviesAsync.when(

@@ -452,3 +452,94 @@ BEGIN
   END LOOP;
 END;
 $$;
+
+-- Create a code for a specific package (1, 2, 3, 6, or 12 months)
+CREATE OR REPLACE FUNCTION public.create_plan_code(
+  p_code text,
+  p_months integer DEFAULT 1
+)
+RETURNS text
+LANGUAGE plpgsql
+SECURITY DEFINER
+AS $$
+DECLARE
+  v_clean text;
+  v_hash text;
+  v_days integer;
+BEGIN
+  v_days := CASE p_months
+    WHEN 1 THEN 30
+    WHEN 2 THEN 60
+    WHEN 3 THEN 90
+    WHEN 6 THEN 180
+    WHEN 12 THEN 365
+    ELSE p_months * 30
+  END;
+
+  v_clean := upper(regexp_replace(p_code, '[\s\-_]+', '', 'g'));
+  v_hash := encode(digest(v_clean, 'sha256'), 'hex');
+
+  INSERT INTO public.activation_codes (code, code_hash, duration_days, max_uses, status, used_count)
+  VALUES (upper(trim(p_code)), v_hash, v_days, 1, 'active', 0)
+  ON CONFLICT (code_hash) DO UPDATE
+  SET code = EXCLUDED.code,
+      duration_days = v_days,
+      max_uses = 1,
+      status = 'active',
+      used_count = 0;
+
+  RETURN 'تم إنشاء كود (' || p_months || ' شهر / ' || v_days || ' يوم): ' || upper(trim(p_code));
+END;
+$$;
+
+-- Generate multiple random codes for a specific package (1, 2, 3, 6, or 12 months)
+CREATE OR REPLACE FUNCTION public.generate_plan_codes(
+  p_months integer DEFAULT 1,
+  p_count integer DEFAULT 5
+)
+RETURNS TABLE(activation_code text, duration_months integer, duration_days integer)
+LANGUAGE plpgsql
+SECURITY DEFINER
+AS $$
+DECLARE
+  i integer;
+  j integer;
+  v_hash text;
+  v_chars text := '23456789ABCDEFGHJKLMNPQRSTUVWXYZ';
+  v_part1 text;
+  v_part2 text;
+  v_code text;
+  v_days integer;
+BEGIN
+  v_days := CASE p_months
+    WHEN 1 THEN 30
+    WHEN 2 THEN 60
+    WHEN 3 THEN 90
+    WHEN 6 THEN 180
+    WHEN 12 THEN 365
+    ELSE p_months * 30
+  END;
+
+  FOR i IN 1..p_count LOOP
+    v_part1 := '';
+    v_part2 := '';
+    FOR j IN 1..4 LOOP
+      v_part1 := v_part1 || substr(v_chars, floor(random() * length(v_chars) + 1)::int, 1);
+      v_part2 := v_part2 || substr(v_chars, floor(random() * length(v_chars) + 1)::int, 1);
+    END LOOP;
+
+    v_code := 'CINE-' || v_part1 || '-' || v_part2;
+    v_hash := encode(digest(upper(regexp_replace(v_code, '[\s\-_]+', '', 'g')), 'sha256'), 'hex');
+
+    INSERT INTO public.activation_codes (code, code_hash, duration_days, max_uses, status, used_count)
+    VALUES (v_code, v_hash, v_days, 1, 'active', 0)
+    ON CONFLICT (code_hash) DO NOTHING;
+
+    activation_code := v_code;
+    duration_months := p_months;
+    duration_days := v_days;
+    RETURN NEXT;
+  END LOOP;
+END;
+$$;
+

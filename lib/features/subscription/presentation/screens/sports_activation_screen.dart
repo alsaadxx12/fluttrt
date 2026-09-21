@@ -3,10 +3,10 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart' as intl;
-import 'package:url_launcher/url_launcher.dart';
 import '../../../../core/constants/app_colors.dart';
 import '../../../../core/constants/app_palette.dart';
 import '../../../../core/constants/app_theme.dart';
+import '../../data/models/subscription_plan.dart';
 import '../providers/subscription_provider.dart';
 
 class SportsActivationScreen extends ConsumerStatefulWidget {
@@ -22,6 +22,7 @@ class _SportsActivationScreenState
   final TextEditingController _codeController = TextEditingController();
   bool _isLoading = false;
   String? _errorMessage;
+  SubscriptionPlan _selectedPlan = SubscriptionPlan.defaultPlans[0];
 
   @override
   void dispose() {
@@ -42,17 +43,7 @@ class _SportsActivationScreenState
   }
 
   Future<void> _openWhatsApp() async {
-    const phone = '9647714289278';
-    final message = Uri.encodeComponent(
-        'مرحباً، أود الحصول على كود تفعيل لقسم المباريات في تطبيق CineBall.');
-    final url = Uri.parse('https://wa.me/$phone?text=$message');
-    try {
-      if (await canLaunchUrl(url)) {
-        await launchUrl(url, mode: LaunchMode.externalApplication);
-      }
-    } catch (e) {
-      debugPrint('WhatsApp launch error: $e');
-    }
+    await SubscriptionPlan.openWhatsAppSales(plan: _selectedPlan);
   }
 
   Future<void> _handleActivation() async {
@@ -305,44 +296,137 @@ class _SportsActivationScreenState
                       color: isDark ? Colors.white : const Color(0xFF111827),
                     ),
                   ),
-                  const SizedBox(height: 12),
-                  Container(
-                    padding:
-                        const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-                    decoration: BoxDecoration(
-                      color: isDark
-                          ? AppColors.primary.withOpacity(0.12)
-                          : const Color(0xFFFEF2F2),
-                      borderRadius:
-                          BorderRadius.circular(AppTheme.borderRadius),
-                      border: Border.all(
-                        color: AppColors.primary.withOpacity(0.35),
-                        width: 1.2,
-                      ),
-                    ),
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        const Icon(
-                          Icons.local_offer_rounded,
-                          color: AppColors.primary,
-                          size: 18,
-                        ),
-                        const SizedBox(width: 8),
-                        Text(
-                          'سعر الاشتراك الشهري 5 آلاف دينار فقط',
-                          style: TextStyle(
-                            fontSize: 14,
-                            fontWeight: FontWeight.w800,
-                            color: isDark
-                                ? Colors.white
-                                : const Color(0xFF991B1B),
-                          ),
-                        ),
-                      ],
+                  const SizedBox(height: 6),
+                  Text(
+                    'اختر باقة الاشتراك المناسبة لتفعيل المباريات',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: isDark ? Colors.white60 : Colors.black54,
                     ),
                   ),
-                  const SizedBox(height: 24),
+                  const SizedBox(height: 14),
+
+                  // Plans selector
+                  SizedBox(
+                    height: 110,
+                    child: ListView.separated(
+                      scrollDirection: Axis.horizontal,
+                      itemCount: SubscriptionPlan.defaultPlans.length,
+                      separatorBuilder: (_, __) => const SizedBox(width: 8),
+                      itemBuilder: (context, idx) {
+                        final plan = SubscriptionPlan.defaultPlans[idx];
+                        final isSelected = _selectedPlan.id == plan.id;
+                        return InkWell(
+                          onTap: () {
+                            setState(() {
+                              _selectedPlan = plan;
+                            });
+                          },
+                          borderRadius: BorderRadius.circular(12),
+                          child: AnimatedContainer(
+                            duration: const Duration(milliseconds: 200),
+                            width: 115,
+                            padding: const EdgeInsets.all(8),
+                            decoration: BoxDecoration(
+                              color: isSelected
+                                  ? (isDark
+                                      ? AppColors.primary.withOpacity(0.2)
+                                      : const Color(0xFFFEF2F2))
+                                  : (isDark
+                                      ? Colors.white.withOpacity(0.04)
+                                      : const Color(0xFFF9FAFB)),
+                              borderRadius: BorderRadius.circular(12),
+                              border: Border.all(
+                                color: isSelected
+                                    ? AppColors.primary
+                                    : (isDark
+                                        ? Colors.white.withOpacity(0.1)
+                                        : Colors.black.withOpacity(0.08)),
+                                width: isSelected ? 1.8 : 1,
+                              ),
+                            ),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: [
+                                Row(
+                                  mainAxisAlignment:
+                                      MainAxisAlignment.spaceBetween,
+                                  children: [
+                                    Expanded(
+                                      child: Text(
+                                        plan.title,
+                                        style: TextStyle(
+                                          fontSize: 13,
+                                          fontWeight: FontWeight.w900,
+                                          color: isSelected
+                                              ? AppColors.primary
+                                              : (isDark
+                                                  ? Colors.white
+                                                  : Colors.black87),
+                                        ),
+                                        maxLines: 1,
+                                        overflow: TextOverflow.ellipsis,
+                                      ),
+                                    ),
+                                    if (isSelected)
+                                      const Icon(
+                                        Icons.check_circle_rounded,
+                                        color: AppColors.primary,
+                                        size: 14,
+                                      ),
+                                  ],
+                                ),
+                                if (plan.badge != null)
+                                  Container(
+                                    padding: const EdgeInsets.symmetric(
+                                        horizontal: 5, vertical: 1),
+                                    decoration: BoxDecoration(
+                                      color: plan.isBestValue
+                                          ? const Color(0xFFFFD700)
+                                          : (plan.isPopular
+                                              ? AppColors.primary
+                                              : (isDark
+                                                  ? Colors.white.withOpacity(0.12)
+                                                  : Colors.grey.shade200)),
+                                      borderRadius: BorderRadius.circular(4),
+                                    ),
+                                    child: Text(
+                                      plan.badge!,
+                                      style: TextStyle(
+                                        fontSize: 8.5,
+                                        fontWeight: FontWeight.bold,
+                                        color: plan.isBestValue
+                                            ? Colors.black87
+                                            : (plan.isPopular
+                                                ? Colors.white
+                                                : (isDark
+                                                    ? Colors.white70
+                                                    : Colors.black87)),
+                                      ),
+                                    ),
+                                  )
+                                else
+                                  const SizedBox(height: 10),
+                                Text(
+                                  plan.priceText,
+                                  style: TextStyle(
+                                    fontSize: 12.5,
+                                    fontWeight: FontWeight.w900,
+                                    color: isSelected
+                                        ? AppColors.primary
+                                        : (isDark ? Colors.white : Colors.black87),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        );
+                      },
+                    ),
+                  ),
+                  const SizedBox(height: 20),
 
                   // Error Banner
                   if (_errorMessage != null) ...[
@@ -528,10 +612,10 @@ class _SportsActivationScreenState
                         size: 19,
                         color: Colors.white,
                       ),
-                      label: const Text(
-                        'طلب كود التفعيل عبر واتساب',
-                        style: TextStyle(
-                          fontSize: 14,
+                      label: Text(
+                        'طلب كود (${_selectedPlan.title} - ${_selectedPlan.priceText}) عبر واتساب',
+                        style: const TextStyle(
+                          fontSize: 13,
                           fontWeight: FontWeight.w800,
                         ),
                       ),
