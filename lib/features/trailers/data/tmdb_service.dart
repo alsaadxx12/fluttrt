@@ -37,9 +37,9 @@ class TmdbService {
   /// Uses `/discover/movie` sorted by release date descending and bounded to
   /// films already released (not future ones), so the feed opens with this
   /// year's latest theatrical releases and walks back in time from there —
-  /// hundreds of pages, so it effectively never ends. Video lookups for the
-  /// page run in parallel, so a page resolves in about one round trip rather
-  /// than one per film.
+  /// hundreds of pages, so it effectively never ends. Video lookups run in
+  /// batches of five and stop as soon as [want] trailers are collected, so a
+  /// page costs a few round trips rather than twenty requests at once.
   Future<List<MovieTrailer>> feedPage(int page, {int want = 10}) async {
     if (!TmdbConfig.isConfigured || page < 1) return const [];
     try {
@@ -68,13 +68,18 @@ class TmdbService {
           .whereType<MovieTrailer>()
           .toList();
 
-      // Resolve every film's trailer key at once, then keep those that have one.
-      final keys = await Future.wait(films.map((f) => _videoKey(f.movieId)));
+      // Resolve trailer keys five films at a time, keeping those that have
+      // one, until enough are collected.
+      const batchSize = 5;
       final out = <MovieTrailer>[];
-      for (var i = 0; i < films.length; i++) {
-        final key = keys[i];
-        if (key != null) out.add(films[i].withVideo(key));
-        if (out.length >= want) break;
+      for (var i = 0; i < films.length && out.length < want; i += batchSize) {
+        final batch = films.sublist(i, (i + batchSize).clamp(0, films.length));
+        final keys = await Future.wait(batch.map((f) => _videoKey(f.movieId)));
+        for (var j = 0; j < batch.length; j++) {
+          final key = keys[j];
+          if (key != null) out.add(batch[j].withVideo(key));
+          if (out.length >= want) break;
+        }
       }
       return out;
     } catch (_) {

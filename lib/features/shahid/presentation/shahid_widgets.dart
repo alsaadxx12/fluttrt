@@ -112,6 +112,7 @@ class ShahidFilterChips extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
+    final palette = AppPalette.of(context);
     return SizedBox(
       height: 34,
       child: ListView.separated(
@@ -130,12 +131,12 @@ class ShahidFilterChips extends StatelessWidget {
               padding: const EdgeInsets.symmetric(horizontal: 14),
               alignment: Alignment.center,
               decoration: BoxDecoration(
-                color: isOn
-                    ? const Color(0xFFE50914)
-                    : (isDark ? AppPalette.of(context).card : const Color(0xFFE2E8F0)),
+                color: isOn ? const Color(0xFFE50914) : palette.card,
                 borderRadius: BorderRadius.circular(17),
                 border: Border.all(
-                  color: isOn ? const Color(0xFFE50914) : Colors.white.withOpacity(0.08),
+                  color: isOn
+                      ? const Color(0xFFE50914)
+                      : (isDark ? Colors.white.withOpacity(0.08) : palette.border),
                 ),
               ),
               child: Text(
@@ -172,6 +173,7 @@ class ShahidChannelCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final dpr = MediaQuery.of(context).devicePixelRatio;
     final logo = channel.logoUrl((width * dpr).round());
+    final palette = AppPalette.of(context);
     return GestureDetector(
       onTap: () => Navigator.of(context, rootNavigator: true).push(
         MaterialPageRoute(
@@ -181,9 +183,10 @@ class ShahidChannelCard extends StatelessWidget {
       child: Container(
         width: width,
         decoration: BoxDecoration(
-          color: AppPalette.of(context).card,
+          color: palette.card,
           borderRadius: BorderRadius.circular(14),
-          border: Border.all(color: Colors.white.withOpacity(0.08)),
+          // Light mode: a flat white tile on the white page, hairline border only.
+          border: Border.all(color: palette.isDark ? Colors.white.withOpacity(0.08) : palette.border),
         ),
         clipBehavior: Clip.antiAlias,
         child: Stack(
@@ -240,6 +243,7 @@ class ShahidPosterCard extends StatelessWidget {
     final dpr = MediaQuery.of(context).devicePixelRatio;
     final height = width * 1.5;
     final poster = item.posterUrl((width * dpr).round(), (height * dpr).round());
+    final palette = AppPalette.of(context);
     return GestureDetector(
       onTap: () => openShahidItem(context, item),
       child: SizedBox(
@@ -251,8 +255,11 @@ class ShahidPosterCard extends StatelessWidget {
               width: width,
               height: height,
               decoration: BoxDecoration(
-                color: AppPalette.of(context).card,
+                // Loading placeholder behind the poster: the palette's
+                // skeleton tone, so it still shows on the white page.
+                color: palette.isDark ? palette.card : palette.skeleton,
                 borderRadius: BorderRadius.circular(14),
+                border: palette.isDark ? null : Border.all(color: palette.border),
               ),
               clipBehavior: Clip.antiAlias,
               child: Stack(

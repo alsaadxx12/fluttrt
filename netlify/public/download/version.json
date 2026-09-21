@@ -1,11 +1,11 @@
 {
   "updateEnabled": true,
-  "versionCode": 30,
-  "versionName": "1.0.28",
-  "apkUrl": "https://cineball.netlify.app/download/app.apk?v=30",
-  "sha256": "ee3fe0c938518d6ae515ced604f6a29a11bafbc1afdc9e607b0a736353fd809e",
-  "sizeBytes": 30735344,
+  "versionCode": 68,
+  "versionName": "1.0.66",
+  "apkUrl": "https://cineball.netlify.app/download/app.apk?v=68",
+  "sha256": "90657d34d7ca4433e53d3bb27af179e3379c9fd81e19904b0176a2ecfdfcbb31",
+  "sizeBytes": 56507836,
   "forceUpdate": false,
   "minSupportedVersion": 1,
-  "notes": "قسم مقاطع وإعلانات الأفلام"
+  "notes": "إصلاح أوقات بطاقات المباريات والتوقيت المحلي بدقة"
 }

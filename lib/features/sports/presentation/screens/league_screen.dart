@@ -68,6 +68,8 @@ class _LeagueScreenState extends ConsumerState<LeagueScreen> with SingleTickerPr
             pinned: true,
             backgroundColor: league.colors.first,
             foregroundColor: Colors.white,
+            elevation: 0,
+            scrolledUnderElevation: 0,
             surfaceTintColor: Colors.transparent,
             title: Text(league.name, style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w900)),
             flexibleSpace: FlexibleSpaceBar(

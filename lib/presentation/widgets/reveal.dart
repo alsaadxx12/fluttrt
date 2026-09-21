@@ -3,13 +3,12 @@ import 'dart:async';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 
-/// How the home page introduces itself: nothing snaps into place, it rises
-/// and fades in, one piece after the next.
+/// A passthrough: the child is simply there, on every page, with no entrance
+/// animation at all.
 ///
-/// Two rules keep it from becoming noise. The stagger is capped, so the
-/// tenth section does not wait a second for its turn; and when the platform
-/// asks for reduced motion the child is simply there, with no animation at
-/// all.
+/// It used to rise and fade each section in, which read as the page
+/// re-loading every time it was shown. The parameters are kept so call sites
+/// need not change; none of them animate anything any more.
 class Reveal extends StatefulWidget {
   final Widget child;
 
@@ -61,18 +60,8 @@ class _RevealState extends State<Reveal> with SingleTickerProviderStateMixin {
     super.didChangeDependencies();
     if (_started) return;
     _started = true;
-    if (widget.index > widget.animateUpTo || (MediaQuery.maybeOf(context)?.disableAnimations ?? false)) {
-      _c.value = 1;
-      return;
-    }
-    final delayMs = (widget.step.inMilliseconds * widget.index).clamp(0, widget.maxDelay.inMilliseconds);
-    if (delayMs == 0) {
-      _c.forward();
-    } else {
-      Future.delayed(Duration(milliseconds: delayMs), () {
-        if (mounted) _c.forward();
-      });
-    }
+    // Passthrough: fully shown from the first frame, no timer, no forward.
+    _c.value = 1;
   }
 
   @override
@@ -103,9 +92,8 @@ class _RevealState extends State<Reveal> with SingleTickerProviderStateMixin {
   }
 }
 
-/// A picture that arrives instead of appearing: it fades up from its
-/// placeholder with a touch of settle, so a grid of posters fills in like a
-/// shelf rather than a spreadsheet.
+/// A passthrough: the picture is simply there, so a poster that is already
+/// cached never fades or settles into place when a page is shown again.
 class RevealImage extends StatefulWidget {
   final Widget child;
   final Duration duration;
@@ -121,13 +109,8 @@ class _RevealImageState extends State<RevealImage> with SingleTickerProviderStat
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
-    if (_c.status == AnimationStatus.dismissed) {
-      if (MediaQuery.maybeOf(context)?.disableAnimations ?? false) {
-        _c.value = 1;
-      } else {
-        _c.forward();
-      }
-    }
+    // Passthrough: fully shown from the first frame, no forward.
+    _c.value = 1;
   }
 
   @override

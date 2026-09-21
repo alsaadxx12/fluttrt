@@ -54,18 +54,15 @@ class TrailerStreamResolver {
       }
       final muxed = manifest.muxed;
       if (muxed.isEmpty) return null;
-      // The highest-resolution muxed stream available (a single stream that
-      // already carries audio, so it plays as-is). We select the absolute highest
-      // resolution (height and width) and highest bitrate available.
-      final list = muxed.toList()
+      // Highest-resolution muxed stream available (a single stream carrying
+      // audio, so it plays as-is). Muxed tops out at 720p on YouTube; this
+      // gives the best quality a direct inline stream can offer.
+      final byQuality = muxed.toList()
         ..sort((a, b) {
           final byHeight = b.videoResolution.height.compareTo(a.videoResolution.height);
-          if (byHeight != 0) return byHeight;
-          final byWidth = b.videoResolution.width.compareTo(a.videoResolution.width);
-          if (byWidth != 0) return byWidth;
-          return b.bitrate.compareTo(a.bitrate);
+          return byHeight != 0 ? byHeight : b.bitrate.compareTo(a.bitrate);
         });
-      final stream = list.first;
+      final stream = byQuality.first;
       _cache[videoId] = _Entry(stream.url, DateTime.now());
       return stream.url;
     } catch (_) {

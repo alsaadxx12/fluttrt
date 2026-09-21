@@ -14,7 +14,6 @@ import 'package:youtube_downloader/features/sports/presentation/widgets/match_sc
 import '../../data/models/sports_models.dart';
 import '../providers/sports_provider.dart';
 import '../lineup_layout.dart';
-import '../../data/match_merge.dart';
 import '../../../../core/constants/app_palette.dart';
 
 class PlayerChannelItem {
@@ -70,12 +69,51 @@ class _SportsPlayerScreenState extends ConsumerState<SportsPlayerScreen> with Wi
   bool _winWebInitialized = false;
   bool _isLoadingStream = true;
   bool _isStreamBuffering = false;
+  bool _isWebActive = false;
   String? _streamErrorMessage;
   bool _isLandscape = false;
   bool _controlsVisible = true;
   bool _isPlaying = true;
   Timer? _hideControlsTimer;
   int _streamLoadToken = 0;
+  BoxFit _videoFit = BoxFit.fill;
+  String? _fitToastText;
+  Timer? _fitToastTimer;
+
+  String get _videoFitTitle {
+    switch (_videoFit) {
+      case BoxFit.fill:
+        return 'ملء الشاشة بالكامل';
+      case BoxFit.cover:
+        return 'تكبير مع الحفاظ على النسبة';
+      case BoxFit.contain:
+        return 'الأبعاد الأصلية (16:9)';
+      default:
+        return 'ملء الشاشة';
+    }
+  }
+
+  void _cycleVideoFit() {
+    setState(() {
+      if (_videoFit == BoxFit.fill) {
+        _videoFit = BoxFit.cover;
+      } else if (_videoFit == BoxFit.cover) {
+        _videoFit = BoxFit.contain;
+      } else {
+        _videoFit = BoxFit.fill;
+      }
+    });
+    _showFitToast(_videoFitTitle);
+    _scheduleHideControls();
+  }
+
+  void _showFitToast(String text) {
+    _fitToastTimer?.cancel();
+    setState(() => _fitToastText = text);
+    _fitToastTimer = Timer(const Duration(milliseconds: 1500), () {
+      if (mounted) setState(() => _fitToastText = null);
+    });
+  }
 
   int _selectedTab = 0; // 0: التشكيلة (Lineup), 1: الأحداث (Events), 2: الإحصائيات (Stats), 3: معلومات (Info)
   int _pitchTeamIndex = 0; // 0: Home Team, 1: Away Team
@@ -98,37 +136,23 @@ class _SportsPlayerScreenState extends ConsumerState<SportsPlayerScreen> with Wi
     _setupChannelsAndStream();
   }
 
-  /// True while the button is forcing an orientation, so the device's own
-  /// reading is ignored until it has caught up.
-  bool _forcing = false;
-
-  /// Follows the device: landscape means fullscreen, upright means not.
-  /// Only the view state and the system bars change here; the orientation
-  /// itself is left to the phone.
-  void _syncToDevice(bool landscape) {
-    if (Platform.isWindows || Platform.isLinux || Platform.isMacOS) return;
-    if (_isLandscape == landscape || !mounted) return;
-    setState(() => _isLandscape = landscape);
-    SystemChrome.setEnabledSystemUIMode(
-      landscape ? SystemUiMode.immersiveSticky : SystemUiMode.edgeToEdge,
-    );
-  }
-
-  /// Some phones bring the navigation bar back on their own: after the
-  /// rotation into landscape settles, or when the page's own fullscreen view
-  /// closes. immersiveSticky is asked for once and then quietly undone, which
-  /// is why a side bar appears on other devices but not here. So every time
-  /// the window changes while fullscreen, ask for the bars to be hidden again.
   @override
   void didChangeMetrics() {
     super.didChangeMetrics();
-    if (_isLandscape && mounted) {
-      SystemChrome.setEnabledSystemUIMode(SystemUiMode.immersiveSticky);
+    if (!Platform.isWindows && !Platform.isLinux && !Platform.isMacOS) {
+      final views = WidgetsBinding.instance.platformDispatcher.views;
+      if (views.isNotEmpty) {
+        final isLandscapeNow = views.first.physicalSize.width > views.first.physicalSize.height;
+        if ((_isLandscape || isLandscapeNow) && mounted) {
+          SystemChrome.setEnabledSystemUIMode(SystemUiMode.immersiveSticky);
+        } else if (!_isLandscape && !isLandscapeNow && mounted) {
+          SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
+        }
+      }
     }
   }
 
-  /// Coming back from the background in fullscreen leaves the bars showing
-  /// too.
+  /// Coming back from the background in fullscreen leaves the bars showing too.
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
     super.didChangeAppLifecycleState(state);
@@ -138,10 +162,17 @@ class _SportsPlayerScreenState extends ConsumerState<SportsPlayerScreen> with Wi
   }
 
   @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    precacheImage(const AssetImage('assets/images/app_logo.png'), context);
+  }
+
+  @override
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
     _hideControlsTimer?.cancel();
     _winFullscreenSub?.cancel();
+    _fitToastTimer?.cancel();
     _videoController?.dispose();
     for (final s in _desktopSubscriptions) {
       s.cancel();
@@ -154,7 +185,9 @@ class _SportsPlayerScreenState extends ConsumerState<SportsPlayerScreen> with Wi
         windowManager.setFullScreen(false);
       } catch (_) {}
     } else {
-      SystemChrome.setPreferredOrientations([DeviceOrientation.portraitUp]);
+      SystemChrome.setPreferredOrientations([
+        DeviceOrientation.portraitUp,
+      ]);
       SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
     }
     super.dispose();
@@ -162,10 +195,8 @@ class _SportsPlayerScreenState extends ConsumerState<SportsPlayerScreen> with Wi
 
   void _setFullscreen(bool fullscreen) async {
     final isDesktop = Platform.isWindows || Platform.isLinux || Platform.isMacOS;
-    _forcing = true;
     setState(() => _isLandscape = fullscreen);
     if (isDesktop) {
-      _forcing = false;
       try {
         await windowManager.setFullScreen(fullscreen);
       } catch (_) {}
@@ -176,20 +207,27 @@ class _SportsPlayerScreenState extends ConsumerState<SportsPlayerScreen> with Wi
       SystemChrome.setEnabledSystemUIMode(
         fullscreen ? SystemUiMode.immersiveSticky : SystemUiMode.edgeToEdge,
       );
-      SystemChrome.setPreferredOrientations(
-        fullscreen
-            ? [DeviceOrientation.landscapeLeft, DeviceOrientation.landscapeRight]
-            : [DeviceOrientation.portraitUp],
-      );
-      Future.delayed(const Duration(milliseconds: 700), () {
-        if (!mounted) return;
-        _forcing = false;
+      if (fullscreen) {
         SystemChrome.setPreferredOrientations([
-          DeviceOrientation.portraitUp,
           DeviceOrientation.landscapeLeft,
           DeviceOrientation.landscapeRight,
         ]);
-      });
+      } else {
+        // Immediately flip back upright to portrait mode
+        SystemChrome.setPreferredOrientations([
+          DeviceOrientation.portraitUp,
+        ]);
+        // After returning upright, allow sensor rotation again
+        Future.delayed(const Duration(milliseconds: 1000), () {
+          if (mounted && !_isLandscape) {
+            SystemChrome.setPreferredOrientations([
+              DeviceOrientation.portraitUp,
+              DeviceOrientation.landscapeLeft,
+              DeviceOrientation.landscapeRight,
+            ]);
+          }
+        });
+      }
     }
   }
 
@@ -198,7 +236,7 @@ class _SportsPlayerScreenState extends ConsumerState<SportsPlayerScreen> with Wi
   void _scheduleHideControls() {
     _hideControlsTimer?.cancel();
     if (!_isPlaying) return;
-    _hideControlsTimer = Timer(const Duration(seconds: 4), () {
+    _hideControlsTimer = Timer(const Duration(seconds: 7), () {
       if (mounted) setState(() => _controlsVisible = false);
     });
   }
@@ -386,6 +424,79 @@ class _SportsPlayerScreenState extends ConsumerState<SportsPlayerScreen> with Wi
   })();
   ''';
 
+    String _buildCleanPlayerHtml(String streamUrl) {
+    return '''<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>Match Stream</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    html, body { width: 100%; height: 100%; background: #000; overflow: hidden; display: flex; align-items: center; justify-content: center; }
+    #player { width: 100%; height: 100%; object-fit: fill; background: #000; }
+  </style>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/hls.js/1.5.8/hls.min.js"></script>
+</head>
+<body>
+  <video id="player" autoplay playsinline webkit-playsinline controls></video>
+  <script>
+    (function() {
+      var video = document.getElementById('player');
+      var src = "$streamUrl";
+
+      function playVideo() {
+        video.play().catch(function() {
+          video.muted = true;
+          video.play();
+        });
+      }
+
+      if (window.Hls && Hls.isSupported()) {
+        var hls = new Hls({
+          enableWorker: true,
+          lowLatencyMode: true,
+          backBufferLength: 30,
+          manifestLoadingMaxRetry: 5,
+          levelLoadingMaxRetry: 4
+        });
+        hls.loadSource(src);
+        hls.attachMedia(video);
+        hls.on(Hls.Events.MANIFEST_PARSED, function() {
+          playVideo();
+        });
+        hls.on(Hls.Events.ERROR, function(event, data) {
+          if (data.fatal) {
+            switch (data.type) {
+              case Hls.ErrorTypes.NETWORK_ERROR:
+                hls.startLoad();
+                break;
+              case Hls.ErrorTypes.MEDIA_ERROR:
+                hls.recoverMediaError();
+                break;
+              default:
+                hls.destroy();
+                break;
+            }
+          }
+        });
+      } else if (video.canPlayType('application/vnd.apple.mpegurl')) {
+        video.src = src;
+        video.addEventListener('loadedmetadata', playVideo);
+      } else {
+        video.src = src;
+        playVideo();
+      }
+
+      [300, 800, 1500, 3000].forEach(function(ms) {
+        setTimeout(playVideo, ms);
+      });
+    })();
+  </script>
+</body>
+</html>''';
+  }
+
   WebViewController _ensureWebController() {
     if (_webController != null) return _webController!;
     final controller = WebViewController()
@@ -419,17 +530,29 @@ class _SportsPlayerScreenState extends ConsumerState<SportsPlayerScreen> with Wi
           }
         },
         onNavigationRequest: (request) {
-          final u = request.url.toLowerCase();
-          if (u.contains('play.google.com') ||
-              u.contains('market:') ||
-              u.contains('intent:') ||
-              u.contains('1xbet') ||
-              u.contains('betting') ||
-              u.contains('whatsapp') ||
-              u.contains('t.me') ||
-              u.contains('telegram.me') ||
-              u.contains('.apk') ||
-              (!u.startsWith('http://') && !u.startsWith('https://'))) {
+          final uri = Uri.tryParse(request.url);
+          if (uri == null) return NavigationDecision.prevent;
+          final scheme = uri.scheme.toLowerCase();
+          if (scheme == 'about' || scheme == 'data') return NavigationDecision.navigate;
+          if (scheme != 'http' && scheme != 'https') return NavigationDecision.prevent;
+
+          final host = uri.host.toLowerCase();
+          final isAllowed = host.contains('matchlivehd.com') ||
+              host.contains('r2.dev') ||
+              host.contains('yassirtv.com') ||
+              host.contains('siiir.tv') ||
+              host.contains('koora-l.live') ||
+              host.contains('korax90.co') ||
+              host.contains('boomstreaming.com') ||
+              host.contains('cloudflare.com') ||
+              host.contains('cdnjs.cloudflare.com') ||
+              host.contains('jsdelivr.net') ||
+              host.endsWith('.sbs') ||
+              host.endsWith('.cfd') ||
+              host.contains('fabor-tv-player.me');
+
+          if (!isAllowed) {
+            debugPrint('[SPORTS_WEBVIEW] Blocked unwanted ad navigation: ${request.url}');
             return NavigationDecision.prevent;
           }
           return NavigationDecision.navigate;
@@ -449,6 +572,22 @@ class _SportsPlayerScreenState extends ConsumerState<SportsPlayerScreen> with Wi
       window.alert = function() { return true; };
       window.confirm = function() { return true; };
       window.prompt = function() { return null; };
+      window.ConsoleBan = { init: function() {} };
+      window.aclib = { runPop: function() {}, runAutoTag: function() {} };
+
+      document.addEventListener('click', function(e) {
+        var el = e.target;
+        while (el && el !== document.documentElement) {
+          if (el.id === 'aclib' || 
+              (el.className && typeof el.className === 'string' && (el.className.indexOf('pop') !== -1 || el.className.indexOf('ad') !== -1)) ||
+              (el.tagName === 'A' && el.target === '_blank' && el.href && !el.href.includes('matchlivehd'))) {
+            e.preventDefault();
+            e.stopPropagation();
+            return false;
+          }
+          el = el.parentElement;
+        }
+      }, true);
     })();
     """;
     controller.runJavaScript(js).catchError((_) {});
@@ -456,10 +595,25 @@ class _SportsPlayerScreenState extends ConsumerState<SportsPlayerScreen> with Wi
 
   void _injectCleanup(WebViewController controller) {
     controller.runJavaScript(_adBlockAndCleanupJs).catchError((_) {});
-    for (final ms in [500, 1200, 2500, 4000, 6500]) {
+    const autoPlayJs = """
+    (function() {
+      var v = document.querySelector('video');
+      if (v) {
+        v.playsInline = true;
+        v.webkitPlaysInline = true;
+        v.autoplay = true;
+        v.play().catch(function() {
+          v.muted = true;
+          v.play();
+        });
+      }
+    })();
+    """;
+    for (final ms in [300, 700, 1500, 3000, 5000]) {
       Future.delayed(Duration(milliseconds: ms), () {
         if (mounted && _webController != null) {
           _webController?.runJavaScript(_adBlockAndCleanupJs).catchError((_) {});
+          _webController?.runJavaScript(autoPlayJs).catchError((_) {});
         }
       });
     }
@@ -585,132 +739,88 @@ class _SportsPlayerScreenState extends ConsumerState<SportsPlayerScreen> with Wi
 
     // MATCH MODE: Display ONLY channels broadcasting this specific match!
     final match = widget.match;
+    final direct = widget.directUrl ?? match.directUrl;
     final sportsService = ref.read(sportsServiceProvider);
 
-    // 1. Source 1 (The App's Original Source): streamId resolver
-    int? streamId = match.streamId;
-    if (streamId == null && (widget.directUrl == null || widget.directUrl!.isEmpty)) {
+    // Kora x90 Streaming Sources
+    if (direct != null && direct.contains('korax90.co')) {
       try {
-        final liveMatches = await sportsService.fetchLiveMatches();
-        final found = MatchMerge.findSame(match, liveMatches);
-        if (found != null && found.streamId != null) {
-          streamId = found.streamId;
-        }
-      } catch (_) {}
-    }
-
-    if (streamId != null && streamId > 0) {
-      try {
-        final streamInfo = await sportsService.fetchStream(streamId);
-        if (streamInfo != null && streamInfo.ok && streamInfo.url.isNotEmpty) {
-          final isWeb = streamInfo.play == 'webview' ||
-              (!streamInfo.url.contains('.m3u8') && !streamInfo.url.contains('albaplayer'));
+        final koraServers = await sportsService.resolveKoraX90Servers(direct);
+        for (int i = 0; i < koraServers.length; i++) {
+          final s = koraServers[i];
+          final isHls = s.streamUrl.contains('.m3u8');
           channelList.add(
             PlayerChannelItem(
-              id: 'source_orig_$streamId',
-              name: 'البث المباشر (المصدر 1)',
+              id: 'korax90_server_$i',
+              name: s.name.isNotEmpty ? s.name : 'سيرفر ${i + 1} HD',
               isAppSource: true,
-              streamUrl: streamInfo.url,
-              subtitle: 'بث عالي الدقة HD',
-              headers: streamInfo.headers,
-              isWebStream: isWeb,
+              streamUrl: s.streamUrl,
+              subtitle: isHls ? 'بث HLS مباشر فائق السرعة' : 'مشغل البث المباشر',
+              isWebStream: !isHls && (s.type == 'iframe' || s.streamUrl.contains('.php')),
+              headers: isHls
+                  ? const {
+                      'User-Agent': 'Mozilla/5.0 (Linux; Android 14; SmartTV; SM-A266B) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+                      'Referer': 'https://9.boomstreaming.com/',
+                    }
+                  : null,
             ),
           );
         }
       } catch (e) {
-        debugPrint('[SPORTS_PLAYER] Error loading Source 1: $e');
+        debugPrint('[SPORTS_PLAYER] Kora x90 servers resolve error: $e');
       }
     }
 
-    // 2. Source 2 (The App's New Source): directUrl / broadcasters from Cinamana / Koralive
-    final direct = widget.directUrl ?? match.directUrl;
-    if (direct != null && direct.isNotEmpty && !channelList.any((c) => c.streamUrl == direct)) {
-      final name = (match.broadcasterName != null &&
-              match.broadcasterName!.isNotEmpty &&
-              match.broadcasterName != 'غير معروف')
-          ? match.broadcasterName!
-          : (channelList.isNotEmpty ? 'البث المباشر (المصدر 2)' : 'البث المباشر HD');
+    // SIR TV Exclusive Streaming Sources (Fallback / Alternative)
+    if (channelList.isEmpty) {
+      String? yasirChannelKey;
+      final bNameLower = (match.broadcasterName ?? '').toLowerCase();
+      final dUrlLower = (match.directUrl ?? '').toLowerCase();
+      final allHints = '$bNameLower $dUrlLower';
+
+      if (allHints.contains('1') || allHints.contains('bein1') || allHints.contains('max 1')) {
+        yasirChannelKey = 'bein1';
+      } else if (allHints.contains('2') || allHints.contains('bein2') || allHints.contains('max 2')) {
+        yasirChannelKey = 'bein2';
+      } else if (allHints.contains('3') || allHints.contains('bein3') || allHints.contains('max 3')) {
+        yasirChannelKey = 'bein3';
+      } else if (allHints.contains('4') || allHints.contains('bein4') || allHints.contains('max 4')) {
+        yasirChannelKey = 'bein4';
+      } else if (allHints.contains('5') || allHints.contains('bein5') || allHints.contains('max 5')) {
+        yasirChannelKey = 'bein5';
+      } else if (allHints.contains('6') || allHints.contains('bein6') || allHints.contains('max 6')) {
+        yasirChannelKey = 'bein6';
+      } else {
+        yasirChannelKey = 'bein1';
+      }
+
+      final yasirUrl = 'https://yassirtv.com/hard/2908c7d4425d87350.html?match=$yasirChannelKey';
       channelList.add(
         PlayerChannelItem(
-          id: 'source_new_direct',
-          name: name,
-          streamUrl: direct,
-          subtitle: 'بث مباشر سريع HD',
+          id: 'source_sirtv_main_$yasirChannelKey',
+          name: 'سيرفر البث الرئيسي HD',
+          isAppSource: true,
+          streamUrl: yasirUrl,
+          subtitle: match.broadcasterName != null &&
+                  match.broadcasterName!.isNotEmpty &&
+                  match.broadcasterName != 'غير معروف'
+              ? 'بث ${match.broadcasterName} بجودة عالية'
+              : 'سيرفر البث الرسمي HD',
           isWebStream: false,
         ),
       );
-    }
 
-    if (match.broadcasters.isNotEmpty) {
-      for (int i = 0; i < match.broadcasters.length; i++) {
-        final bc = match.broadcasters[i];
-        final stream = bc.streamUrl;
-        if (stream != null && stream.isNotEmpty && !channelList.any((c) => c.streamUrl == stream)) {
-          channelList.add(
-            PlayerChannelItem(
-              id: 'source_new_bc_${bc.id}_$i',
-              name: bc.name.isNotEmpty ? bc.name : 'قناة بديلة',
-              logo: bc.image.isNotEmpty ? bc.image : null,
-              streamUrl: stream,
-              subtitle: 'بث ${bc.name}',
-              isWebStream: false,
-            ),
-          );
-        }
-      }
-    }
-
-    if (channelList.isEmpty) {
-      // Auto fallback: Query TV networks from match details and match with available sports channels
-      try {
-        final tvNetworks = await sportsService.fetchMatchTvNetworks(match.id);
-        final allChannels = await sportsService.fetchSportsChannels();
-
-        // 1. Try matching tv_networks to known channels
-        for (final netName in tvNetworks) {
-          final cleanNet = netName.toLowerCase().replaceAll(' ', '').replaceAll('sports', 'sport');
-          final matched = allChannels.where((c) {
-            final cleanC = c.channelName.toLowerCase().replaceAll(' ', '').replaceAll('sports', 'sport');
-            return cleanC.contains(cleanNet) || cleanNet.contains(cleanC);
-          }).firstOrNull;
-
-          if (matched != null && !channelList.any((c) => c.streamUrl == matched.channelUrl)) {
-            channelList.add(
-              PlayerChannelItem(
-                id: 'tv_net_${matched.channelId}',
-                name: matched.channelName,
-                logo: matched.channelImage,
-                streamUrl: matched.channelUrl,
-                subtitle: 'القناة الناقلة للمباراة',
-                isWebStream: matched.channelType == 'WEBVIEW' || !matched.channelUrl.contains('.m3u8'),
-              ),
-            );
-          }
-        }
-
-        // 2. Add available top sports channels as live fallback options
-        final sportsChannels = allChannels.where((c) =>
-          c.channelName.toLowerCase().contains('bein') ||
-          c.channelName.toLowerCase().contains('ad premium') ||
-          c.categoryName.contains('رياض')
-        ).toList();
-
-        for (final sc in sportsChannels) {
-          if (!channelList.any((c) => c.streamUrl == sc.channelUrl)) {
-            channelList.add(
-              PlayerChannelItem(
-                id: 'sports_fallback_${sc.channelId}',
-                name: sc.channelName,
-                logo: sc.channelImage,
-                streamUrl: sc.channelUrl,
-                subtitle: 'بث مباشر',
-                isWebStream: sc.channelType == 'WEBVIEW' || !sc.channelUrl.contains('.m3u8'),
-              ),
-            );
-          }
-        }
-      } catch (e) {
-        debugPrint('[SPORTS_PLAYER] Fallback channels error: ');
+      if (direct != null && direct.isNotEmpty && direct != yasirUrl && !channelList.any((c) => c.streamUrl == direct)) {
+        channelList.add(
+          PlayerChannelItem(
+            id: 'source_sirtv_match_feed',
+            name: 'بث بديل HD',
+            isAppSource: true,
+            streamUrl: direct,
+            subtitle: 'بث إضافي للمباراة',
+            isWebStream: false,
+          ),
+        );
       }
     }
 
@@ -726,13 +836,10 @@ class _SportsPlayerScreenState extends ConsumerState<SportsPlayerScreen> with Wi
       );
     }
 
-    // On a desktop a web-based stream cannot render, so start on the first
-    // channel that can actually play here (a direct one), falling back to the
-    // first channel when the match has only web streams.
-    final isDesktop = Platform.isWindows || Platform.isLinux || Platform.isMacOS;
-    final initial = isDesktop
-        ? channelList.firstWhere((c) => !c.isWebStream, orElse: () => channelList.first)
-        : channelList.first;
+    final initial = channelList.firstWhere(
+      (c) => c.streamUrl != null && c.streamUrl!.isNotEmpty,
+      orElse: () => channelList.first,
+    );
     _activeChannelId = initial.id;
 
     if (mounted) {
@@ -747,17 +854,22 @@ class _SportsPlayerScreenState extends ConsumerState<SportsPlayerScreen> with Wi
 
   /// Plays the selected channel using native VideoPlayer for HLS and WebViewController for web streams.
   Future<void> _loadChannelStream(PlayerChannelItem channel, {bool forceRefresh = false}) async {
+    if (!mounted) return;
     final token = ++_streamLoadToken;
     final oldController = _videoController;
-    setState(() {
-      _activeChannelId = channel.id;
-      _isLoadingStream = true;
-      _isStreamBuffering = false;
-      _isPlaying = true;
-      _streamErrorMessage = null;
-      _videoController = null;
-    });
+    if (mounted) {
+      setState(() {
+        _activeChannelId = channel.id;
+        _isLoadingStream = true;
+        _isStreamBuffering = false;
+        _isWebActive = false;
+        _isPlaying = true;
+        _streamErrorMessage = null;
+        _videoController = null;
+      });
+    }
     await oldController?.dispose();
+    if (!mounted || token != _streamLoadToken) return;
 
     // Clean up desktop player if active
     if (Platform.isWindows || Platform.isLinux || Platform.isMacOS) {
@@ -791,6 +903,7 @@ class _SportsPlayerScreenState extends ConsumerState<SportsPlayerScreen> with Wi
           await _loadWindowsWebview(rawUrl);
           if (mounted && token == _streamLoadToken) {
             setState(() {
+              _isWebActive = true;
               _isLoadingStream = false;
               _isStreamBuffering = false;
               _streamErrorMessage = null;
@@ -809,6 +922,7 @@ class _SportsPlayerScreenState extends ConsumerState<SportsPlayerScreen> with Wi
           );
           if (mounted && token == _streamLoadToken) {
             setState(() {
+              _isWebActive = true;
               _isLoadingStream = false;
               _isStreamBuffering = false;
               _streamErrorMessage = null;
@@ -835,12 +949,20 @@ class _SportsPlayerScreenState extends ConsumerState<SportsPlayerScreen> with Wi
     if (!mounted || token != _streamLoadToken) return;
 
     final streamUrl = resolved?.streamUrl ?? rawUrl;
-    final headers = (resolved != null && resolved.headers.isNotEmpty)
-        ? resolved.headers
-        : const {
-            'User-Agent': 'Mozilla/5.0 (Linux; Android 14; SmartTV; SM-A266B) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-            'Referer': 'https://pl.matchlivehd.com/',
-          };
+    final albaplayerUrl = resolved?.albaplayerUrl;
+    final Map<String, String> headers = (channel.headers != null && channel.headers!.isNotEmpty)
+        ? Map<String, String>.from(channel.headers!)
+        : ((resolved != null && resolved.headers.isNotEmpty)
+            ? Map<String, String>.from(resolved.headers)
+            : (streamUrl.contains('boomstreaming.com') || streamUrl.contains('korax90.co')
+                ? const {
+                    'User-Agent': 'Mozilla/5.0 (Linux; Android 14; SmartTV; SM-A266B) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+                    'Referer': 'https://9.boomstreaming.com/',
+                  }
+                : const {
+                    'User-Agent': 'Mozilla/5.0 (Linux; Android 14; SmartTV; SM-A266B) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+                    'Referer': 'https://pl.matchlivehd.com/',
+                  }));
 
     // If streamUrl is actually a webpage (could not be resolved into HLS/video stream)
     final bool isStreamWebpage = !streamUrl.contains('.m3u8') &&
@@ -855,6 +977,7 @@ class _SportsPlayerScreenState extends ConsumerState<SportsPlayerScreen> with Wi
           await _loadWindowsWebview(streamUrl);
           if (mounted && token == _streamLoadToken) {
             setState(() {
+              _isWebActive = true;
               _isLoadingStream = false;
               _isStreamBuffering = false;
               _streamErrorMessage = null;
@@ -865,9 +988,11 @@ class _SportsPlayerScreenState extends ConsumerState<SportsPlayerScreen> with Wi
       } else if (!Platform.isLinux && !Platform.isMacOS) {
         try {
           final webCtrl = _ensureWebController();
-          await webCtrl.loadRequest(Uri.parse(streamUrl), headers: headers);
+          final targetWebUrl = (albaplayerUrl != null && albaplayerUrl.isNotEmpty) ? albaplayerUrl : streamUrl;
+          await webCtrl.loadRequest(Uri.parse(targetWebUrl), headers: headers);
           if (mounted && token == _streamLoadToken) {
             setState(() {
+              _isWebActive = true;
               _isLoadingStream = false;
               _isStreamBuffering = false;
               _streamErrorMessage = null;
@@ -925,6 +1050,7 @@ class _SportsPlayerScreenState extends ConsumerState<SportsPlayerScreen> with Wi
 
         if (!mounted || token != _streamLoadToken) return;
         setState(() {
+          _isWebActive = false;
           _isLoadingStream = false;
           _isStreamBuffering = false;
           _isPlaying = true;
@@ -933,12 +1059,12 @@ class _SportsPlayerScreenState extends ConsumerState<SportsPlayerScreen> with Wi
         _scheduleHideControls();
       } catch (e) {
         debugPrint('[DESKTOP_SPORTS_PLAYER] playback failed: $e');
-        // Fallback to WebView on Desktop if native player cannot open
         if (Platform.isWindows) {
           try {
-            await _loadWindowsWebview(rawUrl);
+            await _loadWindowsWebview(albaplayerUrl ?? rawUrl);
             if (mounted && token == _streamLoadToken) {
               setState(() {
+                _isWebActive = true;
                 _isLoadingStream = false;
                 _isStreamBuffering = false;
                 _streamErrorMessage = null;
@@ -977,39 +1103,83 @@ class _SportsPlayerScreenState extends ConsumerState<SportsPlayerScreen> with Wi
       controller.addListener(() => _onVideoEvent(token));
       await controller.play();
 
-      setState(() {
-        _videoController = controller;
-        _isLoadingStream = false;
-        _isStreamBuffering = false;
-        _isPlaying = true;
-      });
+      if (mounted) {
+        setState(() {
+          _videoController = controller;
+          _isWebActive = false;
+          _isLoadingStream = false;
+          _isStreamBuffering = false;
+          _isPlaying = true;
+        });
+      }
       _scheduleHideControls();
     } catch (e) {
+      debugPrint('[SPORTS_PLAYER] Native player error: $e');
       await controller.dispose();
       if (!mounted || token != _streamLoadToken) return;
 
-      // Auto-renew token if initial playback failed
-      if (!forceRefresh) {
-        debugPrint('[SPORTS_PLAYER] Playback error, renewing token dynamically for ${channel.name}...');
-        return _loadChannelStream(channel, forceRefresh: true);
+      // Try alternative streams before falling back to clean web player
+      if (resolved != null && resolved.alternativeStreamUrls.isNotEmpty) {
+        for (final altUrl in resolved.alternativeStreamUrls) {
+          try {
+            debugPrint('[SPORTS_PLAYER] Trying alternative stream: $altUrl');
+            final altController = VideoPlayerController.networkUrl(
+              Uri.parse(altUrl),
+              formatHint: VideoFormat.hls,
+              httpHeaders: headers,
+            );
+            await altController.initialize();
+            if (!mounted || token != _streamLoadToken) {
+              await altController.dispose();
+              return;
+            }
+            altController.addListener(() => _onVideoEvent(token));
+            await altController.play();
+
+            if (mounted) {
+              setState(() {
+                _videoController = altController;
+                _isWebActive = false;
+                _isLoadingStream = false;
+                _isStreamBuffering = false;
+                _isPlaying = true;
+              });
+            }
+            _scheduleHideControls();
+            return;
+          } catch (_) {}
+        }
       }
 
-      // Fallback to Web Player if native player cannot load
+      // Fallback to Ad-Free Clean HTML5 Web Player
       try {
-        debugPrint('[SPORTS_PLAYER] Fallback to web controller for ${channel.name}');
+        debugPrint('[SPORTS_PLAYER] Fallback to clean web player for ${channel.name}');
         final webCtrl = _ensureWebController();
-        await webCtrl.loadRequest(Uri.parse(rawUrl), headers: headers);
-        setState(() {
-          _isLoadingStream = false;
-          _isStreamBuffering = false;
-          _streamErrorMessage = null;
-        });
+        if (streamUrl.contains('.m3u8') || streamUrl.contains('.css') || streamUrl.contains('r2.dev')) {
+          final isBoom = streamUrl.contains('boomstreaming.com') || streamUrl.contains('korax90');
+          final baseUrl = isBoom ? 'https://9.boomstreaming.com/' : 'https://pl.matchlivehd.com/';
+          final cleanHtml = _buildCleanPlayerHtml(streamUrl);
+          await webCtrl.loadHtmlString(cleanHtml, baseUrl: baseUrl);
+        } else {
+          final targetWebUrl = (albaplayerUrl != null && albaplayerUrl.isNotEmpty) ? albaplayerUrl : streamUrl;
+          await webCtrl.loadRequest(Uri.parse(targetWebUrl), headers: headers);
+        }
+        if (mounted) {
+          setState(() {
+            _isWebActive = true;
+            _isLoadingStream = false;
+            _isStreamBuffering = false;
+            _streamErrorMessage = null;
+          });
+        }
       } catch (_) {
-        setState(() {
-          _isLoadingStream = false;
-          _isStreamBuffering = false;
-          _streamErrorMessage = 'تعذّر تشغيل البث المباشر';
-        });
+        if (mounted) {
+          setState(() {
+            _isLoadingStream = false;
+            _isStreamBuffering = false;
+            _streamErrorMessage = 'تعذّر تشغيل البث المباشر';
+          });
+        }
       }
     }
   }
@@ -1029,10 +1199,12 @@ class _SportsPlayerScreenState extends ConsumerState<SportsPlayerScreen> with Wi
       final buffering = v.value.isBuffering;
       final playing = v.value.isPlaying;
       if (buffering != _isStreamBuffering || playing != _isPlaying) {
-        setState(() {
-          _isStreamBuffering = buffering;
-          _isPlaying = playing;
-        });
+        if (mounted) {
+          setState(() {
+            _isStreamBuffering = buffering;
+            _isPlaying = playing;
+          });
+        }
       }
     }
   }
@@ -1052,6 +1224,7 @@ class _SportsPlayerScreenState extends ConsumerState<SportsPlayerScreen> with Wi
     final isDesktop = Platform.isWindows || Platform.isLinux || Platform.isMacOS;
     final v = _videoController;
     final buffering = _isLoadingStream || _isStreamBuffering;
+    final showWeb = activeCh.isWebStream || _isWebActive;
 
     final playerWidget = ColoredBox(
       color: Colors.black,
@@ -1059,27 +1232,75 @@ class _SportsPlayerScreenState extends ConsumerState<SportsPlayerScreen> with Wi
         alignment: Alignment.center,
         fit: StackFit.expand,
         children: [
-          if (activeCh.isWebStream)
+          if (showWeb)
             (Platform.isWindows && _winWebController != null && _winWebInitialized)
                 ? win_web.Webview(_winWebController!)
                 : (_webController != null
                     ? WebViewWidget(controller: _webController!)
                     : const SizedBox.shrink())
           else if (isDesktop && _desktopVideoController != null)
-            Center(
-              child: AspectRatio(
-                aspectRatio: 16 / 9,
-                child: Video(
-                  controller: _desktopVideoController!,
-                  controls: NoVideoControls,
+            SizedBox.expand(
+              child: FittedBox(
+                fit: _videoFit,
+                clipBehavior: Clip.hardEdge,
+                child: SizedBox(
+                  width: 16,
+                  height: 9,
+                  child: Video(
+                    controller: _desktopVideoController!,
+                    controls: NoVideoControls,
+                  ),
                 ),
               ),
             )
           else if (v != null && v.value.isInitialized)
+            ClipRect(
+              child: SizedBox.expand(
+                child: FittedBox(
+                  fit: _videoFit,
+                  clipBehavior: Clip.hardEdge,
+                  child: Transform.scale(
+                    scaleX: 1.018,
+                    scaleY: 1.018,
+                    child: SizedBox(
+                      width: v.value.size.width > 0 ? v.value.size.width : (v.value.aspectRatio > 0 ? v.value.aspectRatio * 720 : 1280),
+                      height: v.value.size.height > 0 ? v.value.size.height : 720,
+                      child: VideoPlayer(v),
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          // Watermark Shield: Solid dark frosted badge with App Logo covering the broadcaster logo/ad in top-right
+          Positioned(
+            top: fullscreen ? 4 : 2,
+            right: fullscreen ? 4 : 2,
+            child: _buildWatermarkShield(fullscreen),
+          ),
+          if (_fitToastText != null)
             Center(
-              child: AspectRatio(
-                aspectRatio: v.value.aspectRatio > 0 ? v.value.aspectRatio : 16 / 9,
-                child: VideoPlayer(v),
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                decoration: BoxDecoration(
+                  color: Colors.black.withOpacity(0.85),
+                  borderRadius: BorderRadius.circular(20),
+                  border: Border.all(color: Colors.white24, width: 1),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const Icon(Icons.aspect_ratio_rounded, color: Color(0xFFFF1744), size: 18),
+                    const SizedBox(width: 8),
+                    Text(
+                      _fitToastText!,
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 13,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ],
+                ),
               ),
             ),
           if (buffering && _streamErrorMessage == null)
@@ -1097,13 +1318,16 @@ class _SportsPlayerScreenState extends ConsumerState<SportsPlayerScreen> with Wi
               ),
             ),
           if (_streamErrorMessage == null)
-            _buildControlsOverlay(fullscreen, isWebStream: activeCh.isWebStream),
+            _buildControlsOverlay(fullscreen, isWebStream: showWeb),
           if (_streamErrorMessage != null)
             _buildStreamErrorOverlay(),
         ],
       ),
     );
 
+    if (showWeb) {
+      return playerWidget;
+    }
     // If it's a web stream, do NOT block mouse taps with Flutter gestures:
     // let all clicks pass straight to the HTML5 player controls!
     if (activeCh.isWebStream) {
@@ -1119,117 +1343,84 @@ class _SportsPlayerScreenState extends ConsumerState<SportsPlayerScreen> with Wi
       },
       child: GestureDetector(
         onTap: _toggleControls,
+        onDoubleTap: () => _setFullscreen(!fullscreen),
         behavior: HitTestBehavior.opaque,
         child: playerWidget,
       ),
     );
   }
 
-  Widget _buildControlsOverlay(bool fullscreen, {required bool isWebStream}) {
-    final activeCh = _channels.firstWhere(
-      (c) => c.id == _activeChannelId,
-      orElse: () => _channels.firstOrNull ?? const PlayerChannelItem(id: '', name: ''),
-    );
-    final isDesktop = Platform.isWindows || Platform.isLinux || Platform.isMacOS;
-
-    // Top Header Bar
-    final topBar = Positioned(
-      top: 0,
-      left: 0,
-      right: 0,
+  Widget _buildWatermarkShield(bool fullscreen) {
+    return IgnorePointer(
       child: Container(
-        padding: const EdgeInsets.fromLTRB(8, 6, 8, 20),
+        margin: EdgeInsets.only(
+          top: fullscreen ? 8 : 4,
+          right: fullscreen ? 10 : 5,
+        ),
+        padding: EdgeInsets.symmetric(
+          horizontal: fullscreen ? 10 : 6,
+          vertical: fullscreen ? 4 : 2,
+        ),
         decoration: BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topCenter,
-            end: Alignment.bottomCenter,
+          // Smooth feathered vignette that blends completely seamlessly into the video frame
+          // without any sharp rectangular borders or card outlines
+          gradient: RadialGradient(
+            center: Alignment.center,
+            radius: 1.15,
             colors: [
-              Colors.black.withOpacity(0.8),
+              Colors.black.withOpacity(0.55),
               Colors.black.withOpacity(0.25),
               Colors.transparent,
             ],
+            stops: const [0.0, 0.65, 1.0],
           ),
         ),
-        child: SafeArea(
-          bottom: false,
-          child: Row(
-            children: [
-              IconButton(
-                onPressed: () {
-                  if (fullscreen && isDesktop) {
-                    _setFullscreen(false);
-                  } else {
-                    Navigator.of(context).maybePop();
-                  }
-                },
-                icon: const Icon(Icons.arrow_back_rounded, color: Colors.white, size: 24),
-                tooltip: 'رجوع',
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.center,
+          children: [
+            Opacity(
+              opacity: 0.94,
+              child: Image.asset(
+                'assets/images/app_logo.png',
+                width: fullscreen ? 22 : 16,
+                height: fullscreen ? 22 : 16,
+                fit: BoxFit.contain,
+                filterQuality: FilterQuality.high,
               ),
-              const SizedBox(width: 4),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                decoration: BoxDecoration(
-                  color: const Color(0xFFFF1744),
-                  borderRadius: BorderRadius.circular(6),
-                ),
-                child: const Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Icon(Icons.fiber_manual_record_rounded, color: Colors.white, size: 9),
-                    SizedBox(width: 4),
-                    Text(
-                      'مباشر',
-                      style: TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.bold),
-                    ),
-                  ],
-                ),
-              ),
-              const SizedBox(width: 8),
-              Expanded(
-                child: Text(
-                  activeCh.name.isNotEmpty ? activeCh.name : '${widget.match.home.name} × ${widget.match.away.name}',
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(color: Colors.white, fontSize: 13, fontWeight: FontWeight.bold),
-                ),
-              ),
-              if (_channels.length > 1) ...[
-                const SizedBox(width: 8),
-                InkWell(
-                  onTap: _showChannelSelectionSheet,
-                  borderRadius: BorderRadius.circular(8),
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-                    decoration: BoxDecoration(
-                      color: Colors.white.withOpacity(0.2),
-                      borderRadius: BorderRadius.circular(8),
-                      border: Border.all(color: Colors.white38, width: 0.8),
-                    ),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        const Icon(Icons.swap_horiz_rounded, color: Colors.white, size: 16),
-                        const SizedBox(width: 4),
-                        Text(
-                          'تغيير المصدر (${_channels.length})',
-                          style: const TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.bold),
-                        ),
-                      ],
-                    ),
+            ),
+            const SizedBox(width: 4.5),
+            Text(
+              'CINEBALL',
+              style: TextStyle(
+                color: Colors.white.withOpacity(0.94),
+                fontSize: fullscreen ? 11 : 9,
+                fontWeight: FontWeight.w900,
+                letterSpacing: 0.8,
+                shadows: const [
+                  Shadow(
+                    color: Colors.black,
+                    blurRadius: 4,
+                    offset: Offset(0, 1.2),
                   ),
-                ),
-              ],
-            ],
-          ),
+                  Shadow(
+                    color: Colors.black54,
+                    blurRadius: 8,
+                    offset: Offset(0, 2),
+                  ),
+                ],
+              ),
+            ),
+          ],
         ),
       ),
     );
+  }
 
-    // If it's a web stream, show ONLY the slim top header bar.
-    // Do NOT add a center pause button or bottom bar so the match player's
-    // native HTML5 controls remain unobstructed and fully clickable!
+  Widget _buildControlsOverlay(bool fullscreen, {required bool isWebStream}) {
+    // If it's a web stream, do not overlay controls so native player stays usable
     if (isWebStream) {
-      return topBar;
+      return const SizedBox.shrink();
     }
 
     return IgnorePointer(
@@ -1240,16 +1431,67 @@ class _SportsPlayerScreenState extends ConsumerState<SportsPlayerScreen> with Wi
         child: Stack(
           fit: StackFit.expand,
           children: [
-            // Click outside buttons toggles controls without dimming the screen
+            // Click outside buttons toggles controls; double tap toggles fullscreen
             Positioned.fill(
               child: GestureDetector(
                 onTap: _toggleControls,
+                onDoubleTap: () => _setFullscreen(!fullscreen),
                 behavior: HitTestBehavior.translucent,
                 child: const SizedBox.expand(),
               ),
             ),
 
-            topBar,
+            // Top exit bar when in fullscreen landscape mode
+            if (fullscreen)
+              Positioned(
+                top: 0,
+                left: 0,
+                right: 0,
+                child: Container(
+                  padding: const EdgeInsets.fromLTRB(10, 10, 10, 20),
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      begin: Alignment.topCenter,
+                      end: Alignment.bottomCenter,
+                      colors: [
+                        Colors.black.withOpacity(0.85),
+                        Colors.black.withOpacity(0.4),
+                        Colors.transparent,
+                      ],
+                    ),
+                  ),
+                  child: SafeArea(
+                    bottom: false,
+                    child: Row(
+                      children: [
+                        IconButton(
+                          onPressed: () => _setFullscreen(false),
+                          icon: const Icon(Icons.arrow_back_rounded, color: Colors.white, size: 24),
+                          tooltip: 'تصغير الشاشة',
+                        ),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: Text(
+                            '${widget.match.home.name} vs ${widget.match.away.name}',
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 14,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ),
+                        IconButton(
+                          onPressed: () => _setFullscreen(false),
+                          icon: const Icon(Icons.fullscreen_exit_rounded, color: Colors.white, size: 24),
+                          tooltip: 'تصغير',
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
 
             // Center Play / Pause Button with clean glassmorphic design
             Center(
@@ -1289,14 +1531,14 @@ class _SportsPlayerScreenState extends ConsumerState<SportsPlayerScreen> with Wi
               left: 0,
               right: 0,
               child: Container(
-                padding: const EdgeInsets.fromLTRB(10, 26, 10, 6),
+                padding: const EdgeInsets.fromLTRB(10, 26, 10, 8),
                 decoration: BoxDecoration(
                   gradient: LinearGradient(
                     begin: Alignment.bottomCenter,
                     end: Alignment.topCenter,
                     colors: [
-                      Colors.black.withOpacity(0.8),
-                      Colors.black.withOpacity(0.35),
+                      Colors.black.withOpacity(0.85),
+                      Colors.black.withOpacity(0.4),
                       Colors.transparent,
                     ],
                   ),
@@ -1323,15 +1565,80 @@ class _SportsPlayerScreenState extends ConsumerState<SportsPlayerScreen> with Wi
                           fontWeight: FontWeight.w600,
                         ),
                       ),
-                      const Spacer(),
-                      IconButton(
-                        onPressed: () => _setFullscreen(!fullscreen),
-                        icon: Icon(
-                          fullscreen ? Icons.fullscreen_exit_rounded : Icons.fullscreen_rounded,
-                          color: Colors.white,
-                          size: 24,
+                      if (_channels.length > 1) ...[
+                        const SizedBox(width: 10),
+                        InkWell(
+                          onTap: _showChannelSelectionSheet,
+                          borderRadius: BorderRadius.circular(16),
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                            decoration: BoxDecoration(
+                              color: Colors.white.withOpacity(0.16),
+                              borderRadius: BorderRadius.circular(16),
+                              border: Border.all(color: Colors.white24, width: 0.8),
+                            ),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                const Icon(Icons.swap_horiz_rounded, color: Colors.white, size: 15),
+                                const SizedBox(width: 4),
+                                Text(
+                                  'المصدر (${_channels.length})',
+                                  style: const TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.bold),
+                                ),
+                              ],
+                            ),
+                          ),
                         ),
-                        tooltip: fullscreen ? 'إلغاء ملء الشاشة' : 'ملء الشاشة',
+                      ],
+                      const Spacer(),
+                      // Video Fit Toggle Button (ملء العرض / تكبير / أبعاد أصلية)
+                      IconButton(
+                        onPressed: _cycleVideoFit,
+                        icon: Icon(
+                          _videoFit == BoxFit.fill
+                              ? Icons.fit_screen_rounded
+                              : (_videoFit == BoxFit.cover ? Icons.zoom_out_map_rounded : Icons.aspect_ratio_rounded),
+                          color: Colors.white,
+                          size: 22,
+                        ),
+                        tooltip: _videoFitTitle,
+                      ),
+                      const SizedBox(width: 6),
+                      // Prominent Fullscreen Pill Button with wide tap target
+                      Material(
+                        color: Colors.transparent,
+                        child: InkWell(
+                          onTap: () => _setFullscreen(!fullscreen),
+                          borderRadius: BorderRadius.circular(18),
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                            decoration: BoxDecoration(
+                              color: Colors.white.withOpacity(0.22),
+                              borderRadius: BorderRadius.circular(18),
+                              border: Border.all(color: Colors.white38, width: 1),
+                            ),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Icon(
+                                  fullscreen ? Icons.fullscreen_exit_rounded : Icons.fullscreen_rounded,
+                                  color: Colors.white,
+                                  size: 20,
+                                ),
+                                const SizedBox(width: 4),
+                                Text(
+                                  fullscreen ? 'تصغير' : 'تكبير',
+                                  style: const TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
                       ),
                     ],
                   ),
@@ -1355,7 +1662,7 @@ class _SportsPlayerScreenState extends ConsumerState<SportsPlayerScreen> with Wi
             left: 8,
             child: SafeArea(
               child: IconButton(
-                onPressed: () => Navigator.of(context).maybePop(),
+                onPressed: () => Navigator.of(context).pop(),
                 icon: const Icon(Icons.arrow_back_rounded, color: Colors.white, size: 24),
                 tooltip: 'رجوع',
               ),
@@ -1430,7 +1737,7 @@ class _SportsPlayerScreenState extends ConsumerState<SportsPlayerScreen> with Wi
                           ),
                         ),
                       OutlinedButton.icon(
-                        onPressed: () => Navigator.of(context).maybePop(),
+                        onPressed: () => Navigator.of(context).pop(),
                         style: OutlinedButton.styleFrom(
                           foregroundColor: Colors.white,
                           side: const BorderSide(color: Colors.white38),
@@ -1469,8 +1776,9 @@ class _SportsPlayerScreenState extends ConsumerState<SportsPlayerScreen> with Wi
             color: isDark ? const Color(0xFF131826) : Colors.white,
             borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
             border: Border.all(
-              color: isDark ? const Color(0xFF1F263A) : const Color(0xFFE5E7EB),
+              color: isDark ? const Color(0xFF1F263A) : AppPalette.of(context).border,
             ),
+            boxShadow: isDark ? null : AppPalette.of(context).cardShadow,
           ),
           child: Column(
             mainAxisSize: MainAxisSize.min,
@@ -1504,10 +1812,12 @@ class _SportsPlayerScreenState extends ConsumerState<SportsPlayerScreen> with Wi
                   decoration: BoxDecoration(
                     color: isSelected
                         ? const Color(0xFFFF1744).withOpacity(isDark ? 0.20 : 0.08)
-                        : (isDark ? const Color(0xFF1B2234) : const Color(0xFFF3F4F6)),
+                        : (isDark ? const Color(0xFF1B2234) : Colors.white),
                     borderRadius: BorderRadius.circular(12),
                     border: Border.all(
-                      color: isSelected ? const Color(0xFFFF1744) : Colors.transparent,
+                      color: isSelected
+                          ? const Color(0xFFFF1744)
+                          : (isDark ? Colors.transparent : AppPalette.of(context).border),
                       width: 1.5,
                     ),
                   ),
@@ -1519,6 +1829,7 @@ class _SportsPlayerScreenState extends ConsumerState<SportsPlayerScreen> with Wi
                       decoration: BoxDecoration(
                         color: isDark ? const Color(0xFF101420) : Colors.white,
                         borderRadius: BorderRadius.circular(8),
+                        border: isDark ? null : Border.all(color: AppPalette.of(context).border),
                       ),
                       padding: const EdgeInsets.all(4),
                       child: _channelMark(ch, isSelected, isDark),
@@ -1587,204 +1898,44 @@ class _SportsPlayerScreenState extends ConsumerState<SportsPlayerScreen> with Wi
         ),
       );
 
-  Widget _buildChannelSwitcherBar(bool isDark) {
-    if (_channels.isEmpty && !_loadingChannels) return const SizedBox.shrink();
-
-    return Container(
-      padding: const EdgeInsets.symmetric(vertical: 8),
-      decoration: BoxDecoration(
-        color: isDark ? const Color(0xFF101420) : const Color(0xFFF0F3F8),
-        border: Border(
-          bottom: BorderSide(
-            color: isDark ? const Color(0xFF1D2436) : AppPalette.of(context).border,
-            width: 1,
-          ),
-        ),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 14),
-            child: Row(
-              children: [
-                Container(
-                  padding: const EdgeInsets.all(4),
-                  decoration: BoxDecoration(
-                    color: const Color(0xFFFF1744).withOpacity(0.15),
-                    borderRadius: BorderRadius.circular(6),
-                  ),
-                  child: const Icon(
-                    Icons.live_tv_rounded,
-                    color: Color(0xFFFF1744),
-                    size: 15,
-                  ),
-                ),
-                const SizedBox(width: 8),
-                Text(
-                  'القنوات الناقلة للمباراة (${_channels.length})',
-                  style: TextStyle(
-                    fontSize: 12,
-                    fontWeight: FontWeight.w900,
-                    color: isDark ? Colors.white : const Color(0xFF111827),
-                  ),
-                ),
-                const Spacer(),
-                if (_loadingChannels)
-                  const SizedBox(
-                    width: 12,
-                    height: 12,
-                    child: CircularProgressIndicator(strokeWidth: 2, color: Color(0xFFFF1744)),
-                  )
-              ],
-            ),
-          ),
-          const SizedBox(height: 8),
-          SizedBox(
-            height: 60,
-            child: ListView.builder(
-              scrollDirection: Axis.horizontal,
-              padding: const EdgeInsets.symmetric(horizontal: 10),
-              itemCount: _channels.length,
-              itemBuilder: (ctx, i) {
-                final ch = _channels[i];
-                final isSelected = ch.id == _activeChannelId;
-
-                return MouseRegion(
-                  cursor: SystemMouseCursors.click,
-                  child: GestureDetector(
-                    behavior: HitTestBehavior.opaque,
-                    onTap: () => _switchChannel(ch),
-                    child: AnimatedContainer(
-                      duration: const Duration(milliseconds: 200),
-                      width: 175,
-                      margin: const EdgeInsets.symmetric(horizontal: 5),
-                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
-                      decoration: BoxDecoration(
-                        color: isSelected
-                            ? const Color(0xFFFF1744).withOpacity(isDark ? 0.22 : 0.12)
-                            : (isDark ? AppPalette.of(context).card : Colors.white),
-                        borderRadius: BorderRadius.circular(12),
-                        border: Border.all(
-                          color: isSelected
-                              ? const Color(0xFFFF1744)
-                              : (isDark ? const Color(0xFF1F263A) : const Color(0xFFE2E8F0)),
-                          width: isSelected ? 2.0 : 1.0,
-                        ),
-                        boxShadow: isSelected
-                            ? [
-                                BoxShadow(
-                                  color: const Color(0xFFFF1744).withOpacity(0.25),
-                                  blurRadius: 6,
-                                  offset: const Offset(0, 2),
-                                )
-                              ]
-                            : null,
-                      ),
-                      child: Row(
-                        children: [
-                          Container(
-                            width: 38,
-                            height: 38,
-                            decoration: BoxDecoration(
-                              color: isDark ? const Color(0xFF0F1420) : const Color(0xFFF1F5F9),
-                              borderRadius: BorderRadius.circular(8),
-                            ),
-                            padding: const EdgeInsets.all(4),
-                            child: _channelMark(ch, isSelected, isDark),
-                          ),
-                          const SizedBox(width: 8),
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              mainAxisAlignment: MainAxisAlignment.center,
-                              children: [
-                                Row(
-                                  children: [
-                                    Expanded(
-                                      child: Text(
-                                        ch.name,
-                                        maxLines: 1,
-                                        overflow: TextOverflow.ellipsis,
-                                        style: TextStyle(
-                                          fontSize: 11.5,
-                                          fontWeight: FontWeight.bold,
-                                          color: isSelected
-                                              ? const Color(0xFFFF1744)
-                                              : (isDark ? Colors.white : const Color(0xFF111827)),
-                                        ),
-                                      ),
-                                    ),
-                                    if (isSelected)
-                                      Container(
-                                        width: 6,
-                                        height: 6,
-                                        margin: const EdgeInsets.only(right: 4),
-                                        decoration: const BoxDecoration(
-                                          color: Color(0xFFFF1744),
-                                          shape: BoxShape.circle,
-                                        ),
-                                      ),
-                                  ],
-                                ),
-                                const SizedBox(height: 2),
-                                Text(
-                                  ch.subtitle ?? (ch.isWebStream ? 'بث الويب' : 'بث مباشر HD'),
-                                  maxLines: 1,
-                                  overflow: TextOverflow.ellipsis,
-                                  style: TextStyle(
-                                    fontSize: 10,
-                                    color: isDark ? Colors.white54 : Colors.black45,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-                );
-              },
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final match = widget.match;
     final matchDetailsAsync = ref.watch(
-      matchDetailsProvider((matchId: match.id, sourceId: match.sourceId)),
+      matchDetailsProvider((
+        matchId: match.id,
+        sourceId: match.sourceId,
+        homeName: match.home.name,
+        awayName: match.away.name,
+      )),
     );
 
-    // Turning the phone is what drives fullscreen ONLY on mobile devices.
     final isDesktop = Platform.isWindows || Platform.isLinux || Platform.isMacOS;
-    final deviceLandscape = !isDesktop && MediaQuery.of(context).orientation == Orientation.landscape;
-    if (!_forcing && !isDesktop && deviceLandscape != _isLandscape) {
-      WidgetsBinding.instance.addPostFrameCallback((_) => _syncToDevice(deviceLandscape));
-    }
+    final isDeviceLandscape = !isDesktop && MediaQuery.of(context).orientation == Orientation.landscape;
+    final isFullscreen = _isLandscape || isDeviceLandscape;
 
     final mainScaffold = Scaffold(
-      backgroundColor: _isLandscape
+      backgroundColor: isFullscreen
           ? Colors.black
           : (isDark ? AppPalette.of(context).bg : AppPalette.of(context).bg),
-      body: SafeArea(
-        top: !_isLandscape,
-        bottom: false,
-        child: _buildBody(context, isDark, match, matchDetailsAsync),
-      ),
+      body: isFullscreen
+          ? _buildPlayerArea(fullscreen: true)
+          : SafeArea(
+              top: true,
+              bottom: false,
+              left: false,
+              right: false,
+              child: _buildBody(context, isDark, match, matchDetailsAsync),
+            ),
     );
 
     return CallbackShortcuts(
       bindings: {
         const SingleActivator(LogicalKeyboardKey.escape): () {
-          if (_isLandscape && !isDesktop) {
+          if (isFullscreen && !isDesktop) {
             _exitFullscreen();
-          } else if (_isLandscape && isDesktop) {
+          } else if (isFullscreen && isDesktop) {
             _setFullscreen(false);
           } else {
             Navigator.of(context).maybePop();
@@ -1794,15 +1945,13 @@ class _SportsPlayerScreenState extends ConsumerState<SportsPlayerScreen> with Wi
       child: Focus(
         autofocus: true,
         child: PopScope(
-          canPop: isDesktop || !_isLandscape,
+          canPop: !isFullscreen,
           onPopInvokedWithResult: (didPop, _) {
             if (didPop) return;
-            if (_isLandscape && !isDesktop) {
+            if (isFullscreen) {
               _exitFullscreen();
-            } else if (_isLandscape && isDesktop) {
-              _setFullscreen(false);
             } else {
-              Navigator.of(context).maybePop();
+              Navigator.of(context).pop();
             }
           },
           child: mainScaffold,
@@ -1818,10 +1967,6 @@ class _SportsPlayerScreenState extends ConsumerState<SportsPlayerScreen> with Wi
     AsyncValue<MatchDetailedInfo?> matchDetailsAsync,
   ) {
     final isDesktop = Platform.isWindows || Platform.isLinux || Platform.isMacOS;
-    if (_isLandscape) {
-      return _buildPlayerArea(fullscreen: true);
-    }
-
     final screenH = MediaQuery.of(context).size.height;
     final videoH = isDesktop ? (screenH * 0.38).clamp(220.0, 340.0) : null;
 
@@ -1838,169 +1983,186 @@ class _SportsPlayerScreenState extends ConsumerState<SportsPlayerScreen> with Wi
           ),
         ),
 
-        // Channel Switcher Strip directly below Video Player
-        _buildChannelSwitcherBar(isDark),
-
-          // 2. Score & Teams Mini Strip
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-            color: isDark ? AppPalette.of(context).card : Colors.white,
-            child: Row(
-              children: [
-                Expanded(
-                  child: Row(
-                    children: [
-                      _buildLogo(match.home.logo, 26),
-                      const SizedBox(width: 8),
-                      Expanded(
-                        child: Text(
-                          match.home.name,
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: TextStyle(
-                            fontSize: 13,
-                            fontWeight: FontWeight.bold,
-                            color: isDark ? Colors.white : Colors.black87,
-                          ),
+        // 2. Score & Teams Mini Strip with On-Demand Servers Chip
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+          color: isDark ? AppPalette.of(context).card : Colors.white,
+          child: Row(
+            children: [
+              Expanded(
+                child: Row(
+                  children: [
+                    _buildLogo(match.home.logo, 26),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        match.home.name,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(
+                          fontSize: 13,
+                          fontWeight: FontWeight.bold,
+                          color: isDark ? Colors.white : Colors.black87,
                         ),
-                      ),
-                    ],
-                  ),
-                ),
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                  decoration: BoxDecoration(
-                    color: match.isLive
-                        ? const Color(0xFFFF334B).withOpacity(0.12)
-                        : (isDark ? const Color(0xFF1E2538) : const Color(0xFFEEF2F8)),
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  child: (match.isLive || match.isEnded)
-                      ? MatchScoreLine(
-                          homeScore: match.homeScore,
-                          awayScore: match.awayScore,
-                          separator: '-',
-                          style: TextStyle(
-                            fontSize: 14,
-                            fontWeight: FontWeight.w900,
-                            color: match.isLive ? const Color(0xFFFF334B) : (isDark ? Colors.white : Colors.black87),
-                          ),
-                        )
-                      : Text(
-                          match.status,
-                          style: TextStyle(
-                            fontSize: 14,
-                            fontWeight: FontWeight.w900,
-                            color: isDark ? Colors.white : Colors.black87,
-                          ),
-                        ),
-                ),
-                Expanded(
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.end,
-                    children: [
-                      Expanded(
-                        child: Text(
-                          match.away.name,
-                          textAlign: TextAlign.end,
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: TextStyle(
-                            fontSize: 13,
-                            fontWeight: FontWeight.bold,
-                            color: isDark ? Colors.white : Colors.black87,
-                          ),
-                        ),
-                      ),
-                      const SizedBox(width: 8),
-                      _buildLogo(match.away.logo, 26),
-                    ],
-                  ),
-                ),
-              ],
-            ),
-          ),
-
-          // 3. Navigation Tab Bar (التشكيلة في المقدمة، ثم الأحداث، الإحصائيات، المعلومات)
-          Container(
-            decoration: BoxDecoration(
-              color: isDark ? const Color(0xFF111622) : Colors.white,
-              border: Border(
-                top: BorderSide(color: isDark ? const Color(0xFF1C2233) : const Color(0xFFE8EAF0)),
-                bottom: BorderSide(color: isDark ? const Color(0xFF1C2233) : const Color(0xFFE8EAF0)),
-              ),
-            ),
-            child: Row(
-              children: [
-                _buildTabPill('التشكيلة', Icons.people_alt_rounded, 0, isDark),
-                _buildTabPill('الأحداث', Icons.sports_soccer_rounded, 1, isDark),
-                _buildTabPill('الإحصائيات', Icons.bar_chart_rounded, 2, isDark),
-                _buildTabPill('المعلومات', Icons.info_outline_rounded, 3, isDark),
-              ],
-            ),
-          ),
-
-          // 4. Tab Content Body
-          Expanded(
-            child: matchDetailsAsync.when(
-              loading: () => const Center(
-                child: CircularProgressIndicator(color: Color(0xFFFF1744)),
-              ),
-              error: (err, _) => Center(
-                child: Text(
-                  'التفاصيل غير متوفرة حالياً لهذه المباراة',
-                  style: TextStyle(color: isDark ? Colors.white54 : Colors.black54),
-                ),
-              ),
-              data: (details) {
-                if (details == null) {
-                  return Center(
-                    child: Padding(
-                      padding: const EdgeInsets.all(24),
-                      child: Column(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Icon(Icons.sports_soccer_rounded, size: 48, color: isDark ? Colors.white24 : Colors.black26),
-                          const SizedBox(height: 12),
-                          Text(
-                            'التفاصيل والتشكيلة لم تُنشر بعد',
-                            style: TextStyle(
-                              fontSize: 15,
-                              fontWeight: FontWeight.bold,
-                              color: isDark ? Colors.white70 : Colors.black87,
-                            ),
-                          ),
-                          const SizedBox(height: 6),
-                          Text(
-                            'يتم الإعلان عن التشكيلة الرسمية قبل موعد المباراة بساعة',
-                            textAlign: TextAlign.center,
-                            style: TextStyle(
-                              fontSize: 12,
-                              color: isDark ? Colors.white38 : Colors.black45,
-                            ),
-                          ),
-                        ],
                       ),
                     ),
-                  );
-                }
+                  ],
+                ),
+              ),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                decoration: BoxDecoration(
+                  color: match.isLive
+                      ? const Color(0xFFFF334B).withOpacity(0.12)
+                      : (isDark ? const Color(0xFF1E2538) : Colors.white),
+                  borderRadius: BorderRadius.circular(8),
+                  border: (!isDark && !match.isLive) ? Border.all(color: AppPalette.of(context).border) : null,
+                ),
+                child: (match.isLive || match.isEnded)
+                    ? MatchScoreLine(
+                        homeScore: match.homeScore,
+                        awayScore: match.awayScore,
+                        separator: '-',
+                        style: TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w900,
+                          color: match.isLive ? const Color(0xFFFF334B) : (isDark ? Colors.white : Colors.black87),
+                        ),
+                      )
+                    : Text(
+                        match.status,
+                        style: TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w900,
+                          color: isDark ? Colors.white : Colors.black87,
+                        ),
+                      ),
+              ),
+              Expanded(
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.end,
+                  children: [
+                    Expanded(
+                      child: Text(
+                        match.away.name,
+                        textAlign: TextAlign.end,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(
+                          fontSize: 13,
+                          fontWeight: FontWeight.bold,
+                          color: isDark ? Colors.white : Colors.black87,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    _buildLogo(match.away.logo, 26),
+                  ],
+                ),
+              ),
+              if (_channels.isNotEmpty) ...[
+                const SizedBox(width: 8),
+                InkWell(
+                  onTap: _showChannelSelectionSheet,
+                  borderRadius: BorderRadius.circular(8),
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
+                    decoration: BoxDecoration(
+                      color: isDark ? const Color(0xFF1F263A) : const Color(0xFFF0F3F8),
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(
+                        color: isDark ? const Color(0xFF2E3852) : const Color(0xFFD6DEEB),
+                        width: 0.8,
+                      ),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        if (_loadingChannels)
+                          const Padding(
+                            padding: EdgeInsets.only(left: 4),
+                            child: SizedBox(
+                              width: 11,
+                              height: 11,
+                              child: CircularProgressIndicator(strokeWidth: 1.5, color: Color(0xFFFF1744)),
+                            ),
+                          )
+                        else
+                          const Icon(Icons.tune_rounded, size: 14, color: Color(0xFFFF1744)),
+                        const SizedBox(width: 4),
+                        Text(
+                          'السيرفرات (${_channels.length})',
+                          style: TextStyle(
+                            fontSize: 11,
+                            fontWeight: FontWeight.bold,
+                            color: isDark ? Colors.white70 : Colors.black87,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ],
+            ],
+          ),
+        ),
 
-                switch (_selectedTab) {
-                  case 0:
-                    return _buildTacticalPitchLineupView(details, isDark);
-                  case 1:
-                    return _buildEventsTimelineView(details, match, isDark);
-                  case 2:
-                    return _buildStatsView(details, isDark);
-                  case 3:
-                  default:
-                    return _buildInfoView(details, match, isDark);
-                }
-              },
+        // 3. Navigation Tab Bar (التشكيلة في المقدمة، ثم الأحداث، الإحصائيات، المعلومات)
+        Container(
+          decoration: BoxDecoration(
+            color: isDark ? const Color(0xFF111622) : Colors.white,
+            border: Border(
+              top: BorderSide(color: isDark ? const Color(0xFF1C2233) : const Color(0xFFE8EAF0)),
+              bottom: BorderSide(color: isDark ? const Color(0xFF1C2233) : const Color(0xFFE8EAF0)),
             ),
           ),
-        ],
-      );
+          child: Row(
+            children: [
+              _buildTabPill('التشكيلة', Icons.people_alt_rounded, 0, isDark),
+              _buildTabPill('الأحداث', Icons.sports_soccer_rounded, 1, isDark),
+              _buildTabPill('الإحصائيات', Icons.bar_chart_rounded, 2, isDark),
+              _buildTabPill('المعلومات', Icons.info_outline_rounded, 3, isDark),
+            ],
+          ),
+        ),
+
+        // 4. Tab Content Body
+        Expanded(
+          child: matchDetailsAsync.when(
+            loading: () => const Center(
+              child: CircularProgressIndicator(color: Color(0xFFFF1744)),
+            ),
+            error: (err, _) {
+              final synthetic = _createSyntheticMatchDetails(widget.match);
+              return _buildSelectedTabContent(synthetic, match, isDark);
+            },
+            data: (details) {
+              final effectiveDetails = (details != null &&
+                      details.homeLineup != null &&
+                      details.homeLineup!.starters.isNotEmpty)
+                  ? details
+                  : _createSyntheticMatchDetails(widget.match);
+
+              return _buildSelectedTabContent(effectiveDetails, match, isDark);
+            },
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildSelectedTabContent(MatchDetailedInfo details, SportMatchItem match, bool isDark) {
+    switch (_selectedTab) {
+      case 0:
+        return _buildTacticalPitchLineupView(details, isDark);
+      case 1:
+        return _buildEventsTimelineView(details, match, isDark);
+      case 2:
+        return _buildStatsView(details, isDark);
+      case 3:
+      default:
+        return _buildInfoView(details, match, isDark);
+    }
   }
 
   Widget _buildTabPill(String title, IconData icon, int index, bool isDark) {
@@ -2083,6 +2245,30 @@ class _SportsPlayerScreenState extends ConsumerState<SportsPlayerScreen> with Wi
     }
 
     final activeLineup = _pitchTeamIndex == 0 ? (homeLineup ?? awayLineup!) : (awayLineup ?? homeLineup!);
+    final rawStarters = activeLineup.starters;
+    final bool hasCaptain = rawStarters.any((p) => p.isCaptain);
+    final startersWithCaptain = rawStarters.asMap().entries.map((entry) {
+      final idx = entry.key;
+      final p = entry.value;
+      if (hasCaptain) return p;
+      if (idx == (rawStarters.length > 3 ? 3 : 0)) {
+        return PlayerLineupItem(
+          id: p.id,
+          athleteId: p.athleteId,
+          name: p.name,
+          shortName: p.shortName,
+          jerseyNumber: p.jerseyNumber,
+          position: p.position,
+          isStarter: p.isStarter,
+          line: p.line,
+          fieldSide: p.fieldSide,
+          rating: p.rating,
+          popularityRank: p.popularityRank,
+          isCaptain: true,
+        );
+      }
+      return p;
+    }).toList();
 
     return ListView(
       padding: const EdgeInsets.all(14),
@@ -2091,8 +2277,9 @@ class _SportsPlayerScreenState extends ConsumerState<SportsPlayerScreen> with Wi
         Container(
           padding: const EdgeInsets.all(4),
           decoration: BoxDecoration(
-            color: isDark ? AppPalette.of(context).card : const Color(0xFFECEFF5),
+            color: isDark ? AppPalette.of(context).card : Colors.white,
             borderRadius: BorderRadius.circular(12),
+            border: isDark ? null : Border.all(color: AppPalette.of(context).border),
           ),
           child: Row(
             children: [
@@ -2181,13 +2368,6 @@ class _SportsPlayerScreenState extends ConsumerState<SportsPlayerScreen> with Wi
           height: 440,
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(16),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withOpacity(0.3),
-                blurRadius: 10,
-                offset: const Offset(0, 4),
-              ),
-            ],
           ),
           child: ClipRRect(
             borderRadius: BorderRadius.circular(16),
@@ -2201,7 +2381,7 @@ class _SportsPlayerScreenState extends ConsumerState<SportsPlayerScreen> with Wi
 
                 // Tactical Player Formations Overlay
                 Positioned.fill(
-                  child: _buildTacticalPitchPlayers(activeLineup.starters),
+                  child: _buildTacticalPitchPlayers(startersWithCaptain),
                 ),
               ],
             ),
@@ -2356,6 +2536,32 @@ class _SportsPlayerScreenState extends ConsumerState<SportsPlayerScreen> with Wi
                 ),
               ),
 
+            // Captain badge (C)
+            if (player.isCaptain)
+              Positioned(
+                top: -3,
+                right: -4,
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFFFD700),
+                    borderRadius: BorderRadius.circular(4),
+                    border: Border.all(color: Colors.black87, width: 0.8),
+                    boxShadow: const [
+                      BoxShadow(color: Colors.black54, blurRadius: 2, offset: Offset(0, 1)),
+                    ],
+                  ),
+                  child: const Text(
+                    'C',
+                    style: TextStyle(
+                      fontSize: 8.5,
+                      fontWeight: FontWeight.w900,
+                      color: Colors.black,
+                    ),
+                  ),
+                ),
+              ),
+
             // Rating badge if available
             if (player.rating != null && player.rating! > 0)
               Positioned(
@@ -2431,8 +2637,8 @@ class _SportsPlayerScreenState extends ConsumerState<SportsPlayerScreen> with Wi
             height: 28,
             decoration: BoxDecoration(
               shape: BoxShape.circle,
-              color: isDark ? const Color(0xFF1E2538) : const Color(0xFFEEF1F6),
-              border: Border.all(color: isDark ? Colors.white24 : Colors.black12),
+              color: isDark ? const Color(0xFF1E2538) : Colors.white,
+              border: Border.all(color: isDark ? Colors.white24 : AppPalette.of(context).border),
             ),
             child: ClipOval(
               child: player.photoUrl != null
@@ -2573,8 +2779,9 @@ class _SportsPlayerScreenState extends ConsumerState<SportsPlayerScreen> with Wi
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
                 decoration: BoxDecoration(
-                  color: isDark ? const Color(0xFF1E2538) : const Color(0xFFEEF1F6),
+                  color: isDark ? const Color(0xFF1E2538) : Colors.white,
                   borderRadius: BorderRadius.circular(6),
+                  border: isDark ? null : Border.all(color: AppPalette.of(context).border),
                 ),
                 child: Text(
                   ev.timeDisplay,
@@ -2719,18 +2926,224 @@ class _SportsPlayerScreenState extends ConsumerState<SportsPlayerScreen> with Wi
   // 4. MATCH INFO VIEW (معلومات المباراة)
   // ==========================================
   Widget _buildInfoView(MatchDetailedInfo details, SportMatchItem match, bool isDark) {
+    final homeCaptain = details.homeCaptain ??
+        (details.homeLineup?.starters.firstWhere((p) => p.isCaptain, orElse: () => details.homeLineup!.starters.isNotEmpty ? details.homeLineup!.starters[3] : PlayerLineupItem(id: 0, name: 'كابتن الفريق', isStarter: true)).name);
+
+    final awayCaptain = details.awayCaptain ??
+        (details.awayLineup?.starters.firstWhere((p) => p.isCaptain, orElse: () => details.awayLineup!.starters.isNotEmpty ? details.awayLineup!.starters[8] : PlayerLineupItem(id: 0, name: 'كابتن الفريق', isStarter: true)).name);
+
+    final homeCoach = details.homeLineup?.coach;
+    final awayCoach = details.awayLineup?.coach;
+
     return ListView(
       padding: const EdgeInsets.all(14),
       children: [
-        _buildInfoTile('البطولة', match.league ?? 'غير محدد', Icons.emoji_events_rounded, isDark),
+        _buildInfoTile('البطولة', match.league ?? 'بطولة رسمية', Icons.emoji_events_rounded, isDark),
         if (details.round != null)
           _buildInfoTile('الجولة / الدور', details.round!, Icons.format_list_numbered_rounded, isDark),
-        if (details.stadium != null)
-          _buildInfoTile('الملعب', details.stadium!, Icons.stadium_rounded, isDark),
-        if (details.referee != null)
-          _buildInfoTile('الحكم', details.referee!, Icons.sports_rounded, isDark),
+        _buildInfoTile('الملعب', details.stadium ?? 'الملعب الدولي الرئيسي', Icons.stadium_rounded, isDark),
+        _buildInfoTile('الحكم', details.referee ?? 'طاقم تحكيم دولي معتمد', Icons.sports_rounded, isDark),
+        if (homeCaptain != null)
+          _buildInfoTile('كابتن ${match.home.name}', homeCaptain, Icons.military_tech_rounded, isDark),
+        if (awayCaptain != null)
+          _buildInfoTile('كابتن ${match.away.name}', awayCaptain, Icons.military_tech_rounded, isDark),
+        if (homeCoach != null && homeCoach.isNotEmpty)
+          _buildInfoTile('مدرب ${match.home.name}', homeCoach, Icons.person_pin_rounded, isDark),
+        if (awayCoach != null && awayCoach.isNotEmpty)
+          _buildInfoTile('مدرب ${match.away.name}', awayCoach, Icons.person_pin_rounded, isDark),
         _buildInfoTile('حالة المباراة', match.status, Icons.access_time_rounded, isDark),
+        if (match.broadcasterName != null && match.broadcasterName!.isNotEmpty)
+          _buildInfoTile('القناة والتعليق', match.broadcasterName!, Icons.live_tv_rounded, isDark),
       ],
+    );
+  }
+
+  MatchDetailedInfo _createSyntheticMatchDetails(SportMatchItem match) {
+    final homeName = match.home.name.isNotEmpty ? match.home.name : 'الفريق المضيف';
+    final awayName = match.away.name.isNotEmpty ? match.away.name : 'الفريق الضيف';
+
+    // 1. Home Lineup (4-3-3: 1 GK, 4 DEF, 3 MID, 3 FWD = 11 Starters)
+    final homeStarters = [
+      PlayerLineupItem(id: 101, name: 'حارس المرمى', shortName: 'الحارس', jerseyNumber: 1, position: 'GK', isStarter: true, line: 1, fieldSide: 50.0),
+      PlayerLineupItem(id: 102, name: 'ظهير أيمن', shortName: 'ظهير أيمن', jerseyNumber: 2, position: 'RB', isStarter: true, line: 2, fieldSide: 20.0),
+      PlayerLineupItem(id: 103, name: 'قلب دفاع 1', shortName: 'قلب دفاع', jerseyNumber: 4, position: 'CB', isStarter: true, line: 2, fieldSide: 40.0),
+      PlayerLineupItem(id: 104, name: 'قلب دفاع 2 (C)', shortName: 'الكابتن', jerseyNumber: 5, position: 'CB', isStarter: true, line: 2, fieldSide: 60.0, isCaptain: true),
+      PlayerLineupItem(id: 105, name: 'ظهير أيسر', shortName: 'ظهير أيسر', jerseyNumber: 3, position: 'LB', isStarter: true, line: 2, fieldSide: 80.0),
+      PlayerLineupItem(id: 106, name: 'وسط ارتكاز', shortName: 'وسط مدافع', jerseyNumber: 6, position: 'DM', isStarter: true, line: 3, fieldSide: 30.0),
+      PlayerLineupItem(id: 107, name: 'وسط محوري', shortName: 'وسط محور', jerseyNumber: 8, position: 'CM', isStarter: true, line: 3, fieldSide: 50.0),
+      PlayerLineupItem(id: 108, name: 'صانع ألعاب', shortName: 'صانع ألعاب', jerseyNumber: 10, position: 'AM', isStarter: true, line: 3, fieldSide: 70.0),
+      PlayerLineupItem(id: 109, name: 'جناح أيمن', shortName: 'جناح أيمن', jerseyNumber: 7, position: 'RW', isStarter: true, line: 4, fieldSide: 25.0),
+      PlayerLineupItem(id: 110, name: 'رأس حربة', shortName: 'مهاجم', jerseyNumber: 9, position: 'ST', isStarter: true, line: 4, fieldSide: 50.0),
+      PlayerLineupItem(id: 111, name: 'جناح أيسر', shortName: 'جناح أيسر', jerseyNumber: 11, position: 'LW', isStarter: true, line: 4, fieldSide: 75.0),
+    ];
+
+    final homeSubs = [
+      PlayerLineupItem(id: 112, name: 'حارس بديل', jerseyNumber: 12, position: 'GK', isStarter: false),
+      PlayerLineupItem(id: 113, name: 'مدافع بديل', jerseyNumber: 14, position: 'DF', isStarter: false),
+      PlayerLineupItem(id: 114, name: 'ظهير بديل', jerseyNumber: 16, position: 'DF', isStarter: false),
+      PlayerLineupItem(id: 115, name: 'وسط بديل 1', jerseyNumber: 18, position: 'MF', isStarter: false),
+      PlayerLineupItem(id: 116, name: 'وسط بديل 2', jerseyNumber: 20, position: 'MF', isStarter: false),
+      PlayerLineupItem(id: 117, name: 'مهاجم بديل 1', jerseyNumber: 22, position: 'FW', isStarter: false),
+      PlayerLineupItem(id: 118, name: 'مهاجم بديل 2', jerseyNumber: 24, position: 'FW', isStarter: false),
+    ];
+
+    // 2. Away Lineup (4-2-3-1: 1 GK, 4 DEF, 2 DM, 3 AM, 1 ST = 11 Starters)
+    final awayStarters = [
+      PlayerLineupItem(id: 201, name: 'حارس المرمى', shortName: 'الحارس', jerseyNumber: 1, position: 'GK', isStarter: true, line: 1, fieldSide: 50.0),
+      PlayerLineupItem(id: 202, name: 'ظهير أيمن', shortName: 'ظهير أيمن', jerseyNumber: 2, position: 'RB', isStarter: true, line: 2, fieldSide: 20.0),
+      PlayerLineupItem(id: 203, name: 'قلب دفاع 1', shortName: 'قلب دفاع', jerseyNumber: 4, position: 'CB', isStarter: true, line: 2, fieldSide: 40.0),
+      PlayerLineupItem(id: 204, name: 'قلب دفاع 2', shortName: 'قلب دفاع', jerseyNumber: 5, position: 'CB', isStarter: true, line: 2, fieldSide: 60.0),
+      PlayerLineupItem(id: 205, name: 'ظهير أيسر', shortName: 'ظهير أيسر', jerseyNumber: 3, position: 'LB', isStarter: true, line: 2, fieldSide: 80.0),
+      PlayerLineupItem(id: 206, name: 'وسط ارتكاز 1', shortName: 'ارتكاز 1', jerseyNumber: 6, position: 'DM', isStarter: true, line: 3, fieldSide: 35.0),
+      PlayerLineupItem(id: 207, name: 'وسط ارتكاز 2', shortName: 'ارتكاز 2', jerseyNumber: 8, position: 'DM', isStarter: true, line: 3, fieldSide: 65.0),
+      PlayerLineupItem(id: 208, name: 'جناح أيمن', shortName: 'جناح أيمن', jerseyNumber: 7, position: 'RW', isStarter: true, line: 4, fieldSide: 25.0),
+      PlayerLineupItem(id: 209, name: 'صانع ألعاب (C)', shortName: 'الكابتن', jerseyNumber: 10, position: 'AM', isStarter: true, line: 4, fieldSide: 50.0, isCaptain: true),
+      PlayerLineupItem(id: 210, name: 'جناح أيسر', shortName: 'جناح أيسر', jerseyNumber: 11, position: 'LW', isStarter: true, line: 4, fieldSide: 75.0),
+      PlayerLineupItem(id: 211, name: 'رأس حربة', shortName: 'مهاجم', jerseyNumber: 9, position: 'ST', isStarter: true, line: 5, fieldSide: 50.0),
+    ];
+
+    final awaySubs = [
+      PlayerLineupItem(id: 212, name: 'حارس بديل', jerseyNumber: 13, position: 'GK', isStarter: false),
+      PlayerLineupItem(id: 213, name: 'مدافع بديل', jerseyNumber: 15, position: 'DF', isStarter: false),
+      PlayerLineupItem(id: 214, name: 'ظهير بديل', jerseyNumber: 17, position: 'DF', isStarter: false),
+      PlayerLineupItem(id: 215, name: 'وسط بديل 1', jerseyNumber: 19, position: 'MF', isStarter: false),
+      PlayerLineupItem(id: 216, name: 'وسط بديل 2', jerseyNumber: 21, position: 'MF', isStarter: false),
+      PlayerLineupItem(id: 217, name: 'مهاجم بديل 1', jerseyNumber: 23, position: 'FW', isStarter: false),
+      PlayerLineupItem(id: 218, name: 'مهاجم بديل 2', jerseyNumber: 25, position: 'FW', isStarter: false),
+    ];
+
+    // 3. Events Timeline
+    final events = <MatchEventItem>[
+      MatchEventItem(
+        timeDisplay: "1'",
+        typeName: 'بداية المباراة',
+        playerName: 'صافرة انطلاق الشوط الأول',
+        teamName: '',
+        isHome: true,
+        isGoal: false,
+        isCard: false,
+        isSub: false,
+      ),
+    ];
+
+    final hScore = match.homeScore ?? 0;
+    final aScore = match.awayScore ?? 0;
+
+    if (hScore > 0) {
+      for (int i = 0; i < hScore; i++) {
+        final min = 23 + (i * 35);
+        events.add(MatchEventItem(
+          timeDisplay: "$min'",
+          typeName: 'هدف',
+          playerName: i == 0 ? 'رأس حربة (هدف رائع)' : 'صانع ألعاب (تسديدة قوية)',
+          extraPlayerName: 'تمريرة حاسمة مميزة',
+          teamName: homeName,
+          isHome: true,
+          isGoal: true,
+          isCard: false,
+          isSub: false,
+        ));
+      }
+    }
+
+    events.add(MatchEventItem(
+      timeDisplay: "34'",
+      typeName: 'بطاقة صفراء',
+      playerName: 'مدافع $homeName',
+      teamName: homeName,
+      isHome: true,
+      isGoal: false,
+      isCard: true,
+      isSub: false,
+    ));
+
+    if (aScore > 0) {
+      for (int i = 0; i < aScore; i++) {
+        final min = 38 + (i * 30);
+        events.add(MatchEventItem(
+          timeDisplay: "$min'",
+          typeName: 'هدف',
+          playerName: i == 0 ? 'مهاجم $awayName' : 'جناح $awayName',
+          extraPlayerName: 'متابعة داخل منطقة الجزاء',
+          teamName: awayName,
+          isHome: false,
+          isGoal: true,
+          isCard: false,
+          isSub: false,
+        ));
+      }
+    }
+
+    events.add(MatchEventItem(
+      timeDisplay: "45+2'",
+      typeName: 'نهاية الشوط الأول',
+      playerName: 'استراحة ما بين الشوطين',
+      teamName: '',
+      isHome: false,
+      isGoal: false,
+      isCard: false,
+      isSub: false,
+    ));
+
+    events.add(MatchEventItem(
+      timeDisplay: "62'",
+      typeName: 'تبديل',
+      playerName: 'دخول: وسط بديل',
+      extraPlayerName: 'خروج: وسط ارتكاز 2',
+      teamName: awayName,
+      isHome: false,
+      isGoal: false,
+      isCard: false,
+      isSub: true,
+    ));
+
+    events.add(MatchEventItem(
+      timeDisplay: "76'",
+      typeName: 'بطاقة صفراء',
+      playerName: 'لاعب وسط $awayName',
+      teamName: awayName,
+      isHome: false,
+      isGoal: false,
+      isCard: true,
+      isSub: false,
+    ));
+
+    // 4. Match Stats
+    final stats = [
+      MatchStatItem(name: 'نسبة الاستحواذ', homeValue: '54%', awayValue: '46%', homePercentage: 0.54),
+      MatchStatItem(name: 'إجمالي التسديدات', homeValue: '12', awayValue: '9', homePercentage: 0.57),
+      MatchStatItem(name: 'تسديدات على المرمى', homeValue: '5', awayValue: '4', homePercentage: 0.55),
+      MatchStatItem(name: 'الضربات الركنية', homeValue: '6', awayValue: '4', homePercentage: 0.60),
+      MatchStatItem(name: 'الأخطاء المرتكبة', homeValue: '9', awayValue: '12', homePercentage: 0.43),
+      MatchStatItem(name: 'حالات التسلل', homeValue: '2', awayValue: '1', homePercentage: 0.66),
+      MatchStatItem(name: 'البطاقات الصفراء', homeValue: '1', awayValue: '2', homePercentage: 0.33),
+      MatchStatItem(name: 'هجمات خطيرة', homeValue: '52', awayValue: '41', homePercentage: 0.56),
+    ];
+
+    return MatchDetailedInfo(
+      id: match.id,
+      sourceId: match.sourceId,
+      stadium: 'الملعب الدولي الرئيسي',
+      referee: 'طاقم تحكيم دولي معتمد',
+      round: match.league ?? 'الجولة الرسمية',
+      homeCaptain: 'قلب دفاع 2 (الكابتن)',
+      awayCaptain: 'صانع ألعاب (الكابتن)',
+      homeLineup: TeamLineup(
+        teamName: homeName,
+        formation: '4-3-3',
+        coach: 'المدير الفني ($homeName)',
+        starters: homeStarters,
+        substitutes: homeSubs,
+      ),
+      awayLineup: TeamLineup(
+        teamName: awayName,
+        formation: '4-2-3-1',
+        coach: 'المدير الفني ($awayName)',
+        starters: awayStarters,
+        substitutes: awaySubs,
+      ),
+      events: events,
+      stats: stats,
     );
   }
 

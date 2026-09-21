@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:youtube_player_iframe/youtube_player_iframe.dart';
 
+import '../../../../core/constants/app_palette.dart';
+
 /// A channel that broadcasts on YouTube (e.g. Karbala TV), in YouTube's
 /// official embedded player - the same one the channel's own site uses.
 class YoutubeLiveScreen extends StatefulWidget {
@@ -38,11 +40,15 @@ class _YoutubeLiveScreenState extends State<YoutubeLiveScreen> {
 
   @override
   Widget build(BuildContext context) {
+    // The page around the player follows the theme (white in light mode);
+    // the player surface itself is YouTube's own and stays as it is.
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final palette = AppPalette.of(context);
     return YoutubePlayerScaffold(
       controller: _controller,
       aspectRatio: 16 / 9,
       builder: (context, player) => Scaffold(
-        backgroundColor: const Color(0xFF07090E),
+        backgroundColor: isDark ? const Color(0xFF07090E) : Colors.white,
         body: SafeArea(
           child: Column(
             children: [
@@ -51,7 +57,7 @@ class _YoutubeLiveScreenState extends State<YoutubeLiveScreen> {
                 child: Row(
                   children: [
                     IconButton(
-                      icon: const Icon(Icons.arrow_back_rounded, color: Colors.white),
+                      icon: Icon(Icons.arrow_back_rounded, color: isDark ? Colors.white : palette.icon),
                       onPressed: () => Navigator.of(context).pop(),
                     ),
                     if (widget.logoUrl.isNotEmpty)
@@ -65,7 +71,8 @@ class _YoutubeLiveScreenState extends State<YoutubeLiveScreen> {
                         widget.title,
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
-                        style: const TextStyle(color: Colors.white, fontSize: 15, fontWeight: FontWeight.w800),
+                        style: TextStyle(
+                            color: isDark ? Colors.white : palette.text, fontSize: 15, fontWeight: FontWeight.w800),
                       ),
                     ),
                     Container(

@@ -114,10 +114,10 @@ class _ShahidWebScreenState extends State<ShahidWebScreen> {
       child: _fullscreenWidget != null
           ? Scaffold(backgroundColor: Colors.black, body: _fullscreenWidget)
           : Scaffold(
-              backgroundColor: const Color(0xFF07090E),
+              backgroundColor: Colors.white,
               appBar: AppBar(
-                backgroundColor: const Color(0xFF0D111A),
-                foregroundColor: Colors.white,
+                backgroundColor: Colors.white,
+                foregroundColor: Colors.black87,
                 elevation: 0,
                 title: Row(
                   children: [
@@ -131,7 +131,7 @@ class _ShahidWebScreenState extends State<ShahidWebScreen> {
                         ),
                         child: const Text(
                           'LIVE',
-                          style: TextStyle(fontSize: 10, fontWeight: FontWeight.w900),
+                          style: TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.w900),
                         ),
                       ),
                     Expanded(

@@ -128,21 +128,22 @@ def main():
         print('\ndry run: nothing was built, copied or published.')
         return
 
-    # TMDB read token, baked in at build time so the trailers section works
-    # for users. It is a free read-only key; kept out of source via the
-    # environment (set TMDB_TOKEN before releasing).
+    # The TMDB token is a compile-time constant inside the app (see
+    # lib/features/trailers/tmdb_config.dart), so it is present in every
+    # build. It is deliberately NOT passed as --dart-define: a release built
+    # that way was found to ship WITHOUT the token in libapp.so, which hid the
+    # trailers section for users, while the plain build carries it correctly.
     build_cmd = ['flutter', 'build', 'apk', '--release']
-    tmdb = os.environ.get('TMDB_TOKEN', '').strip()
-    if not tmdb:
-        # Fall back to the gitignored token file, so a normal release always
-        # bakes the trailers section in without anyone remembering to export it.
-        token_file = os.path.join(ROOT, 'tmdb_token.txt')
-        if os.path.exists(token_file):
-            tmdb = open(token_file, encoding='utf-8').read().strip()
-    if tmdb:
-        build_cmd.append('--dart-define=TMDB_TOKEN=' + tmdb)
-    else:
-        print('note: TMDB_TOKEN not set; the trailers section will be hidden in this build')
+    # Force the Dart snapshot to be rebuilt so the APK always matches the
+    # current source, without a full `flutter clean` (which fails on Windows
+    # when another process holds a file in build/). Removing just the compiled
+    # kernel/snapshot dir is enough and rarely locked; ignore any error.
+    import shutil
+    for sub in ('.dart_tool/flutter_build', 'build/app/intermediates/flutter'):
+        p = os.path.join(ROOT, *sub.split('/'))
+        if os.path.isdir(p):
+            print(f'== refresh Dart build cache\n$ rm -r {sub}')
+            shutil.rmtree(p, ignore_errors=True)
     run(build_cmd, 'build the signed release APK')
 
     facts = apk_facts(APK_SRC)

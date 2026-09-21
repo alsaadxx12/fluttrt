@@ -62,6 +62,7 @@ netlify/public/download/app.apk
 ffmpeg/
 scratch/
 screen_*.png
+test_*.png
 test_*.mp4
 test_*.webm
 CINEBALL_Mac.zip
@@ -70,3 +71,4 @@ youtube_pro.apk
 # TMDB read token (free, but kept out of git)
 tmdb_token.txt
 tmdb.json
+assets/config/tmdb_token.txt

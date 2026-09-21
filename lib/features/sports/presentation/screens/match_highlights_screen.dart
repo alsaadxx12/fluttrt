@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../../core/constants/app_palette.dart';
+import '../../../../presentation/widgets/app_search_field.dart';
 import '../../data/match_highlights_service.dart';
 import 'highlight_player_screen.dart';
 
@@ -99,7 +100,7 @@ class _MatchHighlightsScreenState extends ConsumerState<MatchHighlightsScreen> {
         children: [
           Padding(
             padding: const EdgeInsets.fromLTRB(16, 8, 16, 12),
-            child: _searchField(p),
+            child: _searchField(),
           ),
           Expanded(child: _content(p, recentAsync)),
         ],
@@ -149,45 +150,13 @@ class _MatchHighlightsScreenState extends ConsumerState<MatchHighlightsScreen> {
         ),
       );
 
-  Widget _searchField(AppPalette p) => Container(
-        height: 46,
-        decoration: BoxDecoration(
-          color: p.isDark ? const Color(0xFF161A21) : const Color(0xFFF1F4F8),
-          borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: p.border),
-        ),
-        child: Row(
-          children: [
-            const SizedBox(width: 12),
-            Icon(Icons.search_rounded, size: 20, color: p.textFaint),
-            const SizedBox(width: 8),
-            Expanded(
-              child: TextField(
-                controller: _searchCtrl,
-                onChanged: _onSearchChanged,
-                onSubmitted: (v) => _runSearch(v.trim()),
-                textInputAction: TextInputAction.search,
-                autofocus: false,
-                style: TextStyle(color: p.text, fontSize: 14, fontWeight: FontWeight.w600),
-                decoration: InputDecoration(
-                  isCollapsed: true,
-                  border: InputBorder.none,
-                  hintText: 'ابحث عن مباراة… مثال: برشلونة',
-                  hintStyle: TextStyle(color: p.textFaint, fontSize: 13.5, fontWeight: FontWeight.w600),
-                ),
-              ),
-            ),
-            if (_query.isNotEmpty || _searchCtrl.text.isNotEmpty)
-              InkWell(
-                onTap: () {
-                  _searchCtrl.clear();
-                  _runSearch('');
-                },
-                borderRadius: BorderRadius.circular(20),
-                child: Padding(padding: const EdgeInsets.all(9), child: Icon(Icons.close_rounded, size: 18, color: p.textFaint)),
-              ),
-          ],
-        ),
+  Widget _searchField() => AppSearchField(
+        controller: _searchCtrl,
+        hints: const ['ابحث عن مباراة', 'ابحث عن فريق', 'ابحث عن ملخص أهداف'],
+        onChanged: _onSearchChanged,
+        onSubmitted: (v) => _runSearch(v.trim()),
+        onClear: () => _runSearch(''),
+        isLoading: _searching,
       );
 }
 
@@ -204,7 +173,7 @@ class _MatchCard extends StatelessWidget {
       onTap: onTap,
       child: Container(
         decoration: BoxDecoration(
-          color: p.isDark ? const Color(0xFF12161C) : const Color(0xFFF3F6FA),
+          color: p.isDark ? const Color(0xFF12161C) : Colors.white,
           borderRadius: BorderRadius.circular(16),
           border: Border.all(color: p.border),
         ),
@@ -300,45 +269,49 @@ class _HitCard extends StatelessWidget {
     final p = AppPalette.of(context);
     return GestureDetector(
       onTap: onTap,
-      child: ClipRRect(
-        borderRadius: BorderRadius.circular(16),
-        child: Container(
-          decoration: BoxDecoration(border: Border.all(color: p.border), borderRadius: BorderRadius.circular(16)),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              Expanded(
-                child: Stack(
-                  fit: StackFit.expand,
-                  children: [
-                    if ((hit.thumbUrl ?? '').isNotEmpty)
-                      CachedNetworkImage(
-                        imageUrl: hit.thumbUrl!,
-                        fit: BoxFit.cover,
-                        errorWidget: (_, __, ___) => ColoredBox(color: p.skeleton),
-                      )
-                    else
-                      ColoredBox(color: p.skeleton),
-                    Center(
-                      child: Container(
-                        width: 44,
-                        height: 44,
-                        decoration: BoxDecoration(color: Colors.black.withOpacity(0.5), shape: BoxShape.circle),
-                        child: const Icon(Icons.play_arrow_rounded, color: Colors.white, size: 28),
-                      ),
+      // Clipped by the container itself (not an outer ClipRRect) so the
+      // hairline border follows the rounded corners.
+      child: Container(
+        decoration: BoxDecoration(
+          color: p.isDark ? null : p.card,
+          border: Border.all(color: p.border),
+          borderRadius: BorderRadius.circular(16),
+        ),
+        clipBehavior: Clip.antiAlias,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Expanded(
+              child: Stack(
+                fit: StackFit.expand,
+                children: [
+                  if ((hit.thumbUrl ?? '').isNotEmpty)
+                    CachedNetworkImage(
+                      imageUrl: hit.thumbUrl!,
+                      fit: BoxFit.cover,
+                      errorWidget: (_, __, ___) => ColoredBox(color: p.skeleton),
+                    )
+                  else
+                    ColoredBox(color: p.skeleton),
+                  Center(
+                    child: Container(
+                      width: 44,
+                      height: 44,
+                      decoration: BoxDecoration(color: Colors.black.withOpacity(0.5), shape: BoxShape.circle),
+                      child: const Icon(Icons.play_arrow_rounded, color: Colors.white, size: 28),
                     ),
-                  ],
-                ),
+                  ),
+                ],
               ),
-              Padding(
-                padding: const EdgeInsets.all(8),
-                child: Text(hit.title,
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
-                    style: TextStyle(color: p.text, fontSize: 11.5, fontWeight: FontWeight.w800)),
-              ),
-            ],
-          ),
+            ),
+            Padding(
+              padding: const EdgeInsets.all(8),
+              child: Text(hit.title,
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(color: p.text, fontSize: 11.5, fontWeight: FontWeight.w800)),
+            ),
+          ],
         ),
       ),
     );

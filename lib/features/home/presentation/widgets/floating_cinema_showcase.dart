@@ -3,6 +3,8 @@ import 'dart:ui';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:youtube_downloader/core/constants/app_palette.dart';
+import 'package:youtube_downloader/core/network/image_cache.dart';
 import 'package:youtube_downloader/features/cinemana/data/models/cinemana_models.dart';
 import 'package:youtube_downloader/features/cinemana/presentation/providers/cinemana_provider.dart';
 import 'package:youtube_downloader/features/cinemana/presentation/screens/cinemana_detail_screen.dart';
@@ -303,8 +305,9 @@ class _FloatingCinemaShowcaseState extends ConsumerState<FloatingCinemaShowcase>
               child: Container(
                 padding: const EdgeInsets.all(5),
                 decoration: BoxDecoration(
-                  color: isDark ? Colors.white.withOpacity(0.08) : Colors.black.withOpacity(0.06),
+                  color: isDark ? Colors.white.withOpacity(0.08) : Colors.white,
                   shape: BoxShape.circle,
+                  border: isDark ? null : Border.all(color: const Color(0xFFE8ECF2)),
                 ),
                 child: Icon(
                   Icons.close_rounded,
@@ -362,8 +365,9 @@ class _FloatingCinemaShowcaseState extends ConsumerState<FloatingCinemaShowcase>
         decoration: BoxDecoration(
           color: isSelected
               ? const Color(0xFFFF2A4A)
-              : (isDark ? const Color(0xFF22222E) : const Color(0xFFF1F5F9)),
+              : (isDark ? const Color(0xFF22222E) : Colors.white),
           borderRadius: BorderRadius.circular(8),
+          border: isSelected || isDark ? null : Border.all(color: const Color(0xFFE8ECF2)),
         ),
         child: Text(
           title,
@@ -386,6 +390,7 @@ class _FloatingCinemaShowcaseState extends ConsumerState<FloatingCinemaShowcase>
     final posterUrl = item.bestPosterUrl.isNotEmpty ? item.bestPosterUrl : item.cardImageUrl;
     final rating = double.tryParse(item.stars) ?? 0.0;
     final categories = item.categories.take(2).join(' • ');
+    final dpr = MediaQuery.of(context).devicePixelRatio;
 
     return InkWell(
       onTap: () => _openDetail(item),
@@ -394,10 +399,10 @@ class _FloatingCinemaShowcaseState extends ConsumerState<FloatingCinemaShowcase>
         margin: const EdgeInsets.symmetric(horizontal: 5, vertical: 4),
         padding: const EdgeInsets.all(8),
         decoration: BoxDecoration(
-          color: isDark ? const Color(0xFF1B1B24) : const Color(0xFFF8FAFC),
+          color: isDark ? const Color(0xFF1B1B24) : Colors.white,
           borderRadius: BorderRadius.circular(16),
           border: Border.all(
-            color: isDark ? const Color(0xFF282836) : const Color(0xFFE2E8F0),
+            color: isDark ? const Color(0xFF282836) : const Color(0xFFE8ECF2),
             width: 1,
           ),
         ),
@@ -410,25 +415,21 @@ class _FloatingCinemaShowcaseState extends ConsumerState<FloatingCinemaShowcase>
                   borderRadius: BorderRadius.circular(12),
                   child: CachedNetworkImage(
                     imageUrl: posterUrl,
+                    cacheManager: appImageCache,
                     width: 90,
                     height: double.infinity,
                     fit: BoxFit.cover,
                     filterQuality: FilterQuality.high,
-                    memCacheWidth: 600,
-                    placeholder: (_, __) => Container(
-                      width: 90,
-                      color: isDark ? const Color(0xFF2A2A38) : const Color(0xFFE2E8F0),
-                      child: const Center(
-                        child: SizedBox(
-                          width: 18,
-                          height: 18,
-                          child: CircularProgressIndicator(strokeWidth: 2),
-                        ),
-                      ),
-                    ),
+                    // The poster is 90 lp wide; decode at its own pixel width.
+                    memCacheWidth: (90 * dpr).round(),
+                    fadeInDuration: Duration.zero,
+                    fadeOutDuration: Duration.zero,
+                    placeholderFadeInDuration: Duration.zero,
+                    useOldImageOnUrlChange: true,
+                    placeholder: (ctx, __) => ColoredBox(color: AppPalette.of(ctx).skeleton),
                     errorWidget: (_, __, ___) => Container(
                       width: 90,
-                      color: isDark ? const Color(0xFF2A2A38) : const Color(0xFFE2E8F0),
+                      color: isDark ? const Color(0xFF2A2A38) : const Color(0xFFF1F3F6),
                       child: const Icon(Icons.movie_rounded, color: Colors.white38, size: 28),
                     ),
                   ),
@@ -649,8 +650,9 @@ class _FloatingCinemaShowcaseState extends ConsumerState<FloatingCinemaShowcase>
             child: Container(
               padding: const EdgeInsets.all(4),
               decoration: BoxDecoration(
-                color: isDark ? Colors.white.withOpacity(0.06) : Colors.black.withOpacity(0.04),
+                color: isDark ? Colors.white.withOpacity(0.06) : Colors.white,
                 shape: BoxShape.circle,
+                border: isDark ? null : Border.all(color: const Color(0xFFE8ECF2)),
               ),
               child: Icon(
                 Icons.chevron_right_rounded, // In RTL, right means previous
@@ -699,8 +701,9 @@ class _FloatingCinemaShowcaseState extends ConsumerState<FloatingCinemaShowcase>
             child: Container(
               padding: const EdgeInsets.all(4),
               decoration: BoxDecoration(
-                color: isDark ? Colors.white.withOpacity(0.06) : Colors.black.withOpacity(0.04),
+                color: isDark ? Colors.white.withOpacity(0.06) : Colors.white,
                 shape: BoxShape.circle,
+                border: isDark ? null : Border.all(color: const Color(0xFFE8ECF2)),
               ),
               child: Icon(
                 Icons.chevron_left_rounded, // In RTL, left means next

@@ -6,6 +6,7 @@ import 'package:youtube_downloader/core/constants/app_palette.dart';
 import 'package:youtube_downloader/features/cinemana/presentation/providers/cinemana_provider.dart';
 import 'package:youtube_downloader/features/downloads/presentation/providers/downloads_provider.dart';
 import 'package:youtube_downloader/features/settings/presentation/providers/settings_provider.dart';
+import 'package:youtube_downloader/features/update/data/update_service.dart';
 import 'package:youtube_downloader/features/update/presentation/update_controller.dart';
 
 class AppSidebar extends ConsumerStatefulWidget {
@@ -29,14 +30,13 @@ class _AppSidebarState extends ConsumerState<AppSidebar> {
   @override
   Widget build(BuildContext context) {
     final strings = ref.watch(stringsProvider);
-    final settings = ref.watch(settingsProvider);
-    final downloadsState = ref.watch(downloadsProvider);
-    final activeCount = downloadsState.activeTasks.length;
     final favorites = ref.watch(cinemanaFavoritesProvider);
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final palette = AppPalette.of(context);
     final currentPath = GoRouterState.of(context).uri.path;
     final update = ref.watch(updateControllerProvider);
+    final activeDownloads = ref.watch(downloadsProvider).activeTasks.length;
+    final installed = ref.watch(installedVersionProvider);
 
     final collapsed = _collapsed;
     return AnimatedContainer(
@@ -95,7 +95,6 @@ class _AppSidebarState extends ConsumerState<AppSidebar> {
               child: ListView(
                 padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
                 children: [
-                // 🏠 القسم الأول: الرئيسية والمحتوى
                 _buildSidebarItem(
                   icon: Icons.home_rounded,
                   title: 'الرئيسية',
@@ -104,46 +103,50 @@ class _AppSidebarState extends ConsumerState<AppSidebar> {
                   onTap: () => context.go('/'),
                 ),
                 _buildSidebarItem(
-                  icon: Icons.smart_display_rounded,
-                  title: 'يوتيوب سينمائي',
-                  isSelected: currentPath == '/youtube_cinematic',
-                  isDark: isDark,
-                  onTap: () => context.go('/youtube_cinematic'),
-                ),
-                _buildSidebarItem(
-                  icon: Icons.download_rounded,
-                  title: 'التنزيلات',
-                  badgeCount: activeCount > 0 ? activeCount : null,
-                  badgeText: activeCount > 0 ? '$activeCount نشط' : null,
-                  isSelected: currentPath == '/downloads',
-                  isDark: isDark,
-                  onTap: () => context.go('/downloads'),
-                ),
-
-                const SizedBox(height: 12),
-
-                // 🎬 القسم الثاني: سينمانا والترفيه
-                _buildSidebarItem(
-                  icon: Icons.movie_filter_rounded,
-                  title: 'أفلام هوليوود وعربية',
+                  icon: Icons.movie_rounded,
+                  title: 'الأفلام',
                   isSelected: currentPath == '/cinemana/movies' || currentPath == '/cinemana',
                   isDark: isDark,
                   onTap: () => context.push('/cinemana/movies'),
                 ),
                 _buildSidebarItem(
                   icon: Icons.tv_rounded,
-                  title: 'مسلسلات تلفزيونية',
+                  title: 'المسلسلات',
                   isSelected: currentPath == '/cinemana/series',
                   isDark: isDark,
                   onTap: () => context.push('/cinemana/series'),
                 ),
                 _buildSidebarItem(
                   icon: Icons.whatshot_rounded,
-                  title: 'أنمي ورسوم متحركة',
+                  title: 'الأنمي',
                   isSelected: currentPath == '/cinemana/anime',
                   isDark: isDark,
                   onTap: () => context.push('/cinemana/anime'),
                 ),
+                _buildSidebarItem(
+                  icon: Icons.sports_soccer_rounded,
+                  title: 'المباريات',
+                  isSelected: currentPath == '/sports',
+                  isDark: isDark,
+                  onTap: () => context.push('/sports'),
+                ),
+                _buildSidebarItem(
+                  icon: Icons.smart_display_rounded,
+                  title: 'يوتيوب',
+                  isSelected: currentPath == '/youtube_cinematic',
+                  isDark: isDark,
+                  onTap: () => context.go('/youtube_cinematic'),
+                ),
+                _buildSidebarItem(
+                  icon: Icons.play_circle_fill_rounded,
+                  title: 'مشاهد',
+                  isSelected: currentPath == '/reels',
+                  isDark: isDark,
+                  onTap: () => context.go('/reels'),
+                ),
+
+                const SizedBox(height: 10),
+
                 _buildSidebarItem(
                   icon: Icons.favorite_rounded,
                   title: 'المفضلة',
@@ -152,117 +155,167 @@ class _AppSidebarState extends ConsumerState<AppSidebar> {
                   isDark: isDark,
                   onTap: () => context.push('/cinemana/favorites'),
                 ),
-
-                const SizedBox(height: 12),
-
-                // ⚽ القسم الثالث: البث المباشر والرياضة
                 _buildSidebarItem(
-                  icon: Icons.sports_soccer_rounded,
-                  title: 'مباريات اليوم والرياضة',
-                  badgeText: 'مباشر 🔴',
-                  isSelected: currentPath == '/sports',
+                  icon: Icons.history_rounded,
+                  title: 'سجل المشاهدة',
+                  isSelected: currentPath == '/history',
                   isDark: isDark,
-                  onTap: () => context.push('/sports'),
+                  onTap: () => context.push('/history'),
                 ),
                 _buildSidebarItem(
-                  icon: Icons.live_tv_rounded,
-                  title: 'القنوات التلفزيونية',
-                  badgeText: 'HD',
-                  isSelected: currentPath == '/channels',
+                  icon: Icons.download_rounded,
+                  title: 'التنزيلات',
+                  badgeCount: activeDownloads > 0 ? activeDownloads : null,
+                  isSelected: currentPath == '/downloads',
                   isDark: isDark,
-                  onTap: () => context.push('/channels'),
+                  onTap: () => context.go('/downloads'),
                 ),
 
-                const SizedBox(height: 12),
+                const SizedBox(height: 10),
 
-                // ⚙️ القسم الرابع: النظام والتطبيق
                 _buildSidebarItem(
                   icon: Icons.settings_rounded,
-                  title: 'الإعدادات العامة',
+                  title: 'الإعدادات',
                   isSelected: currentPath == '/settings',
                   isDark: isDark,
                   onTap: () => context.go('/settings'),
                 ),
                 _buildSidebarItem(
-                  icon: update.status == UpdateStatus.loading
-                      ? Icons.sync_rounded
-                      : (update.hasUpdate ? Icons.system_update_rounded : Icons.verified_rounded),
-                  title: update.status == UpdateStatus.loading
-                      ? 'جارٍ فحص التحديث…'
-                      : (update.hasUpdate
-                          ? 'تحديث متاح (${update.info!.versionName})'
-                          : 'التطبيق محدّث'),
-                  badgeText: update.hasUpdate ? 'جديد' : null,
-                  isSelected: false,
-                  dimmed: !update.hasUpdate,
-                  isDark: isDark,
-                  onTap: () {
-                    final c = ref.read(updateControllerProvider.notifier);
-                    if (update.hasUpdate) {
-                      c.showPrompt();
-                    } else if (update.status != UpdateStatus.loading) {
-                      c.checkNow();
-                    }
-                  },
-                ),
-                _buildSidebarItem(
                   icon: Icons.info_outline_rounded,
-                  title: 'حول البرنامج',
+                  title: 'حول التطبيق',
+                  badgeText: update.hasUpdate ? 'تحديث' : null,
                   isSelected: currentPath == '/about',
                   isDark: isDark,
                   onTap: () => context.go('/about'),
                 ),
-                const SizedBox(height: 10),
+                const SizedBox(height: 6),
               ],
             ),
           ),
         ),
 
           // ----------------------------------------------------
-          // 3. Footer (Theme Switch & Status)
+          // 3. Footer — logo, name, installed version, update pill
           // ----------------------------------------------------
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-            decoration: BoxDecoration(
-              color: palette.bg,
-            ),
-            child: Row(
-              children: [
-                Icon(
-                  settings.themeMode == ThemeMode.dark
-                      ? Icons.dark_mode_rounded
-                      : Icons.light_mode_rounded,
-                  size: 17,
-                  color: settings.themeMode == ThemeMode.dark
-                      ? const Color(0xFFFBBF24)
-                      : const Color(0xFFF59E0B),
-                ),
-                if (!collapsed) ...[
-                  const SizedBox(width: 8),
-                  Text(
-                    'الوضع الليلي',
-                    style: TextStyle(
-                      fontSize: 12,
-                      fontWeight: FontWeight.w700,
-                      color: isDark ? Colors.white : const Color(0xFF111827),
-                    ),
-                  ),
-                  const Spacer(),
-                ],
-                Switch.adaptive(
-                  value: settings.themeMode == ThemeMode.dark,
-                  activeColor: AppColors.primary,
-                  onChanged: (val) {
-                    ref.read(settingsProvider.notifier).setThemeMode(
-                          val ? ThemeMode.dark : ThemeMode.light,
-                        );
-                  },
-                ),
-              ],
-            ),
+          _buildFooter(
+            collapsed: collapsed,
+            isDark: isDark,
+            palette: palette,
+            installed: installed,
+            hasUpdate: update.hasUpdate,
           ),
         ],
       ),
+    );
+  }
+
+  Widget _buildFooter({
+    required bool collapsed,
+    required bool isDark,
+    required AppPalette palette,
+    required AsyncValue<InstalledVersion> installed,
+    required bool hasUpdate,
+  }) {
+    final logo = ClipRRect(
+      borderRadius: BorderRadius.circular(8),
+      child: Image.asset(
+        'assets/images/app_logo.png',
+        width: 28,
+        height: 28,
+        fit: BoxFit.cover,
+        errorBuilder: (_, __, ___) => const SizedBox(
+          width: 28,
+          height: 28,
+          child: Icon(
+            Icons.play_circle_fill_rounded,
+            size: 24,
+            color: AppColors.primary,
+          ),
+        ),
+      ),
+    );
+
+    return Container(
+      width: double.infinity,
+      padding: EdgeInsets.symmetric(
+        horizontal: collapsed ? 0 : 16,
+        vertical: 12,
+      ),
+      decoration: BoxDecoration(
+        color: palette.bg,
+        border: Border(
+          top: BorderSide(color: palette.border, width: 1),
+        ),
+      ),
+      child: collapsed
+          ? Center(child: logo)
+          : Row(
+              children: [
+                logo,
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(
+                        'CINEBALL',
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(
+                          fontSize: 13,
+                          fontWeight: FontWeight.w900,
+                          letterSpacing: -0.2,
+                          color: isDark ? Colors.white : const Color(0xFF0F172A),
+                        ),
+                      ),
+                      const SizedBox(height: 1),
+                      Text(
+                        installed.when(
+                          data: (v) => 'الإصدار ${v.versionName}',
+                          loading: () => 'الإصدار …',
+                          error: (_, __) => 'الإصدار —',
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(
+                          fontSize: 11,
+                          fontWeight: FontWeight.w500,
+                          color: palette.textMuted,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                if (hasUpdate) ...[
+                  const SizedBox(width: 8),
+                  Material(
+                    color: Colors.transparent,
+                    child: InkWell(
+                      borderRadius: BorderRadius.circular(8),
+                      onTap: () =>
+                          ref.read(updateControllerProvider.notifier).showPrompt(),
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2.5),
+                        decoration: BoxDecoration(
+                          color: AppColors.primary,
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: const Text(
+                          'تحديث متاح',
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontSize: 10.5,
+                            fontWeight: FontWeight.w800,
+                            height: 1.2,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ],
+            ),
     );
   }
 
@@ -273,17 +326,14 @@ class _AppSidebarState extends ConsumerState<AppSidebar> {
     required bool isDark,
     int? badgeCount,
     String? badgeText,
-    bool dimmed = false,
     required VoidCallback onTap,
   }) {
     const activeColor = AppColors.primary;
 
-    final unselectedIconColor = dimmed
-        ? (isDark ? Colors.white38 : Colors.black38)
-        : (isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B));
-    final unselectedTextColor = dimmed
-        ? (isDark ? Colors.white38 : Colors.black38)
-        : (isDark ? const Color(0xFFCBD5E1) : const Color(0xFF334155));
+    final unselectedIconColor =
+        isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B);
+    final unselectedTextColor =
+        isDark ? const Color(0xFFCBD5E1) : const Color(0xFF334155);
 
     final iconColor = isSelected ? activeColor : unselectedIconColor;
     final textColor = isSelected ? activeColor : unselectedTextColor;
@@ -297,7 +347,12 @@ class _AppSidebarState extends ConsumerState<AppSidebar> {
           borderRadius: BorderRadius.circular(10),
           hoverColor: activeColor.withOpacity(0.04),
           child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+            // The 72 px rail minus the list's 10 px sides leaves 52 px; the
+            // 32 px icon slot needs the row's own sides at 8 px to fit.
+            padding: EdgeInsets.symmetric(
+              horizontal: _collapsed ? 8 : 12,
+              vertical: 8,
+            ),
             child: Row(
               mainAxisAlignment:
                   _collapsed ? MainAxisAlignment.center : MainAxisAlignment.start,

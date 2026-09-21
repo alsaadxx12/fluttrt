@@ -15,24 +15,19 @@ Widget _wrap(Widget child, {bool reduceMotion = false}) => MediaQuery(
     );
 
 void main() {
-  testWidgets('a revealed section fades and rises into place, then settles', (tester) async {
+  testWidgets('a revealed section is simply there: no fade, no rise, no layer', (tester) async {
+    // Entrance animations were retired: they replayed on every rebuild and
+    // read as the page reloading. A Reveal now shows its child at once.
     await tester.pumpWidget(_wrap(const Reveal(child: Text('قسم'))));
-
     await tester.pump();
-    expect(_opacityOf(tester), lessThan(0.2), reason: 'starts invisible');
-
-    await tester.pump(const Duration(milliseconds: 200));
-    final mid = _opacityOf(tester);
-    expect(mid, greaterThan(0.2));
-    expect(mid, lessThan(1.0), reason: 'still on its way in');
-
-    await tester.pumpAndSettle();
-    expect(_opacityOf(tester), 1.0, reason: 'ends fully visible');
-    expect(find.byType(Opacity), findsNothing, reason: 'no layer is left behind to repaint');
+    expect(_opacityOf(tester), 1.0, reason: 'visible from the first frame');
+    expect(find.byType(Opacity), findsNothing, reason: 'no layer is ever built');
     expect(find.text('قسم'), findsOneWidget);
+    await tester.pumpAndSettle();
+    expect(find.byType(Opacity), findsNothing);
   });
 
-  testWidgets('later cards start later, within the animated range', (tester) async {
+  testWidgets('later cards do not wait their turn either', (tester) async {
     await tester.pumpWidget(_wrap(
       const Row(children: [
         Reveal(index: 0, child: SizedBox(width: 10)),
@@ -40,12 +35,9 @@ void main() {
       ]),
     ));
     await tester.pump();
-    await tester.pump(const Duration(milliseconds: 120));
-    final opacities = tester.widgetList<Opacity>(find.byType(Opacity)).map((o) => o.opacity).toList();
-    expect(opacities.first, greaterThan(opacities.last), reason: 'the first card is ahead of the later one');
-
+    expect(find.byType(Opacity), findsNothing, reason: 'both are there at once');
     await tester.pumpAndSettle();
-    expect(find.byType(Opacity), findsNothing, reason: 'both finish and drop their layers');
+    expect(find.byType(Opacity), findsNothing);
   });
 
   testWidgets('a card deep in a list appears at once', (tester) async {
@@ -66,15 +58,13 @@ void main() {
     expect(_opacityOf(tester), 1.0, reason: 'no animation when the platform asks for none');
   });
 
-  testWidgets('an image settles in from oversize to its own size', (tester) async {
+  testWidgets('an image is shown at its own size at once', (tester) async {
     await tester.pumpWidget(_wrap(const RevealImage(child: SizedBox(width: 50, height: 50))));
     await tester.pump();
-    final start = tester.widget<Transform>(find.byType(Transform).first).transform.getMaxScaleOnAxis();
-    expect(start, greaterThan(1.0), reason: 'starts a hair oversized');
-
-    await tester.pumpAndSettle();
     expect(_opacityOf(tester), 1.0);
-    expect(find.byType(Transform), findsNothing, reason: 'settled, so the transform is dropped');
+    expect(find.byType(Transform), findsNothing, reason: 'never oversized, never animated');
+    await tester.pumpAndSettle();
+    expect(find.byType(Transform), findsNothing);
   });
 
   testWidgets('the shimmer keeps sweeping while content loads, and stops for reduced motion', (tester) async {

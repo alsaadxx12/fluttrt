@@ -1,6 +1,7 @@
 import '../../data/cinemana_franchises.dart';
 import 'package:dio/dio.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:youtube_downloader/core/network/http_cache.dart';
 import '../../data/models/cinemana_models.dart';
 import '../../data/services/cinemana_service.dart';
 import '../../data/services/cinemana_favorites_service.dart';
@@ -149,7 +150,13 @@ class CinemanaSectionNotifier extends StateNotifier<CinemanaSectionState> {
   CancelToken? _cancelToken;
 
   CinemanaSectionNotifier(this._service, this._kind)
-      : super(CinemanaSectionState(kind: _kind)) {
+      : super(CinemanaSectionState(
+          kind: _kind,
+          // Anime defaults to most-watched: ordering by newest upload buried
+          // popular series (e.g. Demon Slayer sat ~600 items deep), so they
+          // looked missing. Most-watched surfaces them near the top.
+          selectedOrder: _kind == 'anime' ? 'views' : 'desc',
+        )) {
     loadInitial();
   }
 
@@ -373,6 +380,7 @@ class CinemanaSectionNotifier extends StateNotifier<CinemanaSectionState> {
   }
 
   Future<void> refresh() async {
+    HttpCache.instance.markStale();
     if (state.searchQuery.isNotEmpty) {
       await search(state.searchQuery);
       return;

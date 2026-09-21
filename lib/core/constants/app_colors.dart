@@ -9,9 +9,10 @@ class AppColors {
   static const Color primaryLight = Color(0xFFFF2A3A);
   static const Color primaryContainer = Color(0x28E50914);
 
-  // Light Mode Palette
-  static const Color lightBg = Color(0xFFF8FAFC);
-  static const Color lightSecondaryBg = Color(0xFFF1F5F9);
+  // Light Mode Palette — the app is white-only: page, bars and sheets are
+  // pure white and containers are told apart by shadow, not by a gray fill.
+  static const Color lightBg = Color(0xFFFFFFFF);
+  static const Color lightSecondaryBg = Color(0xFFFFFFFF);
   static const Color lightCard = Color(0xFFFFFFFF);
   static const Color lightTextPrimary = Color(0xFF0F172A);
   static const Color lightTextSecondary = Color(0xFF64748B);

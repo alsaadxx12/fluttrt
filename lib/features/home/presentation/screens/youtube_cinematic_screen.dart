@@ -2,22 +2,24 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:youtube_downloader/core/constants/app_colors.dart';
 import 'package:youtube_downloader/core/constants/app_theme.dart';
-import 'package:youtube_downloader/features/downloads/data/models/download_task_model.dart';
-import 'package:youtube_downloader/features/downloads/presentation/providers/downloads_provider.dart';
-import 'package:youtube_downloader/features/home/presentation/providers/video_analyzer_provider.dart';
 import 'package:youtube_downloader/features/home/presentation/providers/youtube_feed_provider.dart';
+import 'package:youtube_downloader/features/trailers/data/trailer_stream_resolver.dart';
 import 'package:youtube_downloader/features/home/presentation/widgets/category_chips_bar.dart';
-import 'package:youtube_downloader/features/home/presentation/widgets/download_progress_card.dart';
-import 'package:youtube_downloader/features/home/presentation/widgets/quality_selector.dart';
-import 'package:youtube_downloader/features/home/presentation/widgets/video_preview_card.dart';
 import 'package:youtube_downloader/features/home/presentation/widgets/youtube_video_card.dart';
 import 'package:youtube_downloader/features/series/presentation/providers/series_provider.dart';
 import 'package:youtube_downloader/features/series/presentation/widgets/series_episode_card.dart';
-import 'package:youtube_downloader/features/settings/presentation/providers/settings_provider.dart';
 
-class YoutubeCinematicScreen extends ConsumerWidget {
+import 'package:youtube_explode_dart/youtube_explode_dart.dart';
+import 'package:youtube_downloader/core/scroll/app_scroll_physics.dart';
+
+class YoutubeCinematicScreen extends ConsumerStatefulWidget {
   const YoutubeCinematicScreen({super.key});
 
+  @override
+  ConsumerState<YoutubeCinematicScreen> createState() => _YoutubeCinematicScreenState();
+}
+
+class _YoutubeCinematicScreenState extends ConsumerState<YoutubeCinematicScreen> {
   bool _isSeriesQuery(String q) {
     final lower = q.toLowerCase();
     return lower.contains('مسلسل') ||
@@ -40,30 +42,74 @@ class YoutubeCinematicScreen extends ConsumerWidget {
   ];
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final videos = ref.read(youtubeFeedProvider).videos;
+      if (videos.isNotEmpty && ref.read(activeYouTubeCardIdProvider) == null) {
+        ref.read(activeYouTubeCardIdProvider.notifier).state = videos.first.id.value;
+      }
+      _prewarmTop(videos);
+    });
+  }
+
+  /// The first cards' direct streams are resolved ahead of time, so the
+  /// fronted preview starts the moment it is tapped or scrolled to.
+  void _prewarmTop(List<Video> videos) {
+    if (videos.isEmpty) return;
+    TrailerStreamResolver.instance.prewarm(videos.take(4).map((v) => v.id.value));
+  }
+
+  void _onScrollSettled(double scrollOffset, List<Video> videos) {
+    if (videos.isEmpty) return;
+    final width = MediaQuery.of(context).size.width;
+    if (width >= 680) return; // Only auto-switch on single-column mobile feed
+
+    const topOffset = 65.0;
+    final cardHeight = ((width - 28) / 1.45) + 12.0;
+
+    final relativeOffset = (scrollOffset - topOffset).clamp(0.0, double.infinity);
+    final targetIndex = (relativeOffset / cardHeight).round().clamp(0, videos.length - 1);
+
+    final targetId = videos[targetIndex].id.value;
+    if (ref.read(activeYouTubeCardIdProvider) != targetId) {
+      ref.read(activeYouTubeCardIdProvider.notifier).state = targetId;
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    // When videos change or reload, automatically activate the first card
+    ref.listen<YouTubeFeedState>(youtubeFeedProvider, (previous, next) {
+      if (next.videos.isNotEmpty &&
+          (previous == null ||
+           previous.videos != next.videos ||
+           ref.read(activeYouTubeCardIdProvider) == null)) {
+        ref.read(activeYouTubeCardIdProvider.notifier).state = next.videos.first.id.value;
+        _prewarmTop(next.videos);
+      }
+    });
+
     final feedState = ref.watch(youtubeFeedProvider);
-    final analyzerState = ref.watch(analyzerProvider);
-    final downloadsState = ref.watch(downloadsProvider);
     final seriesState = ref.watch(seriesProvider);
-    final strings = ref.watch(stringsProvider);
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final isMobile = MediaQuery.of(context).size.width < 700;
 
-    // Same palette the home screen paints with, so both pages read as one app.
-    final bgColor = isDark ? AppColors.darkBg : AppColors.lightSecondaryBg;
+    // System design: a pure white page, flat white containers set apart only
+    // by a hairline border, brand red for accents.
+    final bgColor = isDark ? AppColors.darkBg : AppColors.lightBg;
     final cardColor = isDark ? AppColors.darkCard : AppColors.lightCard;
-    final elevatedColor = isDark ? const Color(0xFF131A27) : Colors.white;
-    final borderColor =
-        isDark ? Colors.white.withOpacity(0.08) : AppColors.lightBorder;
+    final borderColor = isDark ? AppColors.darkBorder : AppColors.lightBorder;
 
-    final List<DownloadTaskModel> activeTasks = downloadsState.activeTasks;
     final isSeriesMode = seriesState.isSeriesMode;
 
     return Scaffold(
       backgroundColor: bgColor,
       body: RefreshIndicator(
-        color: AppColors.primary,
-        backgroundColor: elevatedColor,
+        triggerMode: RefreshIndicatorTriggerMode.anywhere,
+        backgroundColor: Colors.white,
+        color: const Color(0xFFE50914),
+        strokeWidth: 2.4,
         onRefresh: () async {
           if (isSeriesMode && seriesState.query.isNotEmpty) {
             await ref.read(seriesProvider.notifier).searchSeries(seriesState.query);
@@ -76,74 +122,24 @@ class YoutubeCinematicScreen extends ConsumerWidget {
             if (!isSeriesMode && scrollInfo.metrics.pixels >= scrollInfo.metrics.maxScrollExtent - 500) {
               ref.read(youtubeFeedProvider.notifier).loadMore();
             }
+            if (!isSeriesMode && scrollInfo is ScrollEndNotification && feedState.videos.isNotEmpty) {
+              _onScrollSettled(scrollInfo.metrics.pixels, feedState.videos);
+            }
             return false;
           },
           child: CustomScrollView(
-            cacheExtent: 1800,
-            physics: const ClampingScrollPhysics(parent: AlwaysScrollableScrollPhysics()),
+            cacheExtent: 1000,
+            physics: kAppDefaultScrollPhysics,
             slivers: [
-              // Top Section (Headers, Categories, Status, or Series Banner)
+              // Top Section (Categories row, then Series Banner / Series hero)
               SliverToBoxAdapter(
                 child: Padding(
-                  padding: EdgeInsets.only(
-                    left: isMobile ? 12 : 20,
-                    right: isMobile ? 12 : 20,
-                    top: isMobile ? (activeTasks.isNotEmpty || analyzerState.hasResult ? 8 : 2) : 16,
-                    bottom: isMobile && !analyzerState.hasResult && activeTasks.isEmpty && !isSeriesMode ? 0 : 12,
-                  ),
+                  padding: const EdgeInsets.fromLTRB(14, 10, 14, 12),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      if (!isSeriesMode && !isMobile) const CategoryChipsBar(),
-
-                    // If analyzing a specific link from search or paste
-                    if (analyzerState.hasResult) ...[
-                      const SizedBox(height: 12),
-                      const VideoPreviewCard(),
-                      const QualitySelector(),
-                    ],
-
-                    // Active Downloads Section
-                    if (activeTasks.isNotEmpty) ...[
-                      const SizedBox(height: 16),
-                      Row(
-                        children: [
-                          Container(
-                            width: 4,
-                            height: 16,
-                            decoration: BoxDecoration(
-                              color: AppColors.primary,
-                              borderRadius: BorderRadius.circular(2),
-                            ),
-                          ),
-                          const SizedBox(width: 8),
-                          Text(
-                            strings.activeDownloads,
-                            style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                                  fontWeight: FontWeight.bold,
-                                ),
-                          ),
-                          const SizedBox(width: 8),
-                          Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                            decoration: BoxDecoration(
-                              color: AppColors.primary.withOpacity(0.12),
-                              borderRadius: BorderRadius.circular(10),
-                            ),
-                            child: Text(
-                              '${activeTasks.length}',
-                              style: const TextStyle(
-                                color: AppColors.primary,
-                                fontSize: 11,
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 10),
-                      ...activeTasks.map((t) => DownloadProgressCard(key: ValueKey(t.id), task: t)),
-                    ],
+                      // Always visible, on every width, directly under the header.
+                      const CategoryChipsBar(),
 
                     // Smart Series Banner recommendation if user searched in normal mode
                     if (!isSeriesMode &&
@@ -153,11 +149,9 @@ class YoutubeCinematicScreen extends ConsumerWidget {
                       Container(
                         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
                         decoration: BoxDecoration(
-                          gradient: LinearGradient(
-                            colors: [elevatedColor, cardColor],
-                          ),
-                          borderRadius: BorderRadius.circular(12),
-                          border: Border.all(color: AppColors.primary.withOpacity(0.35)),
+                          color: cardColor,
+                          borderRadius: BorderRadius.circular(AppTheme.borderRadius),
+                          border: Border.all(color: borderColor),
                         ),
                         child: Row(
                           children: [
@@ -180,7 +174,7 @@ class YoutubeCinematicScreen extends ConsumerWidget {
                                   ),
                                   const SizedBox(height: 2),
                                   Text(
-                                    'يمكن للتطبيق تجميع كل الحلقات من مختلف القنوات وترتيبها رقمياً وتنزيلها بالكامل!',
+                                    'يمكن للتطبيق تجميع كل الحلقات من مختلف القنوات وترتيبها رقمياً لمشاهدتها بالكامل!',
                                     style: TextStyle(
                                       fontSize: 11.5,
                                       color: isDark ? AppColors.darkTextSecondary : AppColors.lightTextSecondary,
@@ -205,7 +199,7 @@ class YoutubeCinematicScreen extends ConsumerWidget {
                       ),
                     ],
 
-                    // SERIES MODE: Clean display without the batch download container
+                    // SERIES MODE: seasons row (results) or the welcome hero (no search yet)
                     if (isSeriesMode) ...[
                       if (seriesState.hasResults && !seriesState.isLoading) ...[
                         if ((seriesState.seriesModel?.availableSeasons.length ?? 0) > 1)
@@ -229,25 +223,10 @@ class YoutubeCinematicScreen extends ConsumerWidget {
                                     final isCurrent = seriesState.selectedSeason == season;
                                     return Padding(
                                       padding: const EdgeInsets.only(left: 6),
-                                      child: FilterChip(
-                                        label: Text('الموسم $season'),
+                                      child: SystemPillChip(
+                                        label: 'الموسم $season',
                                         selected: isCurrent,
-                                        selectedColor: AppColors.primary,
-                                        backgroundColor: cardColor,
-                                        checkmarkColor: Colors.white,
-                                        side: BorderSide(
-                                          color: isCurrent ? AppColors.primary : borderColor,
-                                        ),
-                                        onSelected: (_) => ref.read(seriesProvider.notifier).selectSeason(season),
-                                        labelStyle: TextStyle(
-                                          color: isCurrent
-                                              ? Colors.white
-                                              : (isDark
-                                                  ? AppColors.darkTextPrimary
-                                                  : AppColors.lightTextPrimary),
-                                          fontSize: 11.5,
-                                          fontWeight: isCurrent ? FontWeight.bold : FontWeight.normal,
-                                        ),
+                                        onTap: () => ref.read(seriesProvider.notifier).selectSeason(season),
                                       ),
                                     );
                                   }),
@@ -262,11 +241,7 @@ class YoutubeCinematicScreen extends ConsumerWidget {
                           margin: const EdgeInsets.only(top: 8, bottom: 16),
                           padding: const EdgeInsets.all(22),
                           decoration: BoxDecoration(
-                            gradient: LinearGradient(
-                              colors: [elevatedColor, cardColor],
-                              begin: Alignment.topLeft,
-                              end: Alignment.bottomRight,
-                            ),
+                            color: cardColor,
                             borderRadius: BorderRadius.circular(AppTheme.borderRadius),
                             border: Border.all(color: borderColor),
                           ),
@@ -294,7 +269,7 @@ class YoutubeCinematicScreen extends ConsumerWidget {
                                         ),
                                         const SizedBox(height: 4),
                                         Text(
-                                          'ابحث عن أي مسلسل وسيقوم التطبيق بالبحث عبر جميع قنوات YouTube، استخراج الحلقات، إزالة المقاطع المكررة والإعلانات، وترتيبها تسلسلياً (الحلقة 1، 2، 3...) مع إمكانية تبديل القنوات وتنزيل المسلسل كاملاً دفعة واحدة!',
+                                          'ابحث عن أي مسلسل وسيقوم التطبيق بالبحث عبر جميع قنوات YouTube، استخراج الحلقات، إزالة المقاطع المكررة والإعلانات، وترتيبها تسلسلياً (الحلقة 1، 2، 3...) مع إمكانية تبديل القنوات ومشاهدة المسلسل كاملاً!',
                                           style: TextStyle(
                                             fontSize: 12,
                                             color: isDark ? AppColors.darkTextSecondary : AppColors.lightTextSecondary,
@@ -316,16 +291,13 @@ class YoutubeCinematicScreen extends ConsumerWidget {
                                 spacing: 8,
                                 runSpacing: 8,
                                 children: _suggestedSeries.map((s) {
-                                  return ActionChip(
-                                    avatar: const Icon(Icons.play_arrow_rounded, size: 16, color: AppColors.primary),
-                                    label: Text(s),
-                                    onPressed: () {
+                                  return SystemPillChip(
+                                    icon: Icons.play_arrow_rounded,
+                                    iconColor: AppColors.primary,
+                                    label: s,
+                                    onTap: () {
                                       ref.read(seriesProvider.notifier).searchSeries(s);
                                     },
-                                    backgroundColor: isDark
-                                        ? AppColors.darkSecondaryBg
-                                        : AppColors.lightSecondaryBg,
-                                    side: BorderSide(color: borderColor),
                                   );
                                 }).toList(),
                               ),
@@ -375,14 +347,7 @@ class YoutubeCinematicScreen extends ConsumerWidget {
                     child: Column(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        Container(
-                          padding: const EdgeInsets.all(20),
-                          decoration: BoxDecoration(
-                            color: AppColors.primary.withOpacity(0.1),
-                            shape: BoxShape.circle,
-                          ),
-                          child: const CircularProgressIndicator(color: AppColors.primary, strokeWidth: 3),
-                        ),
+                        const CircularProgressIndicator(color: AppColors.primary, strokeWidth: 3),
                         const SizedBox(height: 18),
                         Text(
                           'جاري تجميع حلقات: "${seriesState.query}"',
@@ -481,7 +446,7 @@ class YoutubeCinematicScreen extends ConsumerWidget {
               // Series Episodes Grid
               else if (seriesState.hasResults)
                 SliverPadding(
-                  padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
+                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
                   sliver: SliverLayoutBuilder(
                     builder: (context, constraints) {
                       final width = constraints.crossAxisExtent;
@@ -567,27 +532,33 @@ class YoutubeCinematicScreen extends ConsumerWidget {
                 )
               else
                 SliverPadding(
-                  padding: EdgeInsets.symmetric(horizontal: isMobile ? 12 : 20, vertical: 8),
+                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
                   sliver: SliverLayoutBuilder(
                     builder: (context, constraints) {
                       final width = constraints.crossAxisExtent;
                       int crossAxisCount = 3;
+                      double childAspectRatio = 1.25;
+
                       if (width < 680) {
                         crossAxisCount = 1;
+                        childAspectRatio = 1.45; // Reduced card height on mobile
                       } else if (width < 1050) {
                         crossAxisCount = 2;
+                        childAspectRatio = 1.30;
                       } else if (width < 1450) {
                         crossAxisCount = 3;
+                        childAspectRatio = 1.28;
                       } else {
                         crossAxisCount = 4;
+                        childAspectRatio = 1.25;
                       }
 
                       return SliverGrid(
                         gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
                           crossAxisCount: crossAxisCount,
-                          mainAxisSpacing: 16,
-                          crossAxisSpacing: 16,
-                          childAspectRatio: 1.18,
+                          mainAxisSpacing: 12,
+                          crossAxisSpacing: 12,
+                          childAspectRatio: childAspectRatio,
                         ),
                         delegate: SliverChildBuilderDelegate(
                           (context, index) {

@@ -31,9 +31,6 @@ class MatchHighlightsBanner extends StatelessWidget {
               end: Alignment.centerRight,
               colors: [Color(0xFF00A870), Color(0xFF00C4A0), Color(0xFF0E7C63)],
             ),
-            boxShadow: [
-              BoxShadow(color: const Color(0xFF00A870).withOpacity(0.35), blurRadius: 18, offset: const Offset(0, 8)),
-            ],
           ),
           clipBehavior: Clip.antiAlias,
           child: Stack(

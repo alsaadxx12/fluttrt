@@ -1,6 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <!-- Same as the app's own splash screen (SplashScreen widget), so the
-         system's launch screen and the app's read as one screen. -->
-    <color name="splash_background">#07090E</color>
+    <!-- Same as the app's own splash screen (SplashScreen widget) and the
+         white-only pages after it, so the system's launch screen, the app's
+         splash and the home read as one screen: no dark-to-white jump. -->
+    <color name="splash_background">#FFFFFF</color>
 </resources>

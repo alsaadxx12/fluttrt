@@ -109,14 +109,15 @@ class CinemanaItem {
 
   /// The artwork for a card drawn [pixelWidth] physical pixels across.
   ///
-  /// The medium poster is 293 px wide: sharp on a phone card, visibly soft on
-  /// anything larger. The full poster is used whenever the card is bigger than
-  /// that, and always when [hiRes] is set (desktop, where a big screen is
-  /// viewed from close up and the card's pixel width under-reads the need).
-  /// The decode is capped by memCacheWidth at the call site, so loading the
-  /// full poster costs no extra memory.
+  /// The medium poster is 293 px wide: sharp on a phone card, only soft on a
+  /// genuinely large card. The full poster (up to ~2.4MB) is used only when
+  /// the card is drawn wider than 640 physical pixels, and always when
+  /// [hiRes] is set (desktop, where a big screen is viewed from close up and
+  /// the card's pixel width under-reads the need). The decode is capped by
+  /// memCacheWidth at the call site, so loading the full poster costs no
+  /// extra memory.
   String imageForWidth(double pixelWidth, {bool hiRes = false}) =>
-      (hiRes || (pixelWidth.isFinite && pixelWidth > 300)) ? (imgUrl ?? cardImageUrl) : cardImageUrl;
+      (hiRes || (pixelWidth.isFinite && pixelWidth > 640)) ? (imgUrl ?? cardImageUrl) : cardImageUrl;
   String get bestBackdropUrl => backdropUrl ?? imgUrl ?? imgThumbUrl ?? '';
 
   /// True when this item carries the given Cinemana genre (matched on the

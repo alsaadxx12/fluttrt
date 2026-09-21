@@ -2,6 +2,7 @@ import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:youtube_downloader/core/constants/app_colors.dart';
+import 'package:youtube_downloader/core/constants/app_palette.dart';
 import '../../data/models/cinemana_models.dart';
 import '../providers/cinemana_provider.dart';
 import 'cinemana_watch_screen.dart';
@@ -101,6 +102,7 @@ class _CinemanaDetailScreenState extends ConsumerState<CinemanaDetailScreen> {
   Widget build(BuildContext context) {
     final item = _fullItem ?? widget.item;
     final isDark = Theme.of(context).brightness == Brightness.dark;
+    final palette = AppPalette.of(context);
 
     return Scaffold(
       backgroundColor: isDark ? const Color(0xFF0F0F13) : Colors.white,
@@ -109,8 +111,13 @@ class _CinemanaDetailScreenState extends ConsumerState<CinemanaDetailScreen> {
           // Collapsible Hero App Bar with Poster
           SliverAppBar(
             // The whole portrait poster at full width (2:3), never cropped.
-            expandedHeight: (MediaQuery.of(context).size.width * 1.5)
-                .clamp(300.0, MediaQuery.of(context).size.height * 0.68),
+            expandedHeight: () {
+              final maxH = MediaQuery.of(context).size.height * 0.68;
+              final minH = maxH < 300.0 ? (maxH > 150.0 ? maxH * 0.8 : maxH) : 300.0;
+              final target = MediaQuery.of(context).size.width * 1.5;
+              if (minH >= maxH) return maxH;
+              return target.clamp(minH, maxH);
+            }(),
             pinned: true,
             backgroundColor: isDark ? const Color(0xFF14141A) : Colors.white,
             leading: IconButton(
@@ -168,11 +175,11 @@ class _CinemanaDetailScreenState extends ConsumerState<CinemanaDetailScreen> {
                       filterQuality: FilterQuality.high,
                       memCacheWidth:
                           (MediaQuery.of(context).size.width * MediaQuery.of(context).devicePixelRatio).round(),
-                      placeholder: (_, __) => Container(color: Colors.black26),
-                      errorWidget: (_, __, ___) => Container(color: Colors.black26),
+                      placeholder: (_, __) => Container(color: isDark ? Colors.black26 : palette.skeleton),
+                      errorWidget: (_, __, ___) => Container(color: isDark ? Colors.black26 : palette.skeleton),
                     )
                   else
-                    Container(color: Colors.black26),
+                    Container(color: isDark ? Colors.black26 : palette.skeleton),
                   // Gradient Overlay
                   DecoratedBox(
                     decoration: BoxDecoration(
@@ -253,8 +260,9 @@ class _CinemanaDetailScreenState extends ConsumerState<CinemanaDetailScreen> {
                         Container(
                           padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                           decoration: BoxDecoration(
-                            color: isDark ? const Color(0xFF22222B) : const Color(0xFFEBEBF0),
+                            color: isDark ? const Color(0xFF22222B) : palette.card,
                             borderRadius: BorderRadius.circular(6),
+                            border: isDark ? null : Border.all(color: palette.border),
                           ),
                           child: Text(
                             item.year,
@@ -296,10 +304,10 @@ class _CinemanaDetailScreenState extends ConsumerState<CinemanaDetailScreen> {
                         return Container(
                           padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                           decoration: BoxDecoration(
-                            color: isDark ? const Color(0xFF1E1E26) : const Color(0xFFEDEDF4),
+                            color: isDark ? const Color(0xFF1E1E26) : palette.card,
                             borderRadius: BorderRadius.circular(16),
                             border: Border.all(
-                              color: isDark ? const Color(0xFF2E2E3C) : const Color(0xFFD8D8E4),
+                              color: isDark ? const Color(0xFF2E2E3C) : palette.border,
                               width: 1,
                             ),
                           ),
@@ -330,7 +338,7 @@ class _CinemanaDetailScreenState extends ConsumerState<CinemanaDetailScreen> {
                       style: ElevatedButton.styleFrom(
                         backgroundColor: AppColors.primary,
                         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                        elevation: 4,
+                        elevation: 0,
                       ),
                     ),
                   ),
@@ -411,7 +419,8 @@ class _CinemanaDetailScreenState extends ConsumerState<CinemanaDetailScreen> {
                                   ),
                                   selected: isSelected,
                                   selectedColor: AppColors.primary,
-                                  backgroundColor: isDark ? const Color(0xFF1E1E26) : const Color(0xFFEDEDF4),
+                                  backgroundColor: isDark ? const Color(0xFF1E1E26) : palette.card,
+                                  side: isDark ? null : BorderSide(color: isSelected ? AppColors.primary : palette.border),
                                   onSelected: (_) {
                                     setState(() {
                                       _selectedSeason = sNum;
@@ -451,11 +460,13 @@ class _CinemanaDetailScreenState extends ConsumerState<CinemanaDetailScreen> {
                           // Right-to-left row of episode cards, each with
                           // its picture (the episode's own, else the show's).
                           return SizedBox(
-                            height: 150,
+                            // 150 for the cards plus the list's bottom padding.
+                            height: 160,
                             child: Directionality(
                               textDirection: TextDirection.rtl,
                               child: ListView.separated(
                                 scrollDirection: Axis.horizontal,
+                                padding: const EdgeInsets.only(bottom: 10),
                                 physics: const BouncingScrollPhysics(),
                                 itemCount: currentSeasonEpisodes.length,
                                 separatorBuilder: (_, __) => const SizedBox(width: 10),
@@ -483,15 +494,17 @@ class _CinemanaDetailScreenState extends ConsumerState<CinemanaDetailScreen> {
   Widget _buildEpisodeCard(CinemanaEpisode ep, CinemanaItem show, bool isDark) {
     final image = (ep.imgUrl != null && ep.imgUrl!.isNotEmpty) ? ep.imgUrl! : show.cardImageUrl;
     final dpr = MediaQuery.of(context).devicePixelRatio;
+    final palette = AppPalette.of(context);
     return InkWell(
       onTap: () => _watchItem(episode: ep),
       borderRadius: BorderRadius.circular(12),
       child: Container(
         width: 150,
         decoration: BoxDecoration(
-          color: isDark ? const Color(0xFF1B1B22) : Colors.white,
+          // Light mode: a flat white card on the white page, hairline border only.
+          color: isDark ? const Color(0xFF1B1B22) : palette.card,
           borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: isDark ? const Color(0xFF2C2C38) : const Color(0xFFE2E8F0)),
+          border: Border.all(color: isDark ? const Color(0xFF2C2C38) : palette.border),
         ),
         clipBehavior: Clip.antiAlias,
         child: Column(
@@ -506,11 +519,11 @@ class _CinemanaDetailScreenState extends ConsumerState<CinemanaDetailScreen> {
                       imageUrl: image,
                       fit: BoxFit.cover,
                       memCacheWidth: (150 * dpr).round(),
-                      placeholder: (_, __) => const ColoredBox(color: Colors.black26),
-                      errorWidget: (_, __, ___) => const ColoredBox(color: Colors.black26),
+                      placeholder: (_, __) => ColoredBox(color: isDark ? Colors.black26 : palette.skeleton),
+                      errorWidget: (_, __, ___) => ColoredBox(color: isDark ? Colors.black26 : palette.skeleton),
                     )
                   else
-                    const ColoredBox(color: Colors.black26),
+                    ColoredBox(color: isDark ? Colors.black26 : palette.skeleton),
                   const Center(
                     child: Icon(
                       Icons.play_circle_fill_rounded,
@@ -602,6 +615,7 @@ class _CinemanaDetailScreenState extends ConsumerState<CinemanaDetailScreen> {
   }
 
   Widget _buildSimilarCard(CinemanaItem m, bool isDark, double dpr) {
+    final palette = AppPalette.of(context);
     return GestureDetector(
       onTap: () => Navigator.of(context).push(
         MaterialPageRoute(builder: (_) => CinemanaDetailScreen(item: m)),
@@ -613,7 +627,13 @@ class _CinemanaDetailScreenState extends ConsumerState<CinemanaDetailScreen> {
           children: [
             Expanded(
               child: Container(
-                decoration: BoxDecoration(color: Colors.black26, borderRadius: BorderRadius.circular(12)),
+                decoration: BoxDecoration(
+                  // Loading placeholder behind the poster: the palette's
+                  // skeleton tone, so it still shows on the white page.
+                  color: isDark ? Colors.black26 : palette.skeleton,
+                  borderRadius: BorderRadius.circular(12),
+                  border: isDark ? null : Border.all(color: palette.border),
+                ),
                 clipBehavior: Clip.antiAlias,
                 child: Stack(
                   fit: StackFit.expand,

@@ -15,7 +15,9 @@ SportMatchItem m({
     SportMatchItem(
       id: id,
       sourceId: sourceId,
-      kickoffAt: '2026-09-12T19:00:00Z',
+      // Kicked off 45 minutes ago: a 'live' status only counts while the
+      // game can really be in play (see sports_status_test.dart).
+      kickoffAt: DateTime.now().toUtc().subtract(const Duration(minutes: 45)).toIso8601String(),
       status: status,
       home: TeamInfo(name: home),
       away: TeamInfo(name: away),

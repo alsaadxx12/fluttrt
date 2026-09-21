@@ -1,4 +1,3 @@
-import 'package:flutter/gestures.dart';
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -9,31 +8,42 @@ import 'package:media_kit/media_kit.dart';
 import 'package:window_manager/window_manager.dart';
 import 'package:youtube_downloader/core/constants/app_theme.dart';
 import 'package:youtube_downloader/core/localization/app_localizations.dart';
+import 'package:youtube_downloader/core/scroll/app_scroll_physics.dart';
 import 'package:youtube_downloader/core/services/storage_service.dart';
 import 'package:youtube_downloader/features/settings/presentation/providers/settings_provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:youtube_downloader/router/app_router.dart';
 import 'features/update/presentation/update_gate.dart';
 import 'core/tv/tv_mode.dart';
+import 'package:youtube_downloader/features/trailers/tmdb_config.dart';
 import 'package:video_player_media_kit/video_player_media_kit.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  // Load the bundled TMDB token if the build did not compile one in, so the
+  // trailers section works whether or not --dart-define was passed.
+  await TmdbConfig.ensureLoaded();
   // The app stays upright everywhere; only the video players turn.
   await SystemChrome.setPreferredOrientations([DeviceOrientation.portraitUp]);
-  // Keep the image cache modest. Every cached image is a GPU texture, and a
-  // 400MB budget let the home screen hold ~555MB of them - which starved the
-  // WebView of tile memory and made the match stream render black
-  // ("tile memory limits exceeded" in logcat). Images are now decoded at the
-  // size they are drawn, so this is ample.
-  PaintingBinding.instance.imageCache.maximumSize = 400;
-  PaintingBinding.instance.imageCache.maximumSizeBytes = 80 << 20; // 80 MB
+  // Keep the in-memory cache large enough so scrolling long feeds with hundreds
+  // of posters and thumbnails retains decoded bitmaps without re-decoding lag.
+  PaintingBinding.instance.imageCache.maximumSize = 3500;
+  // 200 MB: enough for the whole home page decoded at 1x, and still well
+  // below the budget that once starved the match WebView of tile memory.
+  PaintingBinding.instance.imageCache.maximumSizeBytes = 200 << 20; // 200 MB
   GoogleFonts.config.allowRuntimeFetching = true;
 
-  // Initialize MediaKit only on desktop platforms (Windows, Linux, macOS)
+  // MediaKit on every platform: the reels play through media_kit on Android
+  // and iOS too (a video-only stream paired with a separate audio track).
+  try {
+    MediaKit.ensureInitialized();
+  } catch (e) {
+    debugPrint('MediaKit init error: $e');
+  }
+
+  // Desktop platforms (Windows, Linux, macOS)
   if (Platform.isWindows || Platform.isLinux || Platform.isMacOS) {
     try {
-      MediaKit.ensureInitialized();
       // video_player has no Windows implementation, so every film and series
       // player threw on open there. This hands video_player's calls to
       // media_kit, and the existing players run unchanged.
@@ -101,11 +111,14 @@ class YouTubeDownloaderApp extends ConsumerWidget {
     final locale = Locale(settings.language.code);
 
     return MaterialApp.router(
-      scrollBehavior: const _NoStretchScrollBehavior(),
+      scrollBehavior: const AppScrollBehavior(),
       title: strings.appName,
       debugShowCheckedModeBanner: false,
       routerConfig: appRouter,
-      themeMode: settings.themeMode,
+      // The app is white-only: the saved theme preference is ignored and the
+      // dark theme is kept solely so nothing that still branches on
+      // brightness has to change.
+      themeMode: ThemeMode.light,
       theme: AppTheme.lightTheme(settings.language),
       darkTheme: AppTheme.darkTheme(settings.language),
       locale: locale,
@@ -139,22 +152,3 @@ class YouTubeDownloaderApp extends ConsumerWidget {
   }
 }
 
-/// Lists stop dead at their edges: no stretch and no glow when pulled past
-/// the end, so pull-to-refresh only shows its spinner.
-class _NoStretchScrollBehavior extends MaterialScrollBehavior {
-  const _NoStretchScrollBehavior();
-
-  @override
-  Widget buildOverscrollIndicator(BuildContext context, Widget child, ScrollableDetails details) => child;
-
-  // Every list can be grabbed and dragged, with a mouse or a finger. Without
-  // the mouse here a desktop user can only reach a row's end with the tiny
-  // scrollbar; with it, press-and-drag scrolls the cards like a touch screen.
-  @override
-  Set<PointerDeviceKind> get dragDevices => {
-        PointerDeviceKind.touch,
-        PointerDeviceKind.mouse,
-        PointerDeviceKind.trackpad,
-        PointerDeviceKind.stylus,
-      };
-}

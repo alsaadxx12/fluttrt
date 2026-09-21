@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:youtube_downloader/core/constants/app_colors.dart';
+import 'package:youtube_downloader/core/constants/app_palette.dart';
 import 'package:youtube_downloader/core/constants/app_theme.dart';
 import 'package:youtube_downloader/core/utils/file_utils.dart';
 import 'package:youtube_downloader/core/utils/formatters.dart';
@@ -15,6 +16,7 @@ class VideoPreviewCard extends ConsumerWidget {
     final analyzerState = ref.watch(analyzerProvider);
     final result = analyzerState.result;
     final isDark = Theme.of(context).brightness == Brightness.dark;
+    final palette = AppPalette.of(context);
 
     if (result == null) return const SizedBox.shrink();
 
@@ -44,13 +46,6 @@ class VideoPreviewCard extends ConsumerWidget {
             color: isDark ? AppColors.darkBorder : AppColors.lightBorder,
             width: 1,
           ),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withOpacity(isDark ? 0.25 : 0.04),
-              blurRadius: 12,
-              offset: const Offset(0, 4),
-            ),
-          ],
         ),
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -63,7 +58,7 @@ class VideoPreviewCard extends ConsumerWidget {
                   Container(
                     width: 160,
                     height: 96,
-                    color: isDark ? AppColors.darkSecondaryBg : AppColors.lightSecondaryBg,
+                    color: isDark ? AppColors.darkSecondaryBg : palette.skeleton,
                     child: Image.network(
                       result.thumbnailUrl,
                       fit: BoxFit.cover,

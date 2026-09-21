@@ -68,20 +68,55 @@ class AppTheme {
       useMaterial3: true,
       brightness: Brightness.light,
       primaryColor: AppColors.primary,
-      scaffoldBackgroundColor: AppColors.lightSecondaryBg,
+      // Pure white everywhere: the page, the top bar, the drawer, sheets and
+      // dialogs. Material 3 would otherwise tint elevated surfaces with the
+      // primary colour, so the tint is switched off and containers stand out
+      // from the page through a soft shadow instead.
+      scaffoldBackgroundColor: AppColors.lightBg,
+      canvasColor: AppColors.lightBg,
       colorScheme: const ColorScheme.light(
         primary: AppColors.primary,
         onPrimary: Colors.white,
         primaryContainer: AppColors.primaryContainer,
         surface: AppColors.lightCard,
         onSurface: AppColors.lightTextPrimary,
-        surfaceContainerHighest: AppColors.lightSecondaryBg,
+        surfaceContainerHighest: AppColors.lightCard,
+        surfaceTint: Colors.transparent,
         outline: AppColors.lightBorder,
         error: AppColors.error,
       ),
+      appBarTheme: const AppBarTheme(
+        backgroundColor: AppColors.lightBg,
+        surfaceTintColor: Colors.transparent,
+        foregroundColor: AppColors.lightTextPrimary,
+        elevation: 0,
+        scrolledUnderElevation: 0,
+      ),
+      drawerTheme: const DrawerThemeData(
+        backgroundColor: AppColors.lightBg,
+        surfaceTintColor: Colors.transparent,
+      ),
+      dialogTheme: DialogTheme(
+        backgroundColor: AppColors.lightCard,
+        surfaceTintColor: Colors.transparent,
+        shadowColor: const Color(0x33101828),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(borderRadius)),
+      ),
+      bottomSheetTheme: const BottomSheetThemeData(
+        backgroundColor: AppColors.lightCard,
+        surfaceTintColor: Colors.transparent,
+        modalBackgroundColor: AppColors.lightCard,
+      ),
+      popupMenuTheme: const PopupMenuThemeData(
+        color: AppColors.lightCard,
+        surfaceTintColor: Colors.transparent,
+      ),
       cardTheme: CardTheme(
         color: AppColors.lightCard,
+        // Flat: cards are pure white and are told apart from the page by a
+        // hairline border only — no shadow anywhere on the page.
         elevation: 0,
+        surfaceTintColor: Colors.transparent,
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(borderRadius),
           side: const BorderSide(color: AppColors.lightBorder, width: 1),

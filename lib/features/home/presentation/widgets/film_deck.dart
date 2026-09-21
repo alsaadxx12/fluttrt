@@ -1,6 +1,7 @@
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:youtube_downloader/core/network/image_cache.dart';
 
 import '../../../../core/constants/app_palette.dart';
 import '../../../cinemana/data/models/cinemana_models.dart';
@@ -202,6 +203,7 @@ class _FilmCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final p = AppPalette.of(context);
+    final dpr = MediaQuery.of(context).devicePixelRatio;
     final title = film.arTitle.trim().isNotEmpty ? film.arTitle.trim() : film.enTitle.trim();
     // Use highest resolution image available: bestPosterUrl or imgUrl
     final posterUrl = film.bestPosterUrl.isNotEmpty ? film.bestPosterUrl : film.cardImageUrl;
@@ -218,7 +220,6 @@ class _FilmCard extends StatelessWidget {
           color: p.card,
           borderRadius: BorderRadius.circular(18),
           border: Border.all(color: const Color(0xFFE50914).withOpacity(0.4)),
-          boxShadow: const [BoxShadow(color: Color(0x66000000), blurRadius: 24, offset: Offset(0, 10))],
         ),
         clipBehavior: Clip.antiAlias,
         child: Stack(
@@ -226,20 +227,16 @@ class _FilmCard extends StatelessWidget {
           children: [
             CachedNetworkImage(
               imageUrl: posterUrl,
+              cacheManager: appImageCache,
               fit: BoxFit.cover,
               filterQuality: FilterQuality.high,
-              memCacheWidth: 1200,
-              fadeInDuration: const Duration(milliseconds: 150),
-              placeholder: (_, __) => ColoredBox(
-                color: p.skeleton,
-                child: const Center(
-                  child: SizedBox(
-                    width: 24,
-                    height: 24,
-                    child: CircularProgressIndicator(strokeWidth: 2, color: Color(0xFFE50914)),
-                  ),
-                ),
-              ),
+              // The card is 380 lp tall at 2:3; decode at its own pixel width.
+              memCacheWidth: (380 * 2 / 3 * dpr).round(),
+              fadeInDuration: Duration.zero,
+              fadeOutDuration: Duration.zero,
+              placeholderFadeInDuration: Duration.zero,
+              useOldImageOnUrlChange: true,
+              placeholder: (_, __) => ColoredBox(color: p.skeleton),
               errorWidget: (_, __, ___) => ColoredBox(
                 color: p.skeleton,
                 child: Icon(Icons.movie_rounded, color: p.textFaint, size: 40),

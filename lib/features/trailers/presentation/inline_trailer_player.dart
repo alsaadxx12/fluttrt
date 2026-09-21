@@ -15,7 +15,15 @@ import '../data/trailer_stream_resolver.dart';
 /// The video fills its card (BoxFit.cover). Phone only, matching the showcase.
 class InlineTrailerPlayer extends StatefulWidget {
   final String videoId;
-  const InlineTrailerPlayer({super.key, required this.videoId});
+
+  /// Whether the video runs. Flipping it pauses or resumes the player in
+  /// place; the stream stays resolved and buffered, so resuming is instant.
+  final bool playing;
+
+  /// Called when this trailer cannot be played (no stream, or init failed),
+  /// so a feed can skip past it.
+  final VoidCallback? onFailed;
+  const InlineTrailerPlayer({super.key, required this.videoId, this.playing = true, this.onFailed});
 
   @override
   State<InlineTrailerPlayer> createState() => _InlineTrailerPlayerState();
@@ -44,10 +52,32 @@ class _InlineTrailerPlayerState extends State<InlineTrailerPlayer> {
         return;
       }
       await controller.setLooping(true);
-      await controller.play();
+      // `widget` is read after the awaits, so a flip during init is honoured.
+      if (widget.playing) await controller.play();
+      if (!mounted) {
+        await controller.dispose();
+        return;
+      }
       setState(() => _controller = controller);
     } catch (_) {
-      if (mounted) setState(() => _failed = true);
+      // A card that is already gone (scrolled past, or the row rebuilt) must
+      // not report a failure: the feed would skip whatever is fronted now.
+      if (!mounted) return;
+      setState(() => _failed = true);
+      widget.onFailed?.call();
+    }
+  }
+
+  @override
+  void didUpdateWidget(InlineTrailerPlayer old) {
+    super.didUpdateWidget(old);
+    if (old.playing == widget.playing) return;
+    final c = _controller;
+    if (c == null || !c.value.isInitialized) return;
+    if (widget.playing) {
+      c.play();
+    } else {
+      c.pause();
     }
   }
 

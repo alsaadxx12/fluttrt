@@ -2,6 +2,8 @@ import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:youtube_downloader/core/constants/app_colors.dart';
+import 'package:youtube_downloader/core/constants/app_palette.dart';
+import 'package:youtube_downloader/core/network/image_cache.dart';
 import '../../data/models/cinemana_models.dart';
 import '../providers/cinemana_provider.dart';
 import 'package:youtube_downloader/presentation/widgets/favorite_toast.dart';
@@ -31,6 +33,7 @@ class _CinemanaPosterCardState extends ConsumerState<CinemanaPosterCard>
   Widget build(BuildContext context) {
     super.build(context);
     final isDark = Theme.of(context).brightness == Brightness.dark;
+    final palette = AppPalette.of(context);
     final rating = double.tryParse(widget.item.stars) ?? 0.0;
     final favorites = ref.watch(cinemanaFavoritesProvider);
     final isFav = favorites.any((it) => it.id == widget.item.id);
@@ -50,10 +53,12 @@ class _CinemanaPosterCardState extends ConsumerState<CinemanaPosterCard>
                   borderRadius: BorderRadius.circular(12),
                   child: Container(
                     decoration: BoxDecoration(
-                      color: isDark ? const Color(0xFF22222B) : const Color(0xFFE5E5EB),
+                      // Loading placeholder behind the poster: the palette's
+                      // skeleton tone, so it still shows on the white page.
+                      color: isDark ? const Color(0xFF22222B) : palette.skeleton,
                       borderRadius: BorderRadius.circular(12),
                       border: Border.all(
-                        color: isDark ? const Color(0xFF33333F) : const Color(0xFFE0E0E6),
+                        color: isDark ? const Color(0xFF33333F) : palette.border,
                         width: 1,
                       ),
                     ),
@@ -65,26 +70,21 @@ class _CinemanaPosterCardState extends ConsumerState<CinemanaPosterCard>
                             final px = box.maxWidth * MediaQuery.of(context).devicePixelRatio;
                             return CachedNetworkImage(
                             imageUrl: widget.item.imageForWidth(px, hiRes: preferFullArtwork),
+                            cacheManager: appImageCache,
                             fit: BoxFit.cover,
                             filterQuality: FilterQuality.high,
-                            // Decode at twice the card, capped, so downscaling
-                            // the full poster keeps crisp edges.
-                            memCacheWidth: px.isFinite && px > 0 ? (px * 2).clamp(200, 900).round() : null,
-                            // The poster settles in from its shimmer rather
-                            // than blinking into place.
+                            // Decode at the card's own pixel size, capped.
+                            memCacheWidth: px.isFinite && px > 0 ? px.clamp(200, 600).round() : null,
+                            // A cached poster is simply there: no fade, no
+                            // settle, and the old picture stays up while a
+                            // resized card swaps its URL.
                             fadeInDuration: Duration.zero,
                             fadeOutDuration: Duration.zero,
-                            imageBuilder: (_, provider) => RevealImage(
-                              child: Image(
-                                image: provider,
-                                fit: BoxFit.cover,
-                                width: double.infinity,
-                                height: double.infinity,
-                              ),
-                            ),
+                            placeholderFadeInDuration: Duration.zero,
+                            useOldImageOnUrlChange: true,
                             placeholder: (_, __) => Shimmer(
-                              base: isDark ? const Color(0xFF141926) : const Color(0xFFE6EAF2),
-                              highlight: isDark ? const Color(0xFF1E2636) : const Color(0xFFF4F7FC),
+                              base: isDark ? const Color(0xFF141926) : palette.skeleton,
+                              highlight: isDark ? const Color(0xFF1E2636) : Colors.white,
                               child: const SizedBox.expand(),
                             ),
                             errorWidget: (_, __, ___) => _buildPlaceholder(isDark),

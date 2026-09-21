@@ -1,14 +1,22 @@
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:youtube_downloader/core/network/image_cache.dart';
+import 'package:youtube_downloader/core/tv/tv_mode.dart';
+import 'package:youtube_downloader/features/cinemana/data/models/cinemana_models.dart';
+import 'package:youtube_downloader/features/cinemana/presentation/providers/cinemana_provider.dart';
+import 'package:youtube_downloader/features/reels/presentation/providers/reels_feed_provider.dart';
+import 'package:youtube_downloader/features/sports/presentation/providers/sports_provider.dart';
 
-class SplashScreen extends StatefulWidget {
+class SplashScreen extends ConsumerStatefulWidget {
   const SplashScreen({super.key});
 
   @override
-  State<SplashScreen> createState() => _SplashScreenState();
+  ConsumerState<SplashScreen> createState() => _SplashScreenState();
 }
 
-class _SplashScreenState extends State<SplashScreen>
+class _SplashScreenState extends ConsumerState<SplashScreen>
     with SingleTickerProviderStateMixin {
   late final AnimationController _controller;
   late final Animation<double> _scaleAnimation;
@@ -34,12 +42,82 @@ class _SplashScreenState extends State<SplashScreen>
 
     _controller.forward();
 
-    // Fast, smooth navigation to Home Screen
-    Future.delayed(const Duration(milliseconds: 1600), () {
+    // Warm the home while the logo animates, so it opens already filled
+    // instead of loading in front of the user. Reading a provider is enough
+    // to start its request, and none of these auto-dispose. The hero and the
+    // first rows go first; the rest follow a moment later so they do not all
+    // fight for the connection at once.
+    final Future<List<CinemanaItem>> hero = ref.read(heroBannerMoviesProvider.future);
+    ref.read(homeRecentlyAddedProvider);
+    ref.read(homeLatestMoviesProvider);
+    ref.read(sportsNotifierProvider('today'));
+    Future.delayed(const Duration(milliseconds: 300), () {
+      if (!mounted) return;
+      ref.read(homeLatestSeriesProvider);
+      ref.read(homeAnimeProvider);
+      ref.read(homeMostViewedProvider);
+      ref.read(homeArabicMoviesProvider);
+      ref.read(homeArabicSeriesProvider);
+      // The scenes tab: its first page takes a few searches and probes, so
+      // it starts now and is ready by the time the tab is opened.
+      ref.read(reelsFeedProvider);
+    });
+
+    // The first hero slide is decoded here, under the exact cache key the
+    // home hero asks for, so it is on screen the instant the home appears.
+    final Future<void> heroSettled = hero.then<void>((movies) {
+      if (mounted && movies.isNotEmpty) _precacheFirstHeroSlide(movies.first);
+    }).catchError((_) {});
+
+    // Leave once the logo has had its 900 ms and the hero has answered
+    // (success or error), but never later than 1600 ms in total.
+    final Future<void> minWait = Future<void>.delayed(const Duration(milliseconds: 900));
+    Future.any<void>([
+      Future.wait<void>([heroSettled, minWait]),
+      Future<void>.delayed(const Duration(milliseconds: 1600)),
+    ]).then((_) {
       if (mounted) {
         context.go('/');
       }
     });
+  }
+
+  /// Mirrors the home hero's image choice and decode size exactly (see
+  /// `_buildHeroFullPoster` / `_precacheNextHeroSlides` in home_screen.dart):
+  /// on phones the high-res poster, decoded at the hero's own pixel width;
+  /// on desktop the wide cover (or backdrop, or poster) at native size, plus
+  /// the 400px blurred copy a poster gets behind it.
+  ///
+  /// The hero sizes itself from the width it is given, not the screen's: from
+  /// 700px up (and on a television) MainScaffold puts the 240px AppSidebar
+  /// beside the page, so that much comes off first.
+  void _precacheFirstHeroSlide(CinemanaItem m) {
+    final mq = MediaQuery.of(context);
+    final isTv = ref.read(tvModeProvider).valueOrNull ?? false;
+    final hasSidebar = isTv || mq.size.width >= 700;
+    final availableWidth = hasSidebar ? mq.size.width - 240 : mq.size.width;
+    final isDesktop = availableWidth >= 700;
+    final wideCover = (m.backdropUrl != null && m.backdropUrl!.isNotEmpty && m.backdropUrl!.contains('cover'))
+        ? m.backdropUrl!
+        : '';
+    final highResPoster = (m.imgUrl != null && m.imgUrl!.isNotEmpty) ? m.imgUrl! : m.bestPosterUrl;
+    final url = isDesktop
+        ? (wideCover.isNotEmpty ? wideCover : (m.bestBackdropUrl.isNotEmpty ? m.bestBackdropUrl : highResPoster))
+        : (highResPoster.isNotEmpty ? highResPoster : m.bestBackdropUrl);
+    if (url.isEmpty) return;
+    final base = CachedNetworkImageProvider(url, cacheManager: appImageCache);
+    if (isDesktop) {
+      precacheImage(base, context, onError: (_, __) {});
+      if (wideCover.isEmpty) {
+        precacheImage(ResizeImage(base, width: 400), context, onError: (_, __) {});
+      }
+    } else {
+      precacheImage(
+        ResizeImage(base, width: (availableWidth * mq.devicePixelRatio).round()),
+        context,
+        onError: (_, __) {},
+      );
+    }
   }
 
   @override
@@ -50,8 +128,10 @@ class _SplashScreenState extends State<SplashScreen>
 
   @override
   Widget build(BuildContext context) {
+    // White, like every page after it, so the home appears in place with no
+    // dark-to-white jump.
     return Scaffold(
-      backgroundColor: const Color(0xFF07090E),
+      backgroundColor: Colors.white,
       body: Stack(
         fit: StackFit.expand,
         children: [
@@ -109,28 +189,22 @@ class _SplashScreenState extends State<SplashScreen>
                 const SizedBox(height: 24),
                 FadeTransition(
                   opacity: _fadeAnimation,
-                  child: Column(
+                  child: const Column(
                     children: [
-                      const Text(
+                      Text(
                         'CINEBALL',
                         style: TextStyle(
-                          color: Colors.white,
+                          color: Color(0xFF0F172A),
                           fontSize: 28,
                           fontWeight: FontWeight.w900,
                           letterSpacing: 2.5,
-                          shadows: [
-                            Shadow(
-                              color: Color(0xFFE50914),
-                              blurRadius: 16,
-                            ),
-                          ],
                         ),
                       ),
-                      const SizedBox(height: 6),
+                      SizedBox(height: 6),
                       Text(
                         'سينما ومباريات بلا حدود',
                         style: TextStyle(
-                          color: Colors.white.withOpacity(0.65),
+                          color: Colors.black54,
                           fontSize: 13,
                           fontWeight: FontWeight.w500,
                           letterSpacing: 0.5,
@@ -151,33 +225,26 @@ class _SplashScreenState extends State<SplashScreen>
             child: SafeArea(
               child: FadeTransition(
                 opacity: _fadeAnimation,
-                child: Column(
+                child: const Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     Text(
                       'تطوير',
                       style: TextStyle(
-                        color: Colors.white.withOpacity(0.40),
+                        color: Colors.black54,
                         fontSize: 11,
                         fontWeight: FontWeight.w500,
                         letterSpacing: 1.2,
                       ),
                     ),
-                    const SizedBox(height: 4),
-                    const Text(
+                    SizedBox(height: 4),
+                    Text(
                       'ALI ALSAADY',
                       style: TextStyle(
-                        color: Colors.white,
+                        color: Color(0xFF0F172A),
                         fontSize: 14.5,
                         fontWeight: FontWeight.w900,
                         letterSpacing: 2.5,
-                        shadows: [
-                          Shadow(
-                            color: Colors.black,
-                            blurRadius: 4,
-                            offset: Offset(0, 1),
-                          ),
-                        ],
                       ),
                     ),
                   ],

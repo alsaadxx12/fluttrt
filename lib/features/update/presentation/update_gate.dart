@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:youtube_downloader/core/constants/app_palette.dart';
 
 import '../data/app_update_info.dart';
 import '../data/update_service.dart';
@@ -98,6 +99,7 @@ class _UpdateCard extends ConsumerWidget {
     final info = state.info;
     if (info == null) return const SizedBox.shrink();
     final isDark = Theme.of(context).brightness == Brightness.dark;
+    final palette = AppPalette.of(context);
     final busy = state.status == UpdateStatus.downloading || state.status == UpdateStatus.installing;
     return Material(
       color: Colors.black.withOpacity(0.62),
@@ -114,6 +116,7 @@ class _UpdateCard extends ConsumerWidget {
                   decoration: BoxDecoration(
                     color: isDark ? const Color(0xFF141926) : Colors.white,
                     borderRadius: BorderRadius.circular(18),
+                    boxShadow: isDark ? null : palette.cardShadow,
                   ),
                   child: Column(
                     mainAxisSize: MainAxisSize.min,
@@ -174,10 +177,11 @@ class _ForcedUpdateScreen extends ConsumerWidget {
     final info = state.info;
     if (info == null) return const SizedBox.shrink();
     final isDark = Theme.of(context).brightness == Brightness.dark;
+    final palette = AppPalette.of(context);
     return Directionality(
       textDirection: TextDirection.rtl,
       child: Material(
-        color: isDark ? const Color(0xFF07090E) : const Color(0xFFF3F5FA),
+        color: isDark ? const Color(0xFF07090E) : Colors.white,
         child: SafeArea(
           child: Center(
             child: SingleChildScrollView(
@@ -215,7 +219,7 @@ class _ForcedUpdateScreen extends ConsumerWidget {
                       decoration: BoxDecoration(
                         color: isDark ? const Color(0xFF141926) : Colors.white,
                         borderRadius: BorderRadius.circular(16),
-                        border: Border.all(color: isDark ? Colors.white10 : const Color(0xFFE3E8F1)),
+                        border: Border.all(color: isDark ? Colors.white10 : palette.border),
                       ),
                       child: _UpdateBody(state: state, info: info, isDark: isDark),
                     ),

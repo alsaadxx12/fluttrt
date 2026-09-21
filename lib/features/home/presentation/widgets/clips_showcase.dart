@@ -2,6 +2,7 @@ import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:youtube_player_iframe/youtube_player_iframe.dart';
+import 'package:youtube_downloader/core/network/image_cache.dart';
 
 import '../../../../core/constants/app_palette.dart';
 import '../../../../presentation/widgets/reveal.dart';
@@ -234,6 +235,7 @@ class _ClipCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final p = AppPalette.of(context);
     const width = 260.0;
+    final dpr = MediaQuery.of(context).devicePixelRatio;
 
     if (isPlaying && controller != null) {
       return SizedBox(
@@ -288,7 +290,6 @@ class _ClipCard extends StatelessWidget {
               decoration: BoxDecoration(
                 borderRadius: BorderRadius.circular(16),
                 border: Border.all(color: p.border),
-                boxShadow: p.cardShadow,
               ),
               child: ClipRRect(
                 borderRadius: BorderRadius.circular(16),
@@ -297,18 +298,15 @@ class _ClipCard extends StatelessWidget {
                   children: [
                     CachedNetworkImage(
                       imageUrl: clip.poster?.isNotEmpty == true ? clip.poster! : clip.thumbnail,
+                      cacheManager: appImageCache,
                       fit: BoxFit.cover,
                       filterQuality: FilterQuality.high,
+                      // Decode at the card's own pixel width.
+                      memCacheWidth: (width * dpr).round(),
                       fadeInDuration: Duration.zero,
-                      imageBuilder: (_, provider) => RevealImage(
-                        child: Image(
-                          image: provider,
-                          fit: BoxFit.cover,
-                          filterQuality: FilterQuality.high,
-                          width: double.infinity,
-                          height: double.infinity,
-                        ),
-                      ),
+                      fadeOutDuration: Duration.zero,
+                      placeholderFadeInDuration: Duration.zero,
+                      useOldImageOnUrlChange: true,
                       placeholder: (_, __) => Shimmer(
                         base: p.skeleton,
                         highlight: p.isDark ? const Color(0xFF1E2636) : const Color(0xFFF4F7FC),
@@ -316,8 +314,14 @@ class _ClipCard extends StatelessWidget {
                       ),
                       errorWidget: (_, __, ___) => CachedNetworkImage(
                         imageUrl: clip.fallbackThumbnail,
+                        cacheManager: appImageCache,
                         fit: BoxFit.cover,
                         filterQuality: FilterQuality.high,
+                        memCacheWidth: (width * dpr).round(),
+                        fadeInDuration: Duration.zero,
+                        fadeOutDuration: Duration.zero,
+                        placeholderFadeInDuration: Duration.zero,
+                        useOldImageOnUrlChange: true,
                       ),
                     ),
                     // Keeps the play badge readable on any still.

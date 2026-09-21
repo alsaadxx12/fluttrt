@@ -4,6 +4,7 @@ import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../core/constants/app_palette.dart';
 import '../../home/presentation/widgets/clips_showcase.dart' show youtubeIdOf;
 import '../data/tmdb_service.dart';
 import '../data/trailer_stream_resolver.dart';
@@ -71,6 +72,7 @@ class _DetailTrailerState extends ConsumerState<DetailTrailer> {
   Widget build(BuildContext context) {
     if (!_isPhone) return const SizedBox.shrink();
     final isDark = Theme.of(context).brightness == Brightness.dark;
+    final p = AppPalette.of(context);
 
     final async = ref.watch(detailTrailerProvider(
       TrailerQuery(title: widget.title, year: widget.year, trailerUrl: widget.trailerUrl),
@@ -97,8 +99,13 @@ class _DetailTrailerState extends ConsumerState<DetailTrailer> {
           ],
         ),
         const SizedBox(height: 10),
-        ClipRRect(
-          borderRadius: BorderRadius.circular(16),
+        // A hairline edge keeps the trailer box readable on the white page.
+        Container(
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(color: p.border),
+          ),
+          clipBehavior: Clip.antiAlias,
           child: AspectRatio(
             aspectRatio: 16 / 9,
             child: _playing
@@ -111,7 +118,7 @@ class _DetailTrailerState extends ConsumerState<DetailTrailer> {
   }
 
   Widget _poster(BuildContext context, bool isDark) {
-    final base = isDark ? const Color(0xFF14141A) : const Color(0xFFEBEBF0);
+    final base = isDark ? const Color(0xFF14141A) : const Color(0xFFF1F3F6);
     return GestureDetector(
       onTap: () => setState(() => _playing = true),
       child: Stack(

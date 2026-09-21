@@ -3,6 +3,7 @@ import 'dart:math' as math;
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:youtube_downloader/core/network/image_cache.dart';
 
 import '../../../../core/constants/app_palette.dart';
 import '../../../cinemana/data/cinemana_franchises.dart';
@@ -184,7 +185,7 @@ class _FranchiseCard extends ConsumerWidget {
         ? FilmFranchise.countLabel(films)
         : '${franchise.entries.length} أجزاء';
 
-    return _Pressable(
+    return FranchisePressable(
       onTap: films.isEmpty
           ? null
           : () => Navigator.of(context, rootNavigator: true).push(
@@ -195,15 +196,6 @@ class _FranchiseCard extends ConsumerWidget {
         decoration: BoxDecoration(
           color: p.card,
           borderRadius: BorderRadius.circular(18),
-          boxShadow: isActive
-              ? [
-                  BoxShadow(
-                    color: const Color(0xFFFF2A4A).withOpacity(0.20),
-                    blurRadius: 18,
-                    offset: const Offset(0, 8),
-                  ),
-                ]
-              : null,
         ),
         // The edge is drawn over the content, so nothing inside can smudge it.
         foregroundDecoration: BoxDecoration(
@@ -219,13 +211,13 @@ class _FranchiseCard extends ConsumerWidget {
           children: [
             // A soft tint in the lead poster's own colour behind the posters,
             // fading into the card.
-            if (films.isNotEmpty) _PosterTint(url: films.last.cardImageUrl, card: p.card, isDark: p.isDark),
+            if (films.isNotEmpty) PosterTint(url: films.last.cardImageUrl, card: p.card, isDark: p.isDark),
             Column(
               children: [
                 Expanded(
                   child: films.isEmpty
-                      ? const _PosterFanPlaceholder()
-                      : _PosterFan(films: films),
+                      ? const PosterFanPlaceholder()
+                      : PosterFan(films: films),
                 ),
                 Padding(
                   padding: const EdgeInsets.fromLTRB(14, 4, 14, 14),
@@ -282,17 +274,17 @@ class _FranchiseCard extends ConsumerWidget {
 
 /// The card's tint: the poster's dominant colour at the top, fading into
 /// the card colour. Neutral until the colour is known, then eases in.
-class _PosterTint extends StatefulWidget {
+class PosterTint extends StatefulWidget {
   final String url;
   final Color card;
   final bool isDark;
-  const _PosterTint({required this.url, required this.card, required this.isDark});
+  const PosterTint({super.key, required this.url, required this.card, required this.isDark});
 
   @override
-  State<_PosterTint> createState() => _PosterTintState();
+  State<PosterTint> createState() => _PosterTintState();
 }
 
-class _PosterTintState extends State<_PosterTint> {
+class _PosterTintState extends State<PosterTint> {
   Color? _color;
 
   @override
@@ -302,7 +294,7 @@ class _PosterTintState extends State<_PosterTint> {
   }
 
   @override
-  void didUpdateWidget(_PosterTint old) {
+  void didUpdateWidget(PosterTint old) {
     super.didUpdateWidget(old);
     if (old.url != widget.url) _load();
   }
@@ -332,9 +324,9 @@ class _PosterTintState extends State<_PosterTint> {
 
 /// Three posters fanned out: first and last of the series behind, the
 /// middle one in front - big, so the artwork carries the card.
-class _PosterFan extends StatelessWidget {
+class PosterFan extends StatelessWidget {
   final List<CinemanaItem> films;
-  const _PosterFan({required this.films});
+  const PosterFan({super.key, required this.films});
 
   @override
   Widget build(BuildContext context) {
@@ -360,13 +352,6 @@ class _PosterFan extends StatelessWidget {
                 decoration: BoxDecoration(
                   borderRadius: BorderRadius.circular(14),
                   border: Border.all(color: Colors.white.withOpacity(0.25), width: 1.0),
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.black.withOpacity(0.35),
-                      blurRadius: 14,
-                      offset: const Offset(0, 6),
-                    ),
-                  ],
                 ),
                 clipBehavior: Clip.antiAlias,
                 child: Stack(
@@ -374,10 +359,14 @@ class _PosterFan extends StatelessWidget {
                   children: [
                     CachedNetworkImage(
                       imageUrl: f.cardImageUrl,
+                      cacheManager: appImageCache,
                       fit: BoxFit.cover,
                       filterQuality: FilterQuality.medium,
                       memCacheWidth: (w * dpr).clamp(180, 360).round(),
-                      fadeInDuration: const Duration(milliseconds: 100),
+                      fadeInDuration: Duration.zero,
+                      fadeOutDuration: Duration.zero,
+                      placeholderFadeInDuration: Duration.zero,
+                      useOldImageOnUrlChange: true,
                       placeholder: (_, __) => Container(
                         color: const Color(0xFF161E2E),
                         child: const Center(
@@ -417,8 +406,8 @@ class _PosterFan extends StatelessWidget {
 }
 
 /// Instant visual placeholder for the fan cards while images load
-class _PosterFanPlaceholder extends StatelessWidget {
-  const _PosterFanPlaceholder();
+class PosterFanPlaceholder extends StatelessWidget {
+  const PosterFanPlaceholder({super.key});
 
   @override
   Widget build(BuildContext context) {
@@ -436,13 +425,6 @@ class _PosterFanPlaceholder extends StatelessWidget {
                   color: const Color(0xFF161E2E),
                   borderRadius: BorderRadius.circular(14),
                   border: Border.all(color: Colors.white.withOpacity(0.15), width: 1.0),
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.black.withOpacity(0.25),
-                      blurRadius: 10,
-                      offset: const Offset(0, 4),
-                    ),
-                  ],
                 ),
                 child: const Center(
                   child: Icon(Icons.movie_filter_rounded, color: Colors.white24, size: 28),
@@ -468,16 +450,16 @@ class _PosterFanPlaceholder extends StatelessWidget {
 }
 
 /// Shrinks a little under the finger.
-class _Pressable extends StatefulWidget {
+class FranchisePressable extends StatefulWidget {
   final Widget child;
   final VoidCallback? onTap;
-  const _Pressable({required this.child, required this.onTap});
+  const FranchisePressable({super.key, required this.child, required this.onTap});
 
   @override
-  State<_Pressable> createState() => _PressableState();
+  State<FranchisePressable> createState() => _PressableState();
 }
 
-class _PressableState extends State<_Pressable> {
+class _PressableState extends State<FranchisePressable> {
   bool _down = false;
 
   @override
@@ -542,7 +524,7 @@ class FranchiseScreen extends ConsumerWidget {
                         childAspectRatio: 0.67, // Standard 2:3 poster aspect ratio
                       ),
                       itemCount: films.length,
-                      itemBuilder: (context, i) => _FranchiseFilmTile(film: films[i], number: i + 1),
+                      itemBuilder: (context, i) => FranchiseFilmTile(film: films[i], number: i + 1),
                     );
                   },
                 ),
@@ -550,16 +532,16 @@ class FranchiseScreen extends ConsumerWidget {
   }
 }
 
-class _FranchiseFilmTile extends StatefulWidget {
+class FranchiseFilmTile extends StatefulWidget {
   final CinemanaItem film;
   final int number;
-  const _FranchiseFilmTile({required this.film, required this.number});
+  const FranchiseFilmTile({super.key, required this.film, required this.number});
 
   @override
-  State<_FranchiseFilmTile> createState() => _FranchiseFilmTileState();
+  State<FranchiseFilmTile> createState() => _FranchiseFilmTileState();
 }
 
-class _FranchiseFilmTileState extends State<_FranchiseFilmTile> {
+class _FranchiseFilmTileState extends State<FranchiseFilmTile> {
   bool _isHovered = false;
 
   @override
@@ -589,15 +571,6 @@ class _FranchiseFilmTileState extends State<_FranchiseFilmTile> {
               color: _isHovered ? const Color(0xFFE50914) : p.border,
               width: _isHovered ? 1.5 : 1.0,
             ),
-            boxShadow: [
-              BoxShadow(
-                color: _isHovered
-                    ? const Color(0xFFE50914).withOpacity(0.25)
-                    : Colors.black.withOpacity(0.22),
-                blurRadius: _isHovered ? 14 : 7,
-                offset: Offset(0, _isHovered ? 6 : 3),
-              ),
-            ],
           ),
           clipBehavior: Clip.antiAlias,
           child: Stack(
@@ -606,19 +579,16 @@ class _FranchiseFilmTileState extends State<_FranchiseFilmTile> {
               // 1. Crystal Clear High-Res Poster
               CachedNetworkImage(
                 imageUrl: posterUrl,
+                cacheManager: appImageCache,
                 fit: BoxFit.cover,
                 filterQuality: FilterQuality.high,
-                memCacheWidth: (260 * dpr).clamp(400, 1200).round(),
-                placeholder: (_, __) => ColoredBox(
-                  color: p.skeleton,
-                  child: const Center(
-                    child: SizedBox(
-                      width: 20,
-                      height: 20,
-                      child: CircularProgressIndicator(strokeWidth: 2, color: Color(0xFFE50914)),
-                    ),
-                  ),
-                ),
+                // Decode at the tile's own pixel width.
+                memCacheWidth: (260 * dpr).round(),
+                fadeInDuration: Duration.zero,
+                fadeOutDuration: Duration.zero,
+                placeholderFadeInDuration: Duration.zero,
+                useOldImageOnUrlChange: true,
+                placeholder: (_, __) => ColoredBox(color: p.skeleton),
                 errorWidget: (_, __, ___) => ColoredBox(
                   color: p.skeleton,
                   child: Icon(Icons.movie_rounded, color: p.textFaint, size: 36),

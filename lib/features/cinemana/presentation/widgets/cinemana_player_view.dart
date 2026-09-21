@@ -7,6 +7,7 @@ import 'package:video_player/video_player.dart';
 import '../../data/cinemana_subtitles.dart';
 import '../../data/models/cinemana_models.dart';
 import 'package:youtube_downloader/core/video/desktop_video.dart';
+import 'package:youtube_downloader/core/constants/app_palette.dart';
 
 /// How the viewer wants subtitles: on/off, text size and height on screen.
 class SubtitleSettings {
@@ -724,7 +725,10 @@ class SubtitleSettingsBar extends StatelessWidget {
     const red = Color(0xFFE50914);
     return Container(
       height: 42,
-      color: isDark ? const Color(0xFF16161D) : const Color(0xFFF1F1F5),
+      decoration: BoxDecoration(
+        color: isDark ? const Color(0xFF16161D) : Colors.white,
+        border: isDark ? null : Border(bottom: BorderSide(color: AppPalette.of(context).border)),
+      ),
       padding: const EdgeInsets.symmetric(horizontal: 12),
       child: Row(
         children: [

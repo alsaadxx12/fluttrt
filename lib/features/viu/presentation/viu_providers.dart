@@ -10,7 +10,7 @@ final viuHomeRowProvider = FutureProvider.family<List<ViuShow>, ViuCategory>((re
   final service = ref.watch(viuServiceProvider);
   final shows = category.isMovies
       ? await service.fetchFreeMovies()
-      : (await service.fetchFreeShows(category.id, want: 36)).shows;
+      : (await service.fetchFreeShows(category.id, want: 18)).shows;
   // Original and dubbed versions of a title share one card.
   return ViuShow.mergeVersions(shows);
 });

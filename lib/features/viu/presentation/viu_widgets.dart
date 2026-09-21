@@ -1,6 +1,7 @@
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:youtube_downloader/core/network/image_cache.dart';
 
 import '../data/viu_models.dart';
 import 'viu_category_screen.dart';
@@ -43,11 +44,15 @@ class ViuPosterCard extends StatelessWidget {
               if (poster != null)
                 CachedNetworkImage(
                   imageUrl: poster,
+                  cacheManager: appImageCache,
                   fit: BoxFit.cover,
                   filterQuality: FilterQuality.high,
-                  // Decode at twice the card so downscaling stays crisp.
-                  memCacheWidth: (width * dpr * 2).clamp(200, 900).round(),
-                  fadeInDuration: const Duration(milliseconds: 120),
+                  // Decode at the card's own pixel size.
+                  memCacheWidth: (width * dpr).round(),
+                  fadeInDuration: Duration.zero,
+                  fadeOutDuration: Duration.zero,
+                  placeholderFadeInDuration: Duration.zero,
+                  useOldImageOnUrlChange: true,
                   placeholder: (_, __) => const SizedBox.shrink(),
                   errorWidget: (_, __, ___) => const Icon(Icons.movie_rounded, color: Colors.white24),
                 ),

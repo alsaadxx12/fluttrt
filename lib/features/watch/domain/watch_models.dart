@@ -11,6 +11,13 @@ class PlayableItem {
   final int? seasonNumber;
   final String? seriesName;
 
+  /// Metadata shown on the watch page's header and suggestion tiles. Each is
+  /// optional: an item built by hand (a series episode, a test) has none.
+  final int? viewCount;
+  final DateTime? uploadDate;
+  final String? description;
+  final String? channelId;
+
   const PlayableItem({
     required this.id,
     required this.title,
@@ -20,12 +27,17 @@ class PlayableItem {
     this.episodeNumber,
     this.seasonNumber,
     this.seriesName,
+    this.viewCount,
+    this.uploadDate,
+    this.description,
+    this.channelId,
   });
 
   factory PlayableItem.fromVideo(Video v, {String? seriesName, int? epNum, int? seasonNum}) {
     final thumb = v.thumbnails.highResUrl.isNotEmpty
         ? v.thumbnails.highResUrl
         : 'https://i.ytimg.com/vi/${v.id.value}/hqdefault.jpg';
+    final description = v.description.trim();
     return PlayableItem(
       id: v.id.value,
       title: v.title,
@@ -35,6 +47,10 @@ class PlayableItem {
       episodeNumber: epNum,
       seasonNumber: seasonNum,
       seriesName: seriesName,
+      viewCount: v.engagement.viewCount,
+      uploadDate: v.uploadDate ?? v.publishDate,
+      description: description.isEmpty ? null : description,
+      channelId: v.channelId.value,
     );
   }
 

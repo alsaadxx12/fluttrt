@@ -4,6 +4,74 @@ import 'package:youtube_downloader/core/constants/app_colors.dart';
 import 'package:youtube_downloader/features/series/presentation/providers/series_provider.dart';
 import '../providers/youtube_feed_provider.dart';
 
+/// A flat pill chip in the app's system look: 36 px high, radius 20, pure
+/// white fill with a hairline border and black87 text when unselected, brand
+/// red fill with white text when selected. No elevation, no animation.
+class SystemPillChip extends StatelessWidget {
+  const SystemPillChip({
+    super.key,
+    required this.label,
+    required this.onTap,
+    this.selected = false,
+    this.icon,
+    this.iconColor,
+  });
+
+  final String label;
+  final VoidCallback onTap;
+  final bool selected;
+  final IconData? icon;
+
+  /// Colour of [icon]; defaults to the label colour.
+  final Color? iconColor;
+
+  static const double height = 36;
+  static const double radius = 20;
+
+  @override
+  Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final fill = selected ? AppColors.primary : (isDark ? AppColors.darkCard : Colors.white);
+    final border = selected ? AppColors.primary : (isDark ? AppColors.darkBorder : AppColors.lightBorder);
+    final fg = selected ? Colors.white : (isDark ? Colors.white70 : Colors.black87);
+
+    return MouseRegion(
+      cursor: SystemMouseCursors.click,
+      child: GestureDetector(
+        behavior: HitTestBehavior.opaque,
+        onTap: onTap,
+        child: Container(
+          height: height,
+          padding: const EdgeInsets.symmetric(horizontal: 14),
+          alignment: Alignment.center,
+          decoration: BoxDecoration(
+            color: fill,
+            borderRadius: BorderRadius.circular(radius),
+            border: Border.all(color: border, width: 1),
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              if (icon != null) ...[
+                Icon(icon, size: 16, color: selected ? Colors.white : (iconColor ?? fg)),
+                const SizedBox(width: 6),
+              ],
+              Text(
+                label,
+                style: TextStyle(
+                  fontSize: 12,
+                  fontWeight: selected ? FontWeight.bold : FontWeight.w500,
+                  color: fg,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
 class CategoryChipsBar extends ConsumerWidget {
   const CategoryChipsBar({super.key});
 
@@ -23,38 +91,23 @@ class CategoryChipsBar extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final feedState = ref.watch(youtubeFeedProvider);
     final seriesState = ref.watch(seriesProvider);
-    final isDark = Theme.of(context).brightness == Brightness.dark;
 
     return SizedBox(
-      height: 38,
+      height: SystemPillChip.height,
       child: ListView(
         scrollDirection: Axis.horizontal,
+        physics: const ClampingScrollPhysics(),
         children: [
-          // Smart Series Mode Quick Toggle Chip
+          // Smart Series Mode Quick Toggle Chip (the only way in and out of
+          // series mode).
           Padding(
             padding: const EdgeInsetsDirectional.only(end: 8),
-            child: FilterChip(
-              avatar: Icon(
-                seriesState.isSeriesMode ? Icons.theaters_rounded : Icons.theaters_outlined,
-                size: 16,
-                color: seriesState.isSeriesMode ? Colors.white : AppColors.primary,
-              ),
-              label: const Text(
-                'مسلسلات ذكية',
-                style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
-              ),
+            child: SystemPillChip(
+              icon: Icons.auto_awesome_rounded,
+              iconColor: AppColors.primary,
+              label: 'مسلسلات ذكية',
               selected: seriesState.isSeriesMode,
-              selectedColor: AppColors.primary,
-              checkmarkColor: Colors.white,
-              showCheckmark: false,
-              backgroundColor:
-                  isDark ? AppColors.darkCard : AppColors.lightSecondaryBg,
-              side: BorderSide(
-                color: seriesState.isSeriesMode ? AppColors.primary : AppColors.primary.withOpacity(0.4),
-                width: 1.2,
-              ),
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-              onSelected: (_) {
+              onTap: () {
                 ref.read(seriesProvider.notifier).toggleSeriesMode();
                 if (!seriesState.isSeriesMode && feedState.searchQuery.isNotEmpty) {
                   ref.read(seriesProvider.notifier).searchSeries(feedState.searchQuery);
@@ -66,20 +119,10 @@ class CategoryChipsBar extends ConsumerWidget {
           // Refresh Feed Chip
           Padding(
             padding: const EdgeInsetsDirectional.only(end: 8),
-            child: ActionChip(
-              avatar: Icon(
-                Icons.refresh_rounded,
-                size: 16,
-                color: isDark ? Colors.white70 : Colors.black87,
-              ),
-              label: const Text('تحديث', style: TextStyle(fontSize: 12)),
-              backgroundColor: isDark ? AppColors.darkCard : AppColors.lightCard,
-              side: BorderSide(
-                color: isDark ? AppColors.darkBorder : AppColors.lightBorder,
-                width: 1,
-              ),
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-              onPressed: () {
+            child: SystemPillChip(
+              icon: Icons.refresh_rounded,
+              label: 'تحديث',
+              onTap: () {
                 if (seriesState.isSeriesMode) {
                   ref.read(seriesProvider.notifier).searchSeries(feedState.searchQuery);
                 } else {
@@ -94,36 +137,15 @@ class CategoryChipsBar extends ConsumerWidget {
             final isSelected = feedState.currentCategory == cat && feedState.searchQuery.isEmpty && !seriesState.isSeriesMode;
             return Padding(
               padding: const EdgeInsetsDirectional.only(end: 8),
-              child: ChoiceChip(
-                label: Text(
-                  cat,
-                  style: TextStyle(
-                    fontSize: 12,
-                    fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
-                    color: isSelected
-                        ? (isDark ? Colors.black : Colors.white)
-                        : (isDark ? AppColors.darkTextPrimary : AppColors.lightTextPrimary),
-                  ),
-                ),
+              child: SystemPillChip(
+                label: cat,
                 selected: isSelected,
-                selectedColor: isDark ? Colors.white : AppColors.lightTextPrimary,
-                backgroundColor: isDark ? AppColors.darkCard : AppColors.lightCard,
-                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 0),
-                side: BorderSide(
-                  color: isSelected
-                      ? Colors.transparent
-                      : (isDark ? AppColors.darkBorder : AppColors.lightBorder),
-                  width: 1,
-                ),
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-                showCheckmark: false,
-                onSelected: (selected) {
-                  if (selected) {
-                    if (seriesState.isSeriesMode) {
-                      ref.read(seriesProvider.notifier).toggleSeriesMode();
-                    }
-                    ref.read(youtubeFeedProvider.notifier).loadCategory(cat);
+                onTap: () {
+                  if (isSelected) return;
+                  if (seriesState.isSeriesMode) {
+                    ref.read(seriesProvider.notifier).toggleSeriesMode();
                   }
+                  ref.read(youtubeFeedProvider.notifier).loadCategory(cat);
                 },
               ),
             );

@@ -137,7 +137,9 @@ class _CinemanaScreenState extends State<CinemanaScreen> {
         appBar: AppBar(
         titleSpacing: 0,
         backgroundColor: isDark ? const Color(0xFF131317) : Colors.white,
-        elevation: 1,
+        elevation: 0,
+        scrolledUnderElevation: 0,
+        surfaceTintColor: Colors.transparent,
         title: Row(
           children: [
             Container(

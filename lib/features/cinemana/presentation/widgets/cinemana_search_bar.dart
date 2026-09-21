@@ -3,6 +3,8 @@ import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:youtube_downloader/core/constants/app_colors.dart';
+import 'package:youtube_downloader/core/constants/app_palette.dart';
+import 'package:youtube_downloader/presentation/widgets/app_search_field.dart';
 import '../../data/models/cinemana_models.dart';
 import '../providers/cinemana_provider.dart';
 import '../screens/cinemana_detail_screen.dart';
@@ -14,12 +16,16 @@ class CinemanaSearchBar extends ConsumerStatefulWidget {
   final VoidCallback onClear;
   final String hintText;
 
+  /// The phrases the empty field cycles through (see AppSearchField.hints).
+  final List<String>? hints;
+
   const CinemanaSearchBar({
     super.key,
     this.initialQuery,
     required this.onSearchSubmitted,
     required this.onClear,
-    this.hintText = 'بحث في سينمانا (أفلام، مسلسلات، أنمي)...',
+    this.hintText = 'بحث',
+    this.hints,
   });
 
   @override
@@ -116,7 +122,7 @@ class _CinemanaSearchBarState extends ConsumerState<CinemanaSearchBar> {
 
   OverlayEntry _createOverlayEntry() {
     final renderBox = context.findRenderObject() as RenderBox?;
-    final size = renderBox?.size ?? const Size(300, 48);
+    final size = renderBox?.size ?? const Size(300, AppSearchField.defaultHeight);
 
     return OverlayEntry(
       builder: (context) {
@@ -137,7 +143,7 @@ class _CinemanaSearchBarState extends ConsumerState<CinemanaSearchBar> {
                 decoration: BoxDecoration(
                   borderRadius: BorderRadius.circular(16),
                   border: Border.all(
-                    color: isDark ? Colors.white.withOpacity(0.1) : Colors.black12,
+                    color: isDark ? Colors.white.withOpacity(0.1) : AppPalette.of(context).border,
                     width: 1,
                   ),
                   boxShadow: [
@@ -207,7 +213,7 @@ class _CinemanaSearchBarState extends ConsumerState<CinemanaSearchBar> {
                                           child: Container(
                                             width: 44,
                                             height: 60,
-                                            color: isDark ? const Color(0xFF2B2B38) : const Color(0xFFE0E0E0),
+                                            color: isDark ? const Color(0xFF2B2B38) : AppPalette.of(context).skeleton,
                                             child: item.bestPosterUrl.isNotEmpty
                                                 ? Image.network(
                                                     item.bestPosterUrl,
@@ -341,100 +347,33 @@ class _CinemanaSearchBarState extends ConsumerState<CinemanaSearchBar> {
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final hasFocus = _focusNode.hasFocus;
 
+    // The shared flat white pill, so this field looks exactly like every
+    // other search field in the app.
     return CompositedTransformTarget(
       link: _layerLink,
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 180),
-        height: 48,
-        decoration: BoxDecoration(
-          color: isDark ? const Color(0xFF1B1B22) : const Color(0xFFF2F3F7),
-          borderRadius: BorderRadius.circular(24),
-          border: Border.all(
-            color: hasFocus
-                ? AppColors.primary
-                : (isDark ? const Color(0xFF2C2C38) : const Color(0xFFDCE0E8)),
-            width: hasFocus ? 1.6 : 1.0,
-          ),
-          boxShadow: [
-            BoxShadow(
-              color: (hasFocus ? AppColors.primary : Colors.black).withOpacity(
-                isDark ? (hasFocus ? 0.35 : 0.2) : (hasFocus ? 0.18 : 0.04),
-              ),
-              blurRadius: hasFocus ? 10 : 8,
-              offset: const Offset(0, 2),
-            ),
-          ],
-        ),
-        child: Row(
-          children: [
-            const SizedBox(width: 14),
-            Icon(
-              Icons.search_rounded,
-              color: hasFocus
-                  ? AppColors.primary
-                  : (isDark ? const Color(0xFF9090A0) : const Color(0xFF6C6C7E)),
-              size: 22,
-            ),
-            const SizedBox(width: 10),
-            Expanded(
-              child: TextField(
-                controller: _controller,
-                focusNode: _focusNode,
-                cursorColor: AppColors.primary,
-                onChanged: _onChanged,
-                onSubmitted: (_) => _submitSearch(),
-                textInputAction: TextInputAction.search,
-                style: TextStyle(
-                  fontSize: 14,
-                  fontWeight: FontWeight.w500,
-                  color: isDark ? Colors.white : const Color(0xFF151518),
-                ),
-                decoration: InputDecoration(
-                  hintText: widget.hintText,
-                  // The placeholder reads at full strength - same colour as typed
-                  // text - rather than the dimmed grey that looked like a
-                  // disabled field.
-                  hintStyle: TextStyle(
-                    fontSize: 13,
-                    fontWeight: FontWeight.w500,
-                    color: isDark ? Colors.white : const Color(0xFF151518),
-                  ),
-                  border: InputBorder.none,
-                  enabledBorder: InputBorder.none,
-                  focusedBorder: InputBorder.none,
-                  disabledBorder: InputBorder.none,
-                  errorBorder: InputBorder.none,
-                  focusedErrorBorder: InputBorder.none,
-                  isDense: true,
-                  contentPadding: EdgeInsets.zero,
-                ),
-              ),
-            ),
-            if (_controller.text.isNotEmpty)
-              IconButton(
-                icon: const Icon(Icons.close_rounded, size: 18),
-                color: isDark ? Colors.white54 : Colors.black45,
-                onPressed: () {
-                  _controller.clear();
-                  _removeOverlay();
-                  widget.onClear();
-                  setState(() {});
-                },
-              )
-            else
-              const SizedBox(width: 6),
-            // Speaking is the only comfortable way to search from a sofa:
-            // a remote spells a title one letter at a time.
-            IconButton(
-              tooltip: 'البحث بالصوت',
-              icon: const Icon(Icons.mic_rounded, size: 20),
-              color: isDark ? Colors.white70 : Colors.black54,
-              onPressed: _searchByVoice,
-            ),
-            const SizedBox(width: 4),
-          ],
+      child: AppSearchField(
+        controller: _controller,
+        focusNode: _focusNode,
+        hintText: widget.hintText,
+        hints: widget.hints,
+        onChanged: _onChanged,
+        onSubmitted: (_) => _submitSearch(),
+        onClear: () {
+          _removeOverlay();
+          widget.onClear();
+          setState(() {});
+        },
+        isLoading: _isLoadingSuggestions,
+        // Speaking is the only comfortable way to search from a sofa:
+        // a remote spells a title one letter at a time.
+        trailing: IconButton(
+          tooltip: 'البحث بالصوت',
+          icon: const Icon(Icons.mic_rounded, size: 20),
+          color: isDark ? Colors.white70 : Colors.black54,
+          padding: EdgeInsets.zero,
+          constraints: const BoxConstraints(minWidth: 36, minHeight: 36),
+          onPressed: _searchByVoice,
         ),
       ),
     );

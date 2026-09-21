@@ -73,13 +73,33 @@ class SportMatchItem {
     return true;
   }
 
-  /// Finished (full time), spelled any of the common ways.
+  /// Over: the feed says finished (spelled any of the common ways), or the
+  /// kick-off was more than ~3 hours ago. A feed that never flips the status
+  /// leaves a finished game looking upcoming, with a play button that only
+  /// yields a "match ended" notice — so time decides when the status does not.
   bool get isEnded {
     final s = status.trim().toLowerCase();
-    return const {'ended', 'finished', 'ft', 'full_time', 'fulltime', 'aet', 'complete', 'completed'}
-        .contains(s);
+    if (const {'ended', 'finished', 'ft', 'full_time', 'fulltime', 'aet', 'complete', 'completed'}.contains(s)) {
+      return true;
+    }
+    final ko = DateTime.tryParse(kickoffAt);
+    return ko != null && DateTime.now().toUtc().difference(ko.toUtc()) > const Duration(hours: 3);
   }
   bool get isScheduled => !isLive && !isEnded;
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is SportMatchItem &&
+          runtimeType == other.runtimeType &&
+          ((id > 0 && id == other.id) ||
+              (home.name.trim().toLowerCase() == other.home.name.trim().toLowerCase() &&
+                  away.name.trim().toLowerCase() == other.away.name.trim().toLowerCase()));
+
+  @override
+  int get hashCode => id > 0
+      ? id.hashCode
+      : Object.hash(home.name.trim().toLowerCase(), away.name.trim().toLowerCase());
 
   String get displayBroadcaster {
     if (broadcasterName != null && broadcasterName!.isNotEmpty) {
@@ -366,6 +386,7 @@ class PlayerLineupItem {
   // squad's headline players. Neither source flags a captain, so this order is
   // the best available "face" of a team (lower = more notable).
   final int? popularityRank;
+  final bool isCaptain;
 
   String? get photoUrl => athleteId != null && athleteId! > 0
       ? 'https://imagecache.365scores.com/image/upload/f_png,w_80,h_80,c_limit,q_auto:eco,dpr_2/athletes/$athleteId'
@@ -383,6 +404,7 @@ class PlayerLineupItem {
     this.fieldSide = 50.0,
     this.rating,
     this.popularityRank,
+    this.isCaptain = false,
   });
 }
 
@@ -422,6 +444,8 @@ class MatchDetailedInfo {
   final String? stadium;
   final String? referee;
   final String? round;
+  final String? homeCaptain;
+  final String? awayCaptain;
   final TeamLineup? homeLineup;
   final TeamLineup? awayLineup;
   final List<MatchEventItem> events;
@@ -433,6 +457,8 @@ class MatchDetailedInfo {
     this.stadium,
     this.referee,
     this.round,
+    this.homeCaptain,
+    this.awayCaptain,
     this.homeLineup,
     this.awayLineup,
     required this.events,
@@ -529,11 +555,15 @@ class ResolvedLiveStream {
   final String streamUrl;
   final Map<String, String> headers;
   final String? sourcePageUrl;
+  final String? albaplayerUrl;
+  final List<String> alternativeStreamUrls;
 
   const ResolvedLiveStream({
     required this.streamUrl,
     this.headers = const {},
     this.sourcePageUrl,
+    this.albaplayerUrl,
+    this.alternativeStreamUrls = const [],
   });
 }
 

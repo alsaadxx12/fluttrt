@@ -1,6 +1,7 @@
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:youtube_downloader/core/network/image_cache.dart';
 
 import '../../cinemana/data/models/cinemana_models.dart';
 import '../../cinemana/presentation/providers/cinemana_provider.dart';
@@ -87,9 +88,13 @@ class OtherFilmCard extends StatelessWidget {
               if (poster != null && poster.isNotEmpty)
                 CachedNetworkImage(
                   imageUrl: poster,
+                  cacheManager: appImageCache,
                   fit: BoxFit.cover,
                   memCacheWidth: (width * dpr).round(),
-                  fadeInDuration: const Duration(milliseconds: 120),
+                  fadeInDuration: Duration.zero,
+                  fadeOutDuration: Duration.zero,
+                  placeholderFadeInDuration: Duration.zero,
+                  useOldImageOnUrlChange: true,
                   placeholder: (_, __) => const SizedBox.shrink(),
                   errorWidget: (_, __, ___) => const Icon(Icons.movie_rounded, color: Colors.white24),
                 ),

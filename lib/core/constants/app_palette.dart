@@ -3,9 +3,9 @@ import 'package:flutter/material.dart';
 /// Surface, text and shadow colours for the current theme, so cards and
 /// sections follow light and dark mode instead of hard-coding dark colours.
 ///
-/// Light mode is its own look, not an inverted dark mode: a cool off-white
-/// page, crisp white cards lifted by soft layered shadows, deep navy text and
-/// the brand red for accents.
+/// Light mode is the app's look: a pure white page everywhere — top bar,
+/// drawer, every screen — with white containers set apart by soft shadows
+/// rather than by gray fills, deep navy text and the brand red for accents.
 class AppPalette {
   final bool isDark;
 
@@ -14,7 +14,7 @@ class AppPalette {
   factory AppPalette.of(BuildContext context) => AppPalette._(Theme.of(context).brightness == Brightness.dark);
 
   /// Page background.
-  Color get bg => isDark ? const Color(0xFF06080E) : const Color(0xFFF2F5FA);
+  Color get bg => isDark ? const Color(0xFF06080E) : Colors.white;
 
   /// Cards, tiles, sheets.
   ///
@@ -25,14 +25,14 @@ class AppPalette {
   Color get card => isDark ? const Color(0xFF111823) : Colors.white;
 
   /// A quieter surface (inputs, chips, secondary panels).
-  Color get cardAlt => isDark ? const Color(0xFF0D131C) : const Color(0xFFF7F9FD);
+  Color get cardAlt => isDark ? const Color(0xFF0D131C) : Colors.white;
 
   /// Loading placeholders.
-  Color get skeleton => isDark ? const Color(0xFF121927) : const Color(0xFFE7EBF3);
+  Color get skeleton => isDark ? const Color(0xFF121927) : const Color(0xFFF1F3F6);
 
   /// The edge of a surface. Deliberately faint: at full strength it frames
   /// the card and breaks the illusion that it belongs to the screen.
-  Color get border => isDark ? Colors.white.withOpacity(0.045) : const Color(0xFFEAEFF7);
+  Color get border => isDark ? Colors.white.withOpacity(0.045) : const Color(0xFFE8ECF2);
 
   /// A real separator, for when two things genuinely need dividing.
   Color get divider => isDark ? Colors.white.withOpacity(0.07) : const Color(0xFFE3E9F3);
@@ -55,8 +55,10 @@ class AppPalette {
           BoxShadow(color: Colors.black.withOpacity(0.30), blurRadius: 24, offset: const Offset(0, 8)),
           BoxShadow(color: Colors.black.withOpacity(0.16), blurRadius: 6, offset: const Offset(0, 2)),
         ]
+      // On a pure white page the shadow is what separates a container from
+      // the page, so it is a little firmer than a mere lift.
       : const [
-          BoxShadow(color: Color(0x0A0F172A), blurRadius: 3, offset: Offset(0, 1)),
-          BoxShadow(color: Color(0x12101828), blurRadius: 24, offset: Offset(0, 10)),
+          BoxShadow(color: Color(0x140F172A), blurRadius: 4, offset: Offset(0, 1)),
+          BoxShadow(color: Color(0x1F101828), blurRadius: 22, offset: Offset(0, 8)),
         ];
 }

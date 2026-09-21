@@ -562,8 +562,17 @@ class CinemanaService {
     return mergeAndDeduplicate(primary, krmziSeries);
   }
 
+  Future<List<CinemanaItem>>? _bannersInflight;
+
   /// Fetch official Cinemana Hero Banners (Exact match with Cinemana website "الإصدارات الجديدة")
-  Future<List<CinemanaItem>> fetchBanners() async {
+  ///
+  /// Concurrent callers (the hero and the featured row both ask for banners
+  /// while the home page opens) share one in-flight request.
+  Future<List<CinemanaItem>> fetchBanners() {
+    return _bannersInflight ??= _fetchBanners().whenComplete(() => _bannersInflight = null);
+  }
+
+  Future<List<CinemanaItem>> _fetchBanners() async {
     try {
       final response = await _dio.get('banner');
       if (response.statusCode == 200 && response.data is List) {
@@ -577,12 +586,30 @@ class CinemanaService {
     }
   }
 
+  Future<List<CinemanaItem>>? _bannerPostersInflight;
+  int? _bannerPostersInflightLimit;
+
   /// The banner feed only carries the wide 2.7:1 cover art, which is barely
   /// 142px tall across a phone. Each item's own record holds a full-size
   /// portrait poster (1280x1920), so the hero is built from those instead:
   /// four times the height, no cropping, and sharp at native resolution.
   /// Details are fetched in parallel and any that fail keep their banner entry.
-  Future<List<CinemanaItem>> fetchBannersWithPosters({int limit = 20}) async {
+  /// Ten is enough for the hero; concurrent callers asking for the same
+  /// [limit] share one in-flight fan-out.
+  Future<List<CinemanaItem>> fetchBannersWithPosters({int limit = 10}) {
+    final inflight = _bannerPostersInflight;
+    if (inflight != null && _bannerPostersInflightLimit == limit) return inflight;
+    _bannerPostersInflightLimit = limit;
+    late final Future<List<CinemanaItem>> future;
+    future = _fetchBannersWithPosters(limit).whenComplete(() {
+      // Clear only this call's own entry: a later call with another limit
+      // may have replaced it while this one was still running.
+      if (identical(_bannerPostersInflight, future)) _bannerPostersInflight = null;
+    });
+    return _bannerPostersInflight = future;
+  }
+
+  Future<List<CinemanaItem>> _fetchBannersWithPosters(int limit) async {
     final banners = await fetchBanners();
     if (banners.isEmpty) return banners;
 
@@ -1104,6 +1131,8 @@ class CinemanaService {
 
   void _fetchRemainingFranchiseInBackground(FilmFranchise franchise, List<CinemanaItem> existing) async {
     try {
+      // Held back so the extra searches never compete with the first screen.
+      await Future<void>.delayed(const Duration(seconds: 10));
       final allResults = List<CinemanaItem>.from(existing);
       final remainingJobs = [
         for (var i = 1; i < franchise.queries.length; i++)

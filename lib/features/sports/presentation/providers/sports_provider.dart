@@ -1,6 +1,8 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:youtube_downloader/core/network/http_cache.dart';
 import '../../data/models/sports_models.dart';
 import '../../data/services/sports_service.dart';
+import '../../data/channel_whitelist.dart';
 import '../../../shahid/data/shahid_models.dart';
 import '../../../shahid/presentation/shahid_providers.dart';
 import '../../data/services/stream_warmup.dart';
@@ -16,6 +18,7 @@ final sportsServiceProvider = Provider<SportsService>((ref) {
 final sportsDayProvider = StateProvider<String>((ref) => 'today');
 final sportsTabProvider = StateProvider<int>((ref) => 0); // 0: Matches, 1: Live, 2: News
 final sportsSearchQueryProvider = StateProvider<String>((ref) => '');
+final sportsLeagueFilterProvider = StateProvider<int?>((ref) => null);
 
 class SportsState {
   final List<LeagueGroup> groups;
@@ -45,6 +48,8 @@ class SportsState {
     );
   }
 }
+
+
 
 class SportsNotifier extends StateNotifier<SportsState> {
   final SportsService _service;
@@ -80,6 +85,7 @@ class SportsNotifier extends StateNotifier<SportsState> {
   }
 
   Future<void> refresh() async {
+    HttpCache.instance.markStale();
     try {
       final results = await Future.wait([
         _service.fetchMatches(day: _day),
@@ -106,10 +112,15 @@ final sportsNewsProvider = FutureProvider<List<SportNewsItem>>((ref) async {
 });
 
 final matchDetailsProvider =
-    FutureProvider.family<MatchDetailedInfo?, ({int matchId, String? sourceId})>(
+    FutureProvider.family<MatchDetailedInfo?, ({int matchId, String? sourceId, String? homeName, String? awayName})>(
         (ref, arg) async {
   final service = ref.watch(sportsServiceProvider);
-  return service.fetchMatchDetails(arg.matchId, sourceId: arg.sourceId);
+  return service.fetchMatchDetails(
+    arg.matchId,
+    sourceId: arg.sourceId,
+    homeName: arg.homeName,
+    awayName: arg.awayName,
+  );
 });
 
 /// Live sports channels from Yacine API (Category 13)
@@ -133,11 +144,15 @@ final sportsChannelsProvider = FutureProvider<List<SportsChannel>>((ref) async {
   final sportsChannels = own.where((o) => o.categoryName == 'قنوات رياضية' || o.categoryName == 'رياضة عربية').toList();
   final otherOwn = own.where((o) => o.categoryName != 'قنوات رياضية' && o.categoryName != 'رياضة عربية' && !shahid.any((s) => sameChannel(o, s))).toList();
 
-  return [
+  final all = [
     ...sportsChannels,
     ...shahid,
     ...otherOwn,
   ];
+  // Only beIN Sports and the app's own YASIR TV / Sir TV channels are shown,
+  // on the channels page and the home row alike; everything else the feeds
+  // carry is dropped here, at the single source.
+  return all.where((c) => ChannelWhitelist.allows(c.channelName)).toList();
 });
 
 /// Category shown on the channels page for a Shahid channel.

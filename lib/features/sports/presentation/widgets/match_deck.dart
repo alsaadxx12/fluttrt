@@ -1,5 +1,6 @@
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
+import 'package:youtube_downloader/core/network/image_cache.dart';
 
 import '../../../../core/constants/app_palette.dart';
 import '../../data/models/sports_models.dart';
@@ -198,6 +199,7 @@ class _MatchCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final p = AppPalette.of(context);
+    final dpr = MediaQuery.of(context).devicePixelRatio;
     return Material(
       color: Colors.transparent,
       child: Container(
@@ -240,7 +242,7 @@ class _MatchCard extends StatelessWidget {
             const SizedBox(height: 10),
             Row(
               children: [
-                Expanded(child: _team(match.home, p)),
+                Expanded(child: _team(match.home, p, dpr)),
                 Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 6),
                   child: Text(
@@ -249,7 +251,7 @@ class _MatchCard extends StatelessWidget {
                         color: Color(0xFFE50914), fontSize: 21, fontWeight: FontWeight.w900, letterSpacing: 1.2),
                   ),
                 ),
-                Expanded(child: _team(match.away, p)),
+                Expanded(child: _team(match.away, p, dpr)),
               ],
             ),
             const SizedBox(height: 8),
@@ -282,7 +284,7 @@ class _MatchCard extends StatelessWidget {
     );
   }
 
-  Widget _team(TeamInfo t, AppPalette p) => Column(
+  Widget _team(TeamInfo t, AppPalette p, double dpr) => Column(
         children: [
           SizedBox(
             width: 44,
@@ -291,7 +293,14 @@ class _MatchCard extends StatelessWidget {
                 ? Icon(Icons.shield_rounded, color: p.textFaint, size: 34)
                 : CachedNetworkImage(
                     imageUrl: t.logo!,
+                    cacheManager: appImageCache,
                     fit: BoxFit.contain,
+                    // The logo is 44 lp; decode at its own pixel width.
+                    memCacheWidth: (44 * dpr).round(),
+                    fadeInDuration: Duration.zero,
+                    fadeOutDuration: Duration.zero,
+                    placeholderFadeInDuration: Duration.zero,
+                    useOldImageOnUrlChange: true,
                     errorWidget: (_, __, ___) => Icon(Icons.shield_rounded, color: p.textFaint, size: 34),
                   ),
           ),

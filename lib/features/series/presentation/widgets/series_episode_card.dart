@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:youtube_explode_dart/youtube_explode_dart.dart';
 import 'package:youtube_downloader/core/constants/app_colors.dart';
+import 'package:youtube_downloader/core/constants/app_palette.dart';
 import 'package:youtube_downloader/core/constants/app_theme.dart';
 import 'package:youtube_downloader/core/utils/formatters.dart';
 import 'package:youtube_downloader/features/home/presentation/widgets/video_download_dialog.dart';
@@ -55,6 +56,7 @@ class _SeriesEpisodeCardState extends ConsumerState<SeriesEpisodeCard>
   Widget build(BuildContext context) {
     super.build(context);
     final isDark = Theme.of(context).brightness == Brightness.dark;
+    final palette = AppPalette.of(context);
     final ep = widget.episode;
     final video = ep.primaryVideo;
     final isSelected = ref.watch(seriesProvider).selectedEpisodeNumbers.contains(ep.episodeNumber);
@@ -75,13 +77,6 @@ class _SeriesEpisodeCardState extends ConsumerState<SeriesEpisodeCard>
                     : (isDark ? AppColors.darkBorder : AppColors.lightBorder)),
             width: isSelected ? 2 : 1,
           ),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withOpacity(_isHovered ? 0.12 : (isDark ? 0.2 : 0.03)),
-              blurRadius: _isHovered ? 12 : 6,
-              offset: const Offset(0, 3),
-            ),
-          ],
         ),
         child: ClipRRect(
           borderRadius: BorderRadius.circular(AppTheme.borderRadius),
@@ -114,7 +109,7 @@ class _SeriesEpisodeCardState extends ConsumerState<SeriesEpisodeCard>
                             cacheWidth: 480,
                             filterQuality: FilterQuality.medium,
                             errorBuilder: (_, __, ___) => Container(
-                              color: isDark ? AppColors.darkSecondaryBg : AppColors.lightSecondaryBg,
+                              color: isDark ? AppColors.darkSecondaryBg : palette.skeleton,
                               child: const Center(
                                 child: Icon(Icons.videocam_rounded, color: AppColors.primary, size: 36),
                               ),

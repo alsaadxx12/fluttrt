@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:go_router/go_router.dart';
 import 'package:youtube_downloader/core/constants/app_colors.dart';
+import 'package:youtube_downloader/presentation/widgets/app_search_field.dart';
 import '../providers/cinemana_provider.dart';
 import '../widgets/cinemana_poster_card.dart';
 import '../widgets/cinemana_search_bar.dart';
@@ -99,12 +99,23 @@ class _CinemanaCatalogScreenState extends ConsumerState<CinemanaCatalogScreen> {
     }
   }
 
+  /// The order the section starts with (anime opens on most-watched), so the
+  /// filter button only lights up when the user changed something.
+  String get _defaultOrder => widget.kind == 'anime' ? 'views' : 'desc';
+
+  bool _hasActiveFilter(CinemanaSectionState s) =>
+      s.selectedOrder != _defaultOrder ||
+      s.selectedYear != null ||
+      s.selectedRating != null ||
+      (s.selectedCategoryId != null && s.selectedCategoryId != 0);
+
   void _showFilterSheet(
     BuildContext context,
     CinemanaSectionState sectionState,
     CinemanaSectionNotifier sectionNotifier,
     bool isDark,
   ) {
+    final palette = AppPalette.of(context);
     final sortOptions = [
       {'label': 'المضاف حديثًا', 'order': 'desc', 'icon': Icons.schedule_rounded},
       {'label': 'الأحدث إصدارًا', 'order': 'release', 'icon': Icons.new_releases_outlined},
@@ -226,7 +237,8 @@ class _CinemanaCatalogScreenState extends ConsumerState<CinemanaCatalogScreen> {
                                   ),
                                   selected: isSelected,
                                   selectedColor: _accentColor,
-                                  backgroundColor: isDark ? const Color(0xFF1E2538) : const Color(0xFFF1F5F9),
+                                  backgroundColor: isDark ? const Color(0xFF1E2538) : palette.card,
+                                  side: isDark ? null : BorderSide(color: isSelected ? _accentColor : palette.border),
                                   labelStyle: TextStyle(
                                     color: isSelected ? Colors.white : (isDark ? Colors.white70 : Colors.black87),
                                     fontSize: 12,
@@ -263,7 +275,8 @@ class _CinemanaCatalogScreenState extends ConsumerState<CinemanaCatalogScreen> {
                                       label: Text(y),
                                       selected: isSelected,
                                       selectedColor: _accentColor,
-                                      backgroundColor: isDark ? const Color(0xFF1E2538) : const Color(0xFFF1F5F9),
+                                      backgroundColor: isDark ? const Color(0xFF1E2538) : palette.card,
+                                      side: isDark ? null : BorderSide(color: isSelected ? _accentColor : palette.border),
                                       labelStyle: TextStyle(
                                         color: isSelected ? Colors.white : (isDark ? Colors.white70 : Colors.black87),
                                         fontSize: 12,
@@ -304,7 +317,8 @@ class _CinemanaCatalogScreenState extends ConsumerState<CinemanaCatalogScreen> {
                                   label: Text(r['label'] as String),
                                   selected: isSelected,
                                   selectedColor: _accentColor,
-                                  backgroundColor: isDark ? const Color(0xFF1E2538) : const Color(0xFFF1F5F9),
+                                  backgroundColor: isDark ? const Color(0xFF1E2538) : palette.card,
+                                  side: isDark ? null : BorderSide(color: isSelected ? _accentColor : palette.border),
                                   labelStyle: TextStyle(
                                     color: isSelected ? Colors.white : (isDark ? Colors.white70 : Colors.black87),
                                     fontSize: 12,
@@ -344,7 +358,8 @@ class _CinemanaCatalogScreenState extends ConsumerState<CinemanaCatalogScreen> {
                                   label: Text(title),
                                   selected: isSelected,
                                   selectedColor: _accentColor,
-                                  backgroundColor: isDark ? const Color(0xFF1E2538) : const Color(0xFFF1F5F9),
+                                  backgroundColor: isDark ? const Color(0xFF1E2538) : palette.card,
+                                  side: isDark ? null : BorderSide(color: isSelected ? _accentColor : palette.border),
                                   labelStyle: TextStyle(
                                     color: isSelected ? Colors.white : (isDark ? Colors.white70 : Colors.black87),
                                     fontSize: 12,
@@ -392,449 +407,406 @@ class _CinemanaCatalogScreenState extends ConsumerState<CinemanaCatalogScreen> {
     );
   }
 
+  /// What this catalogue can find, named one at a time in the search hint.
+  List<String> get _searchHints {
+    switch (widget.kind) {
+      case 'series':
+        return const ['ابحث عن مسلسل', 'ابحث عن ممثل', 'ابحث عن مسلسل تركي'];
+      case 'anime':
+        return const ['ابحث عن أنمي', 'مثال: ناروتو', 'مثال: ون بيس'];
+      default:
+        return const ['ابحث عن فيلم', 'ابحث عن ممثل', 'ابحث عن مخرج'];
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
+    final palette = AppPalette.of(context);
     final sectionState = ref.watch(cinemanaSectionProvider(widget.kind));
     final sectionNotifier = ref.read(cinemanaSectionProvider(widget.kind).notifier);
-    final favorites = ref.watch(cinemanaFavoritesProvider);
+    final filterActive = _hasActiveFilter(sectionState);
 
     return Scaffold(
-      // Light mode: white cards on the off-white page (dark mode unchanged).
-      backgroundColor: isDark ? const Color(0xFF0F0F13) : AppPalette.of(context).bg,
-      appBar: AppBar(
-        backgroundColor: isDark ? const Color(0xFF14141A) : Colors.white,
-        elevation: 0,
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back_rounded),
-          color: isDark ? Colors.white : Colors.black87,
-          onPressed: () {
-            if (context.canPop()) {
-              context.pop();
-            } else {
-              context.go('/');
-            }
-          },
-        ),
-        title: Row(
+      // Pure white page. There is no app bar: the strip below is the whole
+      // top of the page, and leaving it is the system back gesture.
+      backgroundColor: isDark ? const Color(0xFF0F0F13) : palette.bg,
+      body: SafeArea(
+        bottom: false,
+        child: Column(
           children: [
-            Container(
-              width: 4,
-              height: 18,
-              decoration: BoxDecoration(
-                color: _accentColor,
-                borderRadius: BorderRadius.circular(2),
-              ),
-            ),
-            const SizedBox(width: 8),
-            Text(
-              _screenTitle,
-              style: TextStyle(
-                fontSize: 18,
-                fontWeight: FontWeight.w900,
-                color: isDark ? Colors.white : const Color(0xFF111115),
-              ),
-            ),
-          ],
-        ),
-        actions: [
-          // Favorites Button with Badge
-          Stack(
-            alignment: Alignment.center,
-            children: [
-              IconButton(
-                icon: const Icon(Icons.favorite_rounded, color: Colors.redAccent, size: 24),
-                tooltip: 'المفضلة',
-                onPressed: () => context.push('/cinemana/favorites'),
-              ),
-              if (favorites.isNotEmpty)
-                PositionedDirectional(
-                  top: 8,
-                  end: 8,
-                  child: Container(
-                    padding: const EdgeInsets.all(4),
-                    decoration: const BoxDecoration(
-                      color: Colors.redAccent,
-                      shape: BoxShape.circle,
-                    ),
-                    constraints: const BoxConstraints(minWidth: 16, minHeight: 16),
-                    child: Text(
-                      '${favorites.length}',
-                      textAlign: TextAlign.center,
-                      style: const TextStyle(
-                        color: Colors.white,
-                        fontSize: 9,
-                        fontWeight: FontWeight.bold,
-                      ),
+            // Search field with the filter button beside it. Plain widgets
+            // only: no splash, no animated container.
+            Padding(
+              padding: const EdgeInsets.fromLTRB(14, 8, 14, 8),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: CinemanaSearchBar(
+                      hints: _searchHints,
+                      initialQuery: sectionState.searchQuery,
+                      onSearchSubmitted: (query) {
+                        sectionNotifier.search(query);
+                      },
+                      onClear: () {
+                        sectionNotifier.clearSearch();
+                      },
                     ),
                   ),
-                ),
-            ],
-          ),
-          const SizedBox(width: 4),
-        ],
-      ),
-      body: RefreshIndicator(
-        color: _accentColor,
-        onRefresh: () => sectionNotifier.refresh(),
-        child: CustomScrollView(
-          controller: _scrollController,
-          cacheExtent: 1800,
-          slivers: [
-            // Search Bar & Filter Header
-            SliverToBoxAdapter(
-              child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    // Search Bar with Filter Icon Button Beside It
-                    Row(
-                      children: [
-                        Expanded(
-                          child: CinemanaSearchBar(
-                            initialQuery: sectionState.searchQuery,
-                            // The anime page's search field carries no hint text.
-                            hintText: widget.kind == 'anime' ? '' : 'بحث في $_screenTitle...',
-                            onSearchSubmitted: (query) {
-                              sectionNotifier.search(query);
-                            },
-                            onClear: () {
-                              sectionNotifier.clearSearch();
-                            },
-                          ),
-                        ),
-                        const SizedBox(width: 8),
-                        // Filter Icon Button Beside Search Field
-                        InkWell(
-                          onTap: () => _showFilterSheet(
-                            context,
-                            sectionState,
-                            sectionNotifier,
-                            isDark,
-                          ),
-                          borderRadius: BorderRadius.circular(16),
-                          child: Container(
-                            width: 48,
-                            height: 48,
-                            decoration: BoxDecoration(
-                              color: isDark
-                                  ? const Color(0xFF1B1B22)
-                                  : const Color(0xFFF2F3F7),
-                              borderRadius: BorderRadius.circular(16),
-                              border: Border.all(
-                                color: sectionState.selectedOrder != 'desc'
-                                    ? _accentColor
-                                    : (isDark
-                                        ? const Color(0xFF2C2C38)
-                                        : const Color(0xFFDCE0E8)),
-                                width: sectionState.selectedOrder != 'desc' ? 1.5 : 1.0,
-                              ),
-                            ),
-                            child: Stack(
-                              alignment: Alignment.center,
-                              children: [
-                                Icon(
-                                  Icons.tune_rounded,
-                                  color: sectionState.selectedOrder != 'desc'
-                                      ? _accentColor
-                                      : (isDark ? Colors.white70 : Colors.black87),
-                                  size: 22,
-                                ),
-                                if (sectionState.selectedOrder != 'desc')
-                                  PositionedDirectional(
-                                    top: 10,
-                                    end: 10,
-                                    child: Container(
-                                      width: 7,
-                                      height: 7,
-                                      decoration: BoxDecoration(
-                                        color: _accentColor,
-                                        shape: BoxShape.circle,
-                                      ),
-                                    ),
-                                  ),
-                              ],
-                            ),
-                          ),
-                        ),
-                      ],
+                  const SizedBox(width: 8),
+                  GestureDetector(
+                    behavior: HitTestBehavior.opaque,
+                    onTap: () => _showFilterSheet(
+                      context,
+                      sectionState,
+                      sectionNotifier,
+                      isDark,
                     ),
-
-                    // Anime Section: Sub-kind divider (Series vs Movies)
-                    if (widget.kind == 'anime') ...[
-                      const SizedBox(height: 10),
-                      Container(
-                        height: 38,
-                        padding: const EdgeInsets.all(3),
+                    child: Semantics(
+                      button: true,
+                      label: 'الفلاتر',
+                      child: Container(
+                        width: AppSearchField.defaultHeight,
+                        height: AppSearchField.defaultHeight,
                         decoration: BoxDecoration(
-                          color: isDark ? const Color(0xFF1B1B22) : const Color(0xFFEEEEF4),
-                          borderRadius: BorderRadius.circular(12),
+                          // Flat white button, hairline border only; red once
+                          // a filter is set.
+                          color: isDark ? const Color(0xFF1B1B22) : palette.card,
+                          borderRadius: BorderRadius.circular(AppSearchField.defaultRadius),
                           border: Border.all(
-                            color: isDark ? const Color(0xFF2C2C38) : const Color(0xFFDCDCE6),
+                            color: filterActive
+                                ? _accentColor
+                                : (isDark ? const Color(0xFF2C2C38) : palette.border),
                             width: 1,
                           ),
                         ),
-                        child: Row(
+                        child: Stack(
+                          alignment: Alignment.center,
                           children: [
-                            Expanded(
-                              child: InkWell(
-                                onTap: () => sectionNotifier.setAnimeSubKind(2),
-                                borderRadius: BorderRadius.circular(10),
+                            Icon(
+                              Icons.tune_rounded,
+                              color: filterActive
+                                  ? _accentColor
+                                  : (isDark ? Colors.white70 : Colors.black87),
+                              size: 20,
+                            ),
+                            if (filterActive)
+                              PositionedDirectional(
+                                top: 8,
+                                end: 8,
                                 child: Container(
-                                  alignment: Alignment.center,
+                                  width: 6,
+                                  height: 6,
                                   decoration: BoxDecoration(
-                                    color: sectionState.animeSubKind == 2
-                                        ? const Color(0xFFFF9100)
-                                        : Colors.transparent,
-                                    borderRadius: BorderRadius.circular(10),
-                                  ),
-                                  child: Text(
-                                    'مسلسلات الأنمي',
-                                    style: TextStyle(
-                                      fontSize: 12.5,
-                                      fontWeight: FontWeight.bold,
-                                      color: sectionState.animeSubKind == 2
-                                          ? Colors.white
-                                          : (isDark ? Colors.white70 : Colors.black87),
-                                    ),
+                                    color: _accentColor,
+                                    shape: BoxShape.circle,
                                   ),
                                 ),
                               ),
-                            ),
-                            Expanded(
-                              child: InkWell(
-                                onTap: () => sectionNotifier.setAnimeSubKind(1),
-                                borderRadius: BorderRadius.circular(10),
-                                child: Container(
-                                  alignment: Alignment.center,
-                                  decoration: BoxDecoration(
-                                    color: sectionState.animeSubKind == 1
-                                        ? const Color(0xFFFF9100)
-                                        : Colors.transparent,
-                                    borderRadius: BorderRadius.circular(10),
-                                  ),
-                                  child: Text(
-                                    'أفلام الأنمي',
-                                    style: TextStyle(
-                                      fontSize: 12.5,
-                                      fontWeight: FontWeight.bold,
-                                      color: sectionState.animeSubKind == 1
-                                          ? Colors.white
-                                          : (isDark ? Colors.white70 : Colors.black87),
-                                    ),
-                                  ),
-                                ),
-                              ),
-                            ),
                           ],
                         ),
                       ),
-                    ],
-
-                    if (sectionState.searchQuery.isNotEmpty) ...[
-                      const SizedBox(height: 10),
-                      Row(
-                        children: [
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(
-                                  'نتائج البحث عن: "${sectionState.searchQuery}"',
-                                  style: TextStyle(
-                                    fontSize: 13,
-                                    fontWeight: FontWeight.bold,
-                                    color: isDark ? Colors.white70 : Colors.black87,
-                                  ),
-                                ),
-                                if (sectionState.hiddenSearchCount > 0)
-                                  Padding(
-                                    padding: const EdgeInsets.only(top: 2),
-                                    child: Text(
-                                      'تم إخفاء ${sectionState.hiddenSearchCount} نتيجة خارج قسم $_screenTitle',
-                                      style: TextStyle(
-                                        fontSize: 11,
-                                        color: isDark ? Colors.white38 : Colors.black45,
-                                      ),
-                                    ),
-                                  ),
-                              ],
-                            ),
-                          ),
-                          TextButton.icon(
-                            onPressed: () => sectionNotifier.clearSearch(),
-                            icon: const Icon(Icons.close_rounded, size: 14),
-                            label: const Text('إلغاء البحث', style: TextStyle(fontSize: 12)),
-                            style: TextButton.styleFrom(
-                              foregroundColor: AppColors.primary,
-                              padding: EdgeInsets.zero,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ] else if (widget.kind != 'anime') ...[
-                      const SizedBox(height: 10),
-                      // Genres Row (اكشن، دراما، رعب...) - not on the anime page.
-                      SizedBox(
-                        height: 34,
-                        child: ListView.separated(
-                          scrollDirection: Axis.horizontal,
-                          itemCount: cinemanaGenres.length,
-                          separatorBuilder: (_, __) => const SizedBox(width: 6),
-                          itemBuilder: (context, index) {
-                            final genre = cinemanaGenres[index];
-                            final int id = genre['id'] as int;
-                            final String title = genre['title'] as String;
-                            final isSelected = (id == 0 &&
-                                    (sectionState.selectedCategoryId == null ||
-                                        sectionState.selectedCategoryId == 0)) ||
-                                sectionState.selectedCategoryId == id;
-
-                            return InkWell(
-                              onTap: () => sectionNotifier.setCategory(id == 0 ? null : id),
-                              borderRadius: BorderRadius.circular(17),
-                              child: Container(
-                                padding: const EdgeInsets.symmetric(horizontal: 14),
-                                alignment: Alignment.center,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            Expanded(
+              child: RefreshIndicator(
+                triggerMode: RefreshIndicatorTriggerMode.anywhere,
+                backgroundColor: Colors.white,
+                color: const Color(0xFFE50914),
+                strokeWidth: 2.4,
+                onRefresh: () => sectionNotifier.refresh(),
+                child: CustomScrollView(
+                  controller: _scrollController,
+                  physics: const BouncingScrollPhysics(parent: AlwaysScrollableScrollPhysics()),
+                  cacheExtent: 600,
+                  slivers: [
+                    // Anime sub-kind switch, search summary or genre chips.
+                    SliverToBoxAdapter(
+                      child: Padding(
+                        padding: const EdgeInsets.fromLTRB(14, 2, 14, 8),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            // Anime Section: Sub-kind divider (Series vs Movies)
+                            if (widget.kind == 'anime') ...[
+                              Container(
+                                height: 38,
+                                padding: const EdgeInsets.all(3),
                                 decoration: BoxDecoration(
-                                  color: isSelected
-                                      ? _accentColor
-                                      : (isDark
-                                          ? const Color(0xFF1E1E26)
-                                          : const Color(0xFFEEEEF4)),
-                                  borderRadius: BorderRadius.circular(17),
+                                  // Light mode: flat white segmented control, hairline border only.
+                                  color: isDark ? const Color(0xFF1B1B22) : palette.card,
+                                  borderRadius: BorderRadius.circular(12),
                                   border: Border.all(
-                                    color: isSelected
-                                        ? _accentColor
-                                        : (isDark
-                                            ? const Color(0xFF2C2C38)
-                                            : const Color(0xFFDCDCE6)),
+                                    color: isDark ? const Color(0xFF2C2C38) : palette.border,
                                     width: 1,
                                   ),
                                 ),
-                                child: Text(
-                                  title,
-                                  style: TextStyle(
-                                    fontSize: 12,
-                                    fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
-                                    color: isSelected
-                                        ? Colors.white
-                                        : (isDark ? Colors.white70 : Colors.black87),
-                                  ),
+                                child: Row(
+                                  children: [
+                                    Expanded(
+                                      child: InkWell(
+                                        onTap: () => sectionNotifier.setAnimeSubKind(2),
+                                        borderRadius: BorderRadius.circular(10),
+                                        child: Container(
+                                          alignment: Alignment.center,
+                                          decoration: BoxDecoration(
+                                            color: sectionState.animeSubKind == 2
+                                                ? const Color(0xFFFF9100)
+                                                : Colors.transparent,
+                                            borderRadius: BorderRadius.circular(10),
+                                          ),
+                                          child: Text(
+                                            'مسلسلات الأنمي',
+                                            style: TextStyle(
+                                              fontSize: 12.5,
+                                              fontWeight: FontWeight.bold,
+                                              color: sectionState.animeSubKind == 2
+                                                  ? Colors.white
+                                                  : (isDark ? Colors.white70 : Colors.black87),
+                                            ),
+                                          ),
+                                        ),
+                                      ),
+                                    ),
+                                    Expanded(
+                                      child: InkWell(
+                                        onTap: () => sectionNotifier.setAnimeSubKind(1),
+                                        borderRadius: BorderRadius.circular(10),
+                                        child: Container(
+                                          alignment: Alignment.center,
+                                          decoration: BoxDecoration(
+                                            color: sectionState.animeSubKind == 1
+                                                ? const Color(0xFFFF9100)
+                                                : Colors.transparent,
+                                            borderRadius: BorderRadius.circular(10),
+                                          ),
+                                          child: Text(
+                                            'أفلام الأنمي',
+                                            style: TextStyle(
+                                              fontSize: 12.5,
+                                              fontWeight: FontWeight.bold,
+                                              color: sectionState.animeSubKind == 1
+                                                  ? Colors.white
+                                                  : (isDark ? Colors.white70 : Colors.black87),
+                                            ),
+                                          ),
+                                        ),
+                                      ),
+                                    ),
+                                  ],
                                 ),
                               ),
-                            );
-                          },
+                            ],
+
+                            if (sectionState.searchQuery.isNotEmpty) ...[
+                              if (widget.kind == 'anime') const SizedBox(height: 10),
+                              Row(
+                                children: [
+                                  Expanded(
+                                    child: Column(
+                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      children: [
+                                        Text(
+                                          'نتائج البحث عن: "${sectionState.searchQuery}"',
+                                          style: TextStyle(
+                                            fontSize: 13,
+                                            fontWeight: FontWeight.bold,
+                                            color: isDark ? Colors.white70 : Colors.black87,
+                                          ),
+                                        ),
+                                        if (sectionState.hiddenSearchCount > 0)
+                                          Padding(
+                                            padding: const EdgeInsets.only(top: 2),
+                                            child: Text(
+                                              'تم إخفاء ${sectionState.hiddenSearchCount} نتيجة خارج قسم $_screenTitle',
+                                              style: TextStyle(
+                                                fontSize: 11,
+                                                color: isDark ? Colors.white38 : Colors.black45,
+                                              ),
+                                            ),
+                                          ),
+                                      ],
+                                    ),
+                                  ),
+                                  TextButton.icon(
+                                    onPressed: () => sectionNotifier.clearSearch(),
+                                    icon: const Icon(Icons.close_rounded, size: 14),
+                                    label: const Text('إلغاء البحث', style: TextStyle(fontSize: 12)),
+                                    style: TextButton.styleFrom(
+                                      foregroundColor: AppColors.primary,
+                                      padding: EdgeInsets.zero,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ] else if (widget.kind != 'anime') ...[
+                              // Genres Row (اكشن، دراما، رعب...) - not on the anime page.
+                              SizedBox(
+                                height: 34,
+                                child: ListView.separated(
+                                  scrollDirection: Axis.horizontal,
+                                  itemCount: cinemanaGenres.length,
+                                  separatorBuilder: (_, __) => const SizedBox(width: 6),
+                                  itemBuilder: (context, index) {
+                                    final genre = cinemanaGenres[index];
+                                    final int id = genre['id'] as int;
+                                    final String title = genre['title'] as String;
+                                    final isSelected = (id == 0 &&
+                                            (sectionState.selectedCategoryId == null ||
+                                                sectionState.selectedCategoryId == 0)) ||
+                                        sectionState.selectedCategoryId == id;
+
+                                    return InkWell(
+                                      onTap: () => sectionNotifier.setCategory(id == 0 ? null : id),
+                                      borderRadius: BorderRadius.circular(17),
+                                      child: Container(
+                                        padding: const EdgeInsets.symmetric(horizontal: 14),
+                                        alignment: Alignment.center,
+                                        decoration: BoxDecoration(
+                                          color: isSelected
+                                              ? _accentColor
+                                              : (isDark
+                                                  ? const Color(0xFF1E1E26)
+                                                  : palette.card),
+                                          borderRadius: BorderRadius.circular(17),
+                                          border: Border.all(
+                                            color: isSelected
+                                                ? _accentColor
+                                                : (isDark
+                                                    ? const Color(0xFF2C2C38)
+                                                    : palette.border),
+                                            width: 1,
+                                          ),
+                                        ),
+                                        child: Text(
+                                          title,
+                                          style: TextStyle(
+                                            fontSize: 12,
+                                            fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
+                                            color: isSelected
+                                                ? Colors.white
+                                                : (isDark ? Colors.white70 : Colors.black87),
+                                          ),
+                                        ),
+                                      ),
+                                    );
+                                  },
+                                ),
+                              ),
+                            ],
+                          ],
                         ),
                       ),
+                    ),
+
+                    // Content Grid
+                    // Turkish drama, from the licensed free catalogue the app
+                    // already carries. Plays natively like everything else here:
+                    // no web page, no pop-ups, no outbound links.
+                    if (widget.kind == 'series' && sectionState.searchQuery.isEmpty) ...[
+                      const SliverToBoxAdapter(child: SizedBox(height: 6)),
+                      const SliverToBoxAdapter(child: ViuHomeSection(category: ViuCategory.turkish)),
+                      const SliverToBoxAdapter(child: SizedBox(height: 14)),
+                    ],
+
+                    if (sectionState.isLoading || sectionState.isSearchLoading)
+                      const SliverFillRemaining(
+                        child: Center(
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2.5,
+                            color: AppColors.primary,
+                          ),
+                        ),
+                      )
+                    else if (sectionState.displayItems.isEmpty)
+                      SliverFillRemaining(
+                        child: Center(
+                          child: Column(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Icon(
+                                Icons.search_off_rounded,
+                                size: 48,
+                                color: isDark ? Colors.white30 : Colors.black26,
+                              ),
+                              const SizedBox(height: 12),
+                              Text(
+                                'لا توجد عناصر لعرضها',
+                                style: TextStyle(
+                                  fontSize: 15,
+                                  fontWeight: FontWeight.bold,
+                                  color: isDark ? Colors.white70 : Colors.black54,
+                                ),
+                              ),
+                              const SizedBox(height: 12),
+                              ElevatedButton(
+                                onPressed: () => sectionNotifier.refresh(),
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: _accentColor,
+                                  foregroundColor: Colors.white,
+                                ),
+                                child: const Text('إعادة المحاولة'),
+                              ),
+                            ],
+                          ),
+                        ),
+                      )
+                    else ...[
+                      SliverPadding(
+                        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                        sliver: SliverGrid(
+                          // Three across on a phone; on a wide window as many as fit
+                          // at a poster's natural size, instead of three giant ones.
+                          gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                            crossAxisCount: (MediaQuery.of(context).size.width / 190).floor().clamp(3, 9),
+                            childAspectRatio: 0.58,
+                            crossAxisSpacing: 10,
+                            mainAxisSpacing: 14,
+                          ),
+                          delegate: SliverChildBuilderDelegate(
+                            (context, index) {
+                              final item = sectionState.displayItems[index];
+                              return CinemanaPosterCard(
+                                item: item,
+                                onTap: () {
+                                  Navigator.of(context, rootNavigator: true).push(
+                                    MaterialPageRoute(
+                                      builder: (_) => CinemanaDetailScreen(item: item),
+                                    ),
+                                  );
+                                },
+                              );
+                            },
+                            childCount: sectionState.displayItems.length,
+                          ),
+                        ),
+                      ),
+
+                      // Bottom Loader for infinite pagination
+                      if (sectionState.isLoadingMore)
+                        const SliverToBoxAdapter(
+                          child: Padding(
+                            padding: EdgeInsets.symmetric(vertical: 24),
+                            child: Center(
+                              child: CircularProgressIndicator(
+                                strokeWidth: 2.2,
+                                color: AppColors.primary,
+                              ),
+                            ),
+                          ),
+                        )
+                      else
+                        const SliverToBoxAdapter(
+                          child: SizedBox(height: 40),
+                        ),
                     ],
                   ],
                 ),
               ),
             ),
-
-            // Content Grid
-            // Turkish drama, from the licensed free catalogue the app
-            // already carries. Plays natively like everything else here:
-            // no web page, no pop-ups, no outbound links.
-            if (widget.kind == 'series' && sectionState.searchQuery.isEmpty) ...[
-              const SliverToBoxAdapter(child: SizedBox(height: 6)),
-              const SliverToBoxAdapter(child: ViuHomeSection(category: ViuCategory.turkish)),
-              const SliverToBoxAdapter(child: SizedBox(height: 14)),
-            ],
-
-            if (sectionState.isLoading || sectionState.isSearchLoading)
-              const SliverFillRemaining(
-                child: Center(
-                  child: CircularProgressIndicator(
-                    strokeWidth: 2.5,
-                    color: AppColors.primary,
-                  ),
-                ),
-              )
-            else if (sectionState.displayItems.isEmpty)
-              SliverFillRemaining(
-                child: Center(
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Icon(
-                        Icons.search_off_rounded,
-                        size: 48,
-                        color: isDark ? Colors.white30 : Colors.black26,
-                      ),
-                      const SizedBox(height: 12),
-                      Text(
-                        'لا توجد عناصر لعرضها',
-                        style: TextStyle(
-                          fontSize: 15,
-                          fontWeight: FontWeight.bold,
-                          color: isDark ? Colors.white70 : Colors.black54,
-                        ),
-                      ),
-                      const SizedBox(height: 12),
-                      ElevatedButton(
-                        onPressed: () => sectionNotifier.refresh(),
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: _accentColor,
-                          foregroundColor: Colors.white,
-                        ),
-                        child: const Text('إعادة المحاولة'),
-                      ),
-                    ],
-                  ),
-                ),
-              )
-            else ...[
-              SliverPadding(
-                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-                sliver: SliverGrid(
-                  // Three across on a phone; on a wide window as many as fit
-                  // at a poster's natural size, instead of three giant ones.
-                  gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-                    crossAxisCount: (MediaQuery.of(context).size.width / 190).floor().clamp(3, 9),
-                    childAspectRatio: 0.58,
-                    crossAxisSpacing: 10,
-                    mainAxisSpacing: 14,
-                  ),
-                  delegate: SliverChildBuilderDelegate(
-                    (context, index) {
-                      final item = sectionState.displayItems[index];
-                      return CinemanaPosterCard(
-                        item: item,
-                        onTap: () {
-                          Navigator.of(context, rootNavigator: true).push(
-                            MaterialPageRoute(
-                              builder: (_) => CinemanaDetailScreen(item: item),
-                            ),
-                          );
-                        },
-                      );
-                    },
-                    childCount: sectionState.displayItems.length,
-                  ),
-                ),
-              ),
-
-              // Bottom Loader for infinite pagination
-              if (sectionState.isLoadingMore)
-                const SliverToBoxAdapter(
-                  child: Padding(
-                    padding: EdgeInsets.symmetric(vertical: 24),
-                    child: Center(
-                      child: CircularProgressIndicator(
-                        strokeWidth: 2.2,
-                        color: AppColors.primary,
-                      ),
-                    ),
-                  ),
-                )
-              else
-                const SliverToBoxAdapter(
-                  child: SizedBox(height: 40),
-                ),
-            ],
           ],
         ),
       ),

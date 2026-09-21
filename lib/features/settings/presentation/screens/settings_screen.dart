@@ -46,45 +46,6 @@ class SettingsScreen extends ConsumerWidget {
                 ),
                 const SizedBox(height: 20),
 
-                // Section 1: Appearance
-                _buildSectionCard(
-                  context,
-                  title: strings.appearanceSection,
-                  icon: Icons.palette_outlined,
-                  isDark: isDark,
-                  children: [
-                    Text(
-                      strings.themeMode,
-                      style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13),
-                    ),
-                    const SizedBox(height: 8),
-                    SegmentedButton<ThemeMode>(
-                      segments: [
-                        ButtonSegment(
-                          value: ThemeMode.light,
-                          label: Text(strings.themeLight),
-                          icon: const Icon(Icons.light_mode_outlined, size: 16),
-                        ),
-                        ButtonSegment(
-                          value: ThemeMode.dark,
-                          label: Text(strings.themeDark),
-                          icon: const Icon(Icons.dark_mode_outlined, size: 16),
-                        ),
-                        ButtonSegment(
-                          value: ThemeMode.system,
-                          label: Text(strings.themeSystem),
-                          icon: const Icon(Icons.brightness_auto_outlined, size: 16),
-                        ),
-                      ],
-                      selected: {settings.themeMode},
-                      onSelectionChanged: (set) =>
-                          ref.read(settingsProvider.notifier).setThemeMode(set.first),
-                    ),
-                  ],
-                ),
-
-                const SizedBox(height: 16),
-
                 // Section 2: Language
                 _buildSectionCard(
                   context,

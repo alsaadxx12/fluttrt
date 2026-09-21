@@ -7,13 +7,12 @@ import 'package:go_router/go_router.dart';
 import 'package:window_manager/window_manager.dart';
 import 'package:youtube_explode_dart/youtube_explode_dart.dart';
 import 'package:youtube_downloader/core/constants/app_colors.dart';
-import 'package:youtube_downloader/features/downloads/presentation/providers/downloads_provider.dart';
 import 'package:youtube_downloader/features/home/presentation/providers/youtube_feed_provider.dart';
 import 'package:youtube_downloader/features/home/presentation/providers/video_analyzer_provider.dart';
 import 'package:youtube_downloader/features/series/presentation/providers/series_provider.dart';
-import 'package:youtube_downloader/features/series/presentation/widgets/series_mode_toggle.dart';
 import 'package:youtube_downloader/features/settings/presentation/providers/settings_provider.dart';
 import 'package:youtube_downloader/core/constants/app_palette.dart';
+import 'package:youtube_downloader/presentation/widgets/app_search_field.dart';
 import 'window_caption_buttons.dart';
 
 class AppHeader extends ConsumerStatefulWidget implements PreferredSizeWidget {
@@ -36,7 +35,6 @@ class _AppHeaderState extends ConsumerState<AppHeader> {
   OverlayEntry? _suggestionsOverlay;
   List<String> _suggestions = [];
   int _highlightedIndex = -1;
-  bool _isSearchFocused = false;
   Timer? _debounceTimer;
 
   @override
@@ -47,7 +45,8 @@ class _AppHeaderState extends ConsumerState<AppHeader> {
   }
 
   void _onFocusChanged() {
-    setState(() => _isSearchFocused = _searchFocusNode.hasFocus);
+    // Rebuild so the ✕ follows text that was set while the field had focus.
+    setState(() {});
     if (_searchFocusNode.hasFocus) {
       final text = _searchController.text.trim();
       if (text.isNotEmpty) {
@@ -249,21 +248,8 @@ class _AppHeaderState extends ConsumerState<AppHeader> {
   @override
   Widget build(BuildContext context) {
     final strings = ref.watch(stringsProvider);
-    final settings = ref.watch(settingsProvider);
-    final downloadsState = ref.watch(downloadsProvider);
-    final seriesState = ref.watch(seriesProvider);
-    final activeCount = downloadsState.activeTasks.length;
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final isRtl = Directionality.of(context) == TextDirection.rtl;
-
-    final borderColor = _isSearchFocused
-        ? AppColors.primary
-        : (seriesState.isSeriesMode
-            ? AppColors.primary.withOpacity(0.7)
-            : (isDark
-                ? Colors.white.withOpacity(0.12)
-                : const Color(0xFFCBD5E1)));
-    final borderWidth = _isSearchFocused ? 1.5 : 1.0;
+    final palette = AppPalette.of(context);
     final screenWidth = MediaQuery.of(context).size.width;
     final isMobile = screenWidth < 700;
 
@@ -271,7 +257,7 @@ class _AppHeaderState extends ConsumerState<AppHeader> {
       height: isMobile ? 56 : 62,
       padding: EdgeInsets.symmetric(horizontal: _isDesktop ? 8 : (isMobile ? 12 : 10)),
       decoration: BoxDecoration(
-        color: AppPalette.of(context).bg,
+        color: palette.bg,
         border: Border(
           bottom: BorderSide(
             color: isDark
@@ -280,13 +266,6 @@ class _AppHeaderState extends ConsumerState<AppHeader> {
             width: 1,
           ),
         ),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(isDark ? 0.25 : 0.04),
-            blurRadius: 10,
-            offset: const Offset(0, 2),
-          ),
-        ],
       ),
       child: isMobile
           ? Row(
@@ -303,10 +282,8 @@ class _AppHeaderState extends ConsumerState<AppHeader> {
                 ),
                 const SizedBox(width: 4),
                 Expanded(
-                  child: _buildSearchBox(context, isDark, isRtl, borderColor, borderWidth, seriesState),
+                  child: _buildSearchBox(),
                 ),
-                const SizedBox(width: 4),
-                const SeriesModeToggle(),
               ],
             )
           : Row(
@@ -332,33 +309,6 @@ class _AppHeaderState extends ConsumerState<AppHeader> {
                             fit: BoxFit.contain,
                           ),
                         ),
-                        const SizedBox(width: 10),
-                        Text(
-                          strings.appName,
-                          style: TextStyle(
-                            fontSize: 15.5,
-                            fontWeight: FontWeight.w800,
-                            letterSpacing: -0.2,
-                            color: isDark ? Colors.white : AppColors.lightTextPrimary,
-                          ),
-                        ),
-                        const SizedBox(width: 6),
-                        Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1.5),
-                          decoration: BoxDecoration(
-                            color: AppColors.primary.withOpacity(0.12),
-                            borderRadius: BorderRadius.circular(4),
-                          ),
-                          child: const Text(
-                            'PRO',
-                            style: TextStyle(
-                              fontSize: 9.5,
-                              fontWeight: FontWeight.w900,
-                              color: AppColors.primary,
-                              letterSpacing: 0.5,
-                            ),
-                          ),
-                        ),
                       ],
                     ),
                   ),
@@ -369,7 +319,7 @@ class _AppHeaderState extends ConsumerState<AppHeader> {
                 // Desktop YouTube Search Bar
                 Expanded(
                   child: Center(
-                    child: _buildSearchBox(context, isDark, isRtl, borderColor, borderWidth, seriesState),
+                    child: _buildSearchBox(),
                   ),
                 ),
 
@@ -388,75 +338,6 @@ class _AppHeaderState extends ConsumerState<AppHeader> {
 
                 const SizedBox(width: 6),
 
-                // Smart Series Mode Toggle Button
-                const SeriesModeToggle(),
-
-                const SizedBox(width: 8),
-
-                // Theme Toggle Button
-                IconButton(
-                  icon: AnimatedSwitcher(
-                    duration: const Duration(milliseconds: 300),
-                    transitionBuilder: (child, anim) => RotationTransition(turns: anim, child: child),
-                    child: Icon(
-                      settings.themeMode == ThemeMode.dark
-                          ? Icons.dark_mode_rounded
-                          : (settings.themeMode == ThemeMode.light
-                              ? Icons.light_mode_rounded
-                              : Icons.brightness_auto_rounded),
-                      key: ValueKey(settings.themeMode),
-                      size: 20,
-                    ),
-                  ),
-                  tooltip: strings.themeMode,
-                  onPressed: () {
-                    final nextMode = settings.themeMode == ThemeMode.dark
-                        ? ThemeMode.light
-                        : (settings.themeMode == ThemeMode.light ? ThemeMode.system : ThemeMode.dark);
-                    ref.read(settingsProvider.notifier).setThemeMode(nextMode);
-                  },
-                ),
-
-                // Downloads History Button with Badge (Desktop only)
-                Stack(
-                  clipBehavior: Clip.none,
-                  children: [
-                    IconButton(
-                      icon: const Icon(Icons.download_rounded, size: 22),
-                      tooltip: strings.navDownloads,
-                      onPressed: () => context.go('/downloads'),
-                    ),
-                    if (activeCount > 0)
-                      Positioned(
-                        top: 4,
-                        right: 4,
-                        child: Container(
-                          padding: const EdgeInsets.all(4),
-                          decoration: BoxDecoration(
-                            color: AppColors.primary,
-                            shape: BoxShape.circle,
-                            boxShadow: [
-                              BoxShadow(
-                                color: AppColors.primary.withOpacity(0.5),
-                                blurRadius: 6,
-                              ),
-                            ],
-                          ),
-                          constraints: const BoxConstraints(minWidth: 17, minHeight: 17),
-                          child: Text(
-                            '$activeCount',
-                            style: const TextStyle(
-                              color: Colors.white,
-                              fontSize: 9.5,
-                              fontWeight: FontWeight.bold,
-                            ),
-                            textAlign: TextAlign.center,
-                          ),
-                        ),
-                      ),
-                  ],
-                ),
-
                 // Settings Button (Desktop only)
                 IconButton(
                   icon: const Icon(Icons.settings_outlined, size: 20),
@@ -470,7 +351,7 @@ class _AppHeaderState extends ConsumerState<AppHeader> {
                     height: 24,
                     width: 1,
                     margin: const EdgeInsets.symmetric(horizontal: 6),
-                    color: isDark ? Colors.white12 : Colors.black12,
+                    color: isDark ? Colors.white12 : palette.border,
                   ),
                   const WindowCaptionButtons(),
                 ],
@@ -498,14 +379,7 @@ class _AppHeaderState extends ConsumerState<AppHeader> {
     return SafeArea(bottom: false, child: headerContent);
   }
 
-  Widget _buildSearchBox(
-    BuildContext context,
-    bool isDark,
-    bool isRtl,
-    Color borderColor,
-    double borderWidth,
-    SeriesState seriesState,
-  ) {
+  Widget _buildSearchBox() {
     return ConstrainedBox(
       constraints: const BoxConstraints(maxWidth: 580),
       child: TapRegion(
@@ -545,126 +419,21 @@ class _AppHeaderState extends ConsumerState<AppHeader> {
             },
             child: SizedBox(
               key: _searchBoxKey,
-              height: 40,
-              child: Row(
-                children: [
-                  // 1. Search Text Input Box
-                  Expanded(
-                    child: AnimatedContainer(
-                      duration: const Duration(milliseconds: 180),
-                      height: 40,
-                      decoration: BoxDecoration(
-                        color: isDark ? AppColors.darkCard : AppColors.lightSecondaryBg,
-                        borderRadius: const BorderRadiusDirectional.horizontal(
-                          start: Radius.circular(22),
-                        ),
-                        border: Border.all(
-                          color: borderColor,
-                          width: borderWidth,
-                        ),
-                        boxShadow: [
-                          if (_isSearchFocused)
-                            BoxShadow(
-                              color: AppColors.primary.withOpacity(0.18),
-                              blurRadius: 8,
-                              offset: const Offset(0, 1),
-                            ),
-                        ],
-                      ),
-                      child: Row(
-                        children: [
-                          const SizedBox(width: 14),
-                          Icon(
-                            seriesState.isSeriesMode ? Icons.auto_awesome_rounded : Icons.search_rounded,
-                            size: 19,
-                            color: seriesState.isSeriesMode
-                                ? AppColors.primary
-                                : (_isSearchFocused
-                                    ? AppColors.primary
-                                    : (isDark
-                                        ? AppColors.darkTextSecondary
-                                        : AppColors.lightTextSecondary)),
-                          ),
-                          const SizedBox(width: 10),
-                          Expanded(
-                            child: TextField(
-                              controller: _searchController,
-                              focusNode: _searchFocusNode,
-                              textInputAction: TextInputAction.search,
-                              onSubmitted: (_) {
-                                _hideOverlay();
-                                _searchFocusNode.unfocus();
-                                _onSearch();
-                              },
-                              onChanged: _onTextChanged,
-                              style: TextStyle(
-                                fontSize: 14,
-                                color: isDark ? Colors.white : AppColors.lightTextPrimary,
-                              ),
-                              decoration: InputDecoration(
-                                hintText: seriesState.isSeriesMode ? 'بحث عن مسلسل...' : 'بحث',
-                                hintStyle: TextStyle(
-                                  fontSize: 14,
-                                  color: isDark ? Colors.white : AppColors.lightTextPrimary,
-                                ),
-                                border: InputBorder.none,
-                                enabledBorder: InputBorder.none,
-                                focusedBorder: InputBorder.none,
-                                filled: false,
-                                isDense: true,
-                                contentPadding: const EdgeInsets.symmetric(vertical: 10),
-                              ),
-                            ),
-                          ),
-                          if (_searchController.text.isNotEmpty)
-                            IconButton(
-                              icon: const Icon(Icons.close_rounded, size: 18),
-                              tooltip: 'تفريغ والعودة للرئيسية',
-                              padding: EdgeInsets.zero,
-                              constraints: const BoxConstraints(minWidth: 36, minHeight: 36),
-                              splashRadius: 18,
-                              onPressed: _clearSearchAndReset,
-                            ),
-                        ],
-                      ),
-                    ),
-                  ),
-
-                  // 2. Attached External YouTube Search Button
-                  InkWell(
-                    onTap: () {
-                      _hideOverlay();
-                      _searchFocusNode.unfocus();
-                      _onSearch();
-                    },
-                    borderRadius: const BorderRadiusDirectional.horizontal(
-                      end: Radius.circular(22),
-                    ).resolve(Directionality.of(context)),
-                    child: Container(
-                      width: 54,
-                      height: 40,
-                      decoration: BoxDecoration(
-                        color: isDark ? const Color(0xFF1B2232) : AppColors.lightBorder,
-                        borderRadius: const BorderRadiusDirectional.horizontal(
-                          end: Radius.circular(22),
-                        ).resolve(Directionality.of(context)),
-                        border: Border(
-                          top: BorderSide(color: borderColor, width: borderWidth),
-                          bottom: BorderSide(color: borderColor, width: borderWidth),
-                          left: isRtl ? BorderSide(color: borderColor, width: borderWidth) : BorderSide.none,
-                          right: !isRtl ? BorderSide(color: borderColor, width: borderWidth) : BorderSide.none,
-                        ),
-                      ),
-                      child: Center(
-                        child: Icon(
-                          Icons.search_rounded,
-                          size: 20,
-                          color: isDark ? Colors.white70 : Colors.black87,
-                        ),
-                      ),
-                    ),
-                  ),
-                ],
+              height: AppSearchField.defaultHeight,
+              // The shared pill every page uses; submit and clear keep the
+              // header's existing search / reset logic.
+              child: AppSearchField(
+                controller: _searchController,
+                focusNode: _searchFocusNode,
+                hintText: 'بحث',
+                onChanged: _onTextChanged,
+                onSubmitted: (_) {
+                  _hideOverlay();
+                  _searchFocusNode.unfocus();
+                  _onSearch();
+                },
+                onClear: _clearSearchAndReset,
+                showClear: _searchController.text.isNotEmpty,
               ),
             ),
           ),
@@ -698,8 +467,10 @@ class _SuggestionTileState extends State<_SuggestionTile> {
   @override
   Widget build(BuildContext context) {
     final active = _isHovered || widget.isHighlighted;
+    // The light hover tint must stay a step off white, or the highlighted
+    // suggestion would vanish into the white sheet.
     final hoverBg =
-        widget.isDark ? const Color(0xFF1B2232) : AppColors.lightSecondaryBg;
+        widget.isDark ? const Color(0xFF1B2232) : AppPalette.of(context).skeleton;
     final textColor =
         widget.isDark ? AppColors.darkTextPrimary : AppColors.lightTextPrimary;
     final iconColor =

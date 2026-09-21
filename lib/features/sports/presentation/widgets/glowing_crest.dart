@@ -3,6 +3,7 @@ import 'dart:ui' as ui;
 
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
+import 'package:youtube_downloader/core/network/image_cache.dart';
 
 /// A club crest with no frame, over a soft glow in the crest's own colour.
 ///
@@ -72,7 +73,8 @@ class _GlowingCrestState extends State<GlowingCrest> {
 
   static Future<ui.Image> _decodeSmall(String url) {
     final completer = Completer<ui.Image>();
-    final stream = ResizeImage(CachedNetworkImageProvider(url), width: 24).resolve(ImageConfiguration.empty);
+    final stream = ResizeImage(CachedNetworkImageProvider(url, cacheManager: appImageCache), width: 24)
+        .resolve(ImageConfiguration.empty);
     late final ImageStreamListener listener;
     listener = ImageStreamListener(
       (info, _) {
@@ -161,11 +163,15 @@ class _GlowingCrestState extends State<GlowingCrest> {
           if (url != null && url.isNotEmpty)
             CachedNetworkImage(
               imageUrl: url,
+              cacheManager: appImageCache,
               width: size,
               height: size,
               fit: BoxFit.contain,
               memCacheWidth: (size * dpr).round(),
-              fadeInDuration: const Duration(milliseconds: 120),
+              fadeInDuration: Duration.zero,
+              fadeOutDuration: Duration.zero,
+              placeholderFadeInDuration: Duration.zero,
+              useOldImageOnUrlChange: true,
               placeholder: (_, __) => const SizedBox.shrink(),
               errorWidget: (_, __, ___) => fallback,
             )

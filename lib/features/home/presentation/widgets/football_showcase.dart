@@ -1,6 +1,7 @@
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:dio/dio.dart';
 import 'package:youtube_downloader/core/network/http_cache.dart';
+import 'package:youtube_downloader/core/network/image_cache.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -151,9 +152,13 @@ class _LeagueCard extends StatelessWidget {
                     ),
                     child: CachedNetworkImage(
                       imageUrl: league.logoUrl,
+                      cacheManager: appImageCache,
                       fit: BoxFit.contain,
                       memCacheWidth: (96 * dpr).round(),
-                      fadeInDuration: const Duration(milliseconds: 150),
+                      fadeInDuration: Duration.zero,
+                      fadeOutDuration: Duration.zero,
+                      placeholderFadeInDuration: Duration.zero,
+                      useOldImageOnUrlChange: true,
                       placeholder: (_, __) => const SizedBox.shrink(),
                       errorWidget: (_, __, ___) =>
                           Icon(Icons.emoji_events_rounded, color: league.colors.first, size: 44),
@@ -381,11 +386,17 @@ class _StarCard extends StatelessWidget {
               alignment: const Alignment(0, -0.75),
               child: CachedNetworkImage(
                 imageUrl: star.photoUrl,
+                cacheManager: appImageCache,
                 fit: BoxFit.cover,
                 alignment: Alignment.topCenter,
                 filterQuality: FilterQuality.high,
-                memCacheWidth: (316 * dpr).round(), // card height x 1.18
-                fadeInDuration: const Duration(milliseconds: 150),
+                // memCacheWidth is a width: the card is 170 lp wide, drawn
+                // at 1.18x, so decode at that many physical pixels.
+                memCacheWidth: (width * 1.18 * dpr).round(),
+                fadeInDuration: Duration.zero,
+                fadeOutDuration: Duration.zero,
+                placeholderFadeInDuration: Duration.zero,
+                useOldImageOnUrlChange: true,
                 placeholder: (_, __) => const SizedBox.shrink(),
                 errorWidget: (_, __, ___) =>
                     const Center(child: Icon(Icons.person_rounded, color: Colors.white24, size: 60)),
@@ -425,9 +436,14 @@ class _StarCard extends StatelessWidget {
                           if (star.crestUrl != null) ...[
                             CachedNetworkImage(
                               imageUrl: star.crestUrl!,
+                              cacheManager: appImageCache,
                               width: 16,
                               height: 16,
                               memCacheWidth: (16 * dpr).round(),
+                              fadeInDuration: Duration.zero,
+                              fadeOutDuration: Duration.zero,
+                              placeholderFadeInDuration: Duration.zero,
+                              useOldImageOnUrlChange: true,
                               errorWidget: (_, __, ___) => const SizedBox.shrink(),
                             ),
                             const SizedBox(width: 5),

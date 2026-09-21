@@ -8,6 +8,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:media_kit/media_kit.dart';
 import 'package:media_kit_video/media_kit_video.dart';
 import 'package:video_player/video_player.dart';
+import 'package:youtube_downloader/presentation/widgets/app_search_field.dart';
 
 import '../data/shahid_models.dart';
 import 'shahid_providers.dart';
@@ -360,7 +361,7 @@ class _ShahidPlayerScreenState extends ConsumerState<ShahidPlayerScreen> {
     final shown = q.isEmpty ? others : others.where((c) => _norm(c.title).contains(q)).toList();
     if (shown.isEmpty) {
       return const Center(
-        child: Text('لا توجد قناة بهذا الاسم', style: TextStyle(color: Colors.white54, fontSize: 13.5)),
+        child: Text('لا توجد قناة بهذا الاسم', style: TextStyle(color: Colors.black45, fontSize: 13.5)),
       );
     }
     final logoCount = <String, int>{};
@@ -451,7 +452,7 @@ class _ShahidPlayerScreenState extends ConsumerState<ShahidPlayerScreen> {
       final others = widget.channels.where((c) => c.id != _current.id).toList();
 
       content = Scaffold(
-        backgroundColor: const Color(0xFF07090E),
+        backgroundColor: Colors.white,
         body: SafeArea(
           child: Column(
             children: [
@@ -461,7 +462,7 @@ class _ShahidPlayerScreenState extends ConsumerState<ShahidPlayerScreen> {
                 child: Row(
                   children: [
                     IconButton(
-                      icon: const Icon(Icons.arrow_back_rounded, color: Colors.white),
+                      icon: const Icon(Icons.arrow_back_rounded, color: Colors.black87),
                       onPressed: () => Navigator.of(context).maybePop(),
                       tooltip: 'رجوع',
                     ),
@@ -487,40 +488,16 @@ class _ShahidPlayerScreenState extends ConsumerState<ShahidPlayerScreen> {
                   children: [
                     const Text(
                       'قنوات أخرى',
-                      style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.w900),
+                      style: TextStyle(color: Colors.black87, fontSize: 16, fontWeight: FontWeight.w900),
                     ),
                     const SizedBox(width: 12),
-                    // Search the channels by name.
+                    // Search the channels by name - the shared flat pill.
                     Expanded(
-                      child: SizedBox(
-                        height: 40,
-                        child: TextField(
-                          controller: _search,
-                          onChanged: (v) => setState(() => _query = v),
-                          style: const TextStyle(color: Colors.white, fontSize: 13.5),
-                          cursorColor: const Color(0xFFE50914),
-                          decoration: InputDecoration(
-                            hintText: 'ابحث عن قناة',
-                            hintStyle: const TextStyle(color: Colors.white38, fontSize: 13),
-                            prefixIcon: const Icon(Icons.search_rounded, color: Colors.white54, size: 20),
-                            suffixIcon: _query.isEmpty
-                                ? null
-                                : IconButton(
-                                    icon: const Icon(Icons.close_rounded, color: Colors.white54, size: 18),
-                                    onPressed: () {
-                                      _search.clear();
-                                      setState(() => _query = '');
-                                    },
-                                  ),
-                            filled: true,
-                            fillColor: const Color(0xFF121724),
-                            contentPadding: EdgeInsets.zero,
-                            border: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(12),
-                              borderSide: BorderSide.none,
-                            ),
-                          ),
-                        ),
+                      child: AppSearchField(
+                        controller: _search,
+                        hintText: 'ابحث عن قناة',
+                        onChanged: (v) => setState(() => _query = v),
+                        onClear: () => setState(() => _query = ''),
                       ),
                     ),
                   ],

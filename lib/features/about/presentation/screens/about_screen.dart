@@ -125,8 +125,7 @@ class _Hero extends StatelessWidget {
               ? const [Color(0xFF2A0B10), Color(0xFF14111C), Color(0xFF0B0E16)]
               : const [Color(0xFFFFE3E6), Color(0xFFF6F1FA), Color(0xFFEFF3FB)],
         ),
-        border: Border.all(color: p.isDark ? Colors.white10 : const Color(0xFFE3E8F1)),
-        boxShadow: p.cardShadow,
+        border: Border.all(color: p.isDark ? Colors.white10 : p.border),
       ),
       child: Column(
         children: [
@@ -171,7 +170,7 @@ class _Hero extends StatelessWidget {
             decoration: BoxDecoration(
               color: p.isDark ? Colors.white10 : Colors.white,
               borderRadius: BorderRadius.circular(30),
-              border: Border.all(color: p.isDark ? Colors.white24 : const Color(0xFFE3E8F1)),
+              border: Border.all(color: p.isDark ? Colors.white24 : p.border),
             ),
             child: Row(
               mainAxisSize: MainAxisSize.min,
@@ -213,7 +212,6 @@ class _UpdateStatusCard extends ConsumerWidget {
         color: p.card,
         borderRadius: BorderRadius.circular(18),
         border: Border.all(color: hasUpdate ? accent.withOpacity(0.45) : p.border),
-        boxShadow: p.cardShadow,
       ),
       child: Column(
         children: [
@@ -248,7 +246,11 @@ class _UpdateStatusCard extends ConsumerWidget {
             Container(
               width: double.infinity,
               padding: const EdgeInsets.all(11),
-              decoration: BoxDecoration(color: p.cardAlt, borderRadius: BorderRadius.circular(12)),
+              decoration: BoxDecoration(
+                color: p.cardAlt,
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: p.border),
+              ),
               child: Text(info.notes, style: TextStyle(fontSize: 12, height: 1.6, color: p.textMuted)),
             ),
           ],
@@ -306,7 +308,6 @@ class _InfoCard extends StatelessWidget {
         color: p.card,
         borderRadius: BorderRadius.circular(18),
         border: Border.all(color: p.border),
-        boxShadow: p.cardShadow,
       ),
       child: Column(
         children: [

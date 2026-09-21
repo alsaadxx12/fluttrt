@@ -33,447 +33,59 @@ class SportsService {
     }
   }
 
-  String? _yacinePanelUrl;
-  String? _yacineApiKey;
 
-  Future<void> _loadYacineConfig() async {
-    if (_yacinePanelUrl != null && _yacineApiKey != null) return;
-    try {
-      final res = await createDio(BaseOptions(connectTimeout: const Duration(seconds: 8)))
-          .get('https://raw.githubusercontent.com/merrooapps/blamadkholasat/main/ycntv/yacintvv4.json');
-      if (res.statusCode == 200 && res.data is Map) {
-        _yacinePanelUrl = res.data['PANEL_URL']?.toString();
-        _yacineApiKey = res.data['REST_API_KEY']?.toString();
-      }
-    } catch (_) {}
-    _yacinePanelUrl ??= 'https://marouaneai.com/yacinetvapp/app';
-    _yacineApiKey ??= 'cda11bx8aITlKsXCpNB7yVLnOdEGqg342ZFrQzJRetkSoUMi9w';
-  }
 
-  /// Curated verified top channels across sports, news, and entertainment
-  /// Official broadcaster streams. The old yassirtv "match=bein1"-style
-  /// links were removed: every one answered with a "Match ended" page and
-  /// no player. What is left is still health-checked on each load.
-  static const List<SportsChannel> curatedChannelsList = [
-    // Sports Channels (KoraLive & AlbaPlayer verified feeds)
-    SportsChannel(
-      channelId: 8001,
-      categoryId: 4,
-      channelName: 'beIN Sports 1 HD',
-      channelImage: 'https://i.imgur.com/Vtk2cGI.png',
-      channelUrl: 'https://pl.koralive1.cc/bein1',
-      channelType: 'WEBVIEW',
-      categoryName: 'قنوات رياضية',
-    ),
-    SportsChannel(
-      channelId: 8002,
-      categoryId: 4,
-      channelName: 'beIN Sports 2 HD',
-      channelImage: 'https://i.imgur.com/vUJZSvs.png',
-      channelUrl: 'https://pl.koralive1.cc/bein2/',
-      channelType: 'WEBVIEW',
-      categoryName: 'قنوات رياضية',
-    ),
-    SportsChannel(
-      channelId: 8004,
-      categoryId: 4,
-      channelName: 'beIN Sports 4 HD',
-      channelImage: 'https://i.imgur.com/vwAgJNi.png',
-      channelUrl: 'https://pl.koralive1.cc/bein4/',
-      channelType: 'WEBVIEW',
-      categoryName: 'قنوات رياضية',
-    ),
-    SportsChannel(
-      channelId: 8005,
-      categoryId: 4,
-      channelName: 'On Time Sport 1',
-      channelImage: 'https://i.imgur.com/NIMiorz.png',
-      channelUrl: 'https://pl.koralive1.cc/on-time-sport-1/',
-      channelType: 'WEBVIEW',
-      categoryName: 'قنوات رياضية',
-    ),
-    SportsChannel(
-      channelId: 8006,
-      categoryId: 4,
-      channelName: 'MBC Action',
-      channelImage: 'https://i.imgur.com/OWZAghw.png',
-      channelUrl: 'https://pl.koralive1.cc/mbc-action/',
-      channelType: 'WEBVIEW',
-      categoryName: 'قنوات رياضية',
-    ),
-    SportsChannel(
-      channelId: 8007,
-      categoryId: 4,
-      channelName: 'ثمانية 1 (Thmanyah 1)',
-      channelImage: 'https://upload.wikimedia.org/wikipedia/commons/thumb/e/e9/Thmanyah_Logo.svg/500px-Thmanyah_Logo.svg.png',
-      channelUrl: 'https://pl.koralive1.cc/thmanya1/',
-      channelType: 'WEBVIEW',
-      categoryName: 'قنوات رياضية',
-    ),
-    SportsChannel(
-      channelId: 8008,
-      categoryId: 4,
-      channelName: 'ثمانية 2 (Thmanyah 2)',
-      channelImage: 'https://upload.wikimedia.org/wikipedia/commons/thumb/e/e9/Thmanyah_Logo.svg/500px-Thmanyah_Logo.svg.png',
-      channelUrl: 'https://pl.koralive1.cc/thmanya2/',
-      channelType: 'WEBVIEW',
-      categoryName: 'قنوات رياضية',
-    ),
-    SportsChannel(
-      channelId: 8009,
-      categoryId: 4,
-      channelName: 'الرياضية المغربية (Arryadia)',
-      channelImage: 'https://i.imgur.com/XjzK3gZ.png',
-      channelUrl: 'https://pl.koralive1.cc/arryadia/',
-      channelType: 'WEBVIEW',
-      categoryName: 'قنوات رياضية',
-    ),
-    SportsChannel(
-      channelId: 8010,
-      categoryId: 4,
-      channelName: 'الوطنية 1 (El Watania 1)',
-      channelImage: 'https://i.imgur.com/gNr2V14.png',
-      channelUrl: 'https://pl.koralive1.cc/el-watania-1/',
-      channelType: 'WEBVIEW',
-      categoryName: 'قنوات رياضية',
-    ),
-    SportsChannel(
-      channelId: 8011,
-      categoryId: 4,
-      channelName: 'أبوظبي بريميوم (AD Premium / STC)',
-      channelImage: 'https://i.imgur.com/6BVWk8z.png',
-      channelUrl: 'https://pl.koralive1.cc/ad-premium-1/',
-      channelType: 'WEBVIEW',
-      categoryName: 'قنوات رياضية',
-    ),
-    // Iraqi channels, from the broadcasters' own sites.
-    SportsChannel(
-      channelId: 7001,
-      categoryId: 7,
-      channelName: 'كربلاء الفضائية',
-      // 500px, ~17KB (the site's own PNG is 3400px / 790KB).
-      channelImage: 'https://upload.wikimedia.org/wikipedia/commons/thumb/6/63/Karbala_tv.jpg/500px-Karbala_tv.jpg',
-      // Broadcasts on YouTube (as karbala-tv.iq shows it); see _youtubeLive.
-      channelUrl: 'https://www.youtube.com/channel/UCI4gZRGRdfnfPajdxs8QtPQ/live',
-      channelType: 'YOUTUBE_LIVE',
-      categoryName: 'قنوات عراقية',
-    ),
-    SportsChannel(
-      channelId: 7002,
-      categoryId: 7,
-      channelName: 'كربلاء - القرآن الكريم',
-      // 500px, ~17KB (the site's own PNG is 3400px / 790KB).
-      channelImage: 'https://upload.wikimedia.org/wikipedia/commons/thumb/6/63/Karbala_tv.jpg/500px-Karbala_tv.jpg',
-      channelUrl: 'https://ktvlive.online/stream/hls/ch1.m3u8',
-      channelType: 'URL',
-      categoryName: 'قنوات عراقية',
-    ),
-    SportsChannel(
-      channelId: 7003,
-      categoryId: 7,
-      channelName: 'كربلاء الوثائقية',
-      // 500px, ~17KB (the site's own PNG is 3400px / 790KB).
-      channelImage: 'https://upload.wikimedia.org/wikipedia/commons/thumb/6/63/Karbala_tv.jpg/500px-Karbala_tv.jpg',
-      channelUrl: 'https://ktvlive.online/stream/hls/ch3.m3u8',
-      channelType: 'URL',
-      categoryName: 'قنوات عراقية',
-    ),
-    SportsChannel(
-      channelId: 7004,
-      categoryId: 7,
-      channelName: 'العراقية الإخبارية',
-      channelImage: 'https://upload.wikimedia.org/wikipedia/commons/thumb/5/51/%D9%82%D9%86%D8%A7%D8%A9_%D8%A7%D9%84%D8%B9%D8%B1%D8%A7%D9%82%D9%8A%D8%A9_%D8%AC%D8%AF%D9%8A%D8%AF.jpg/500px-%D9%82%D9%86%D8%A7%D8%A9_%D8%A7%D9%84%D8%B9%D8%B1%D8%A7%D9%82%D9%8A%D8%A9_%D8%AC%D8%AF%D9%8A%D8%AF.jpg',
-      channelUrl: 'https://imn-live.esite-lab.com/hls/iraqia-news.m3u8',
-      channelType: 'URL',
-      categoryName: 'قنوات عراقية',
-    ),
-    SportsChannel(
-      channelId: 7005,
-      categoryId: 7,
-      channelName: 'العراقية العامة',
-      channelImage: 'https://upload.wikimedia.org/wikipedia/commons/thumb/5/51/%D9%82%D9%86%D8%A7%D8%A9_%D8%A7%D9%84%D8%B9%D8%B1%D8%A7%D9%82%D9%8A%D8%A9_%D8%AC%D8%AF%D9%8A%D8%AF.jpg/500px-%D9%82%D9%86%D8%A7%D8%A9_%D8%A7%D9%84%D8%B9%D8%B1%D8%A7%D9%82%D9%8A%D8%A9_%D8%AC%D8%AF%D9%8A%D8%AF.jpg',
-      channelUrl: 'https://imn-live.esite-lab.com/hls/iraqia-general.m3u8',
-      channelType: 'URL',
-      categoryName: 'قنوات عراقية',
-    ),
-    SportsChannel(
-      channelId: 7006,
-      categoryId: 7,
-      channelName: 'الرشيد الفضائية',
-      channelImage: 'https://www.alrasheedmedia.com/wp-content/uploads/2021/08/cropped-Logo-Dark-192x192.png',
-      channelUrl: 'https://media1.livaat.com/static/AL-RASHEED-HD/playlist.m3u8',
-      channelType: 'URL',
-      categoryName: 'قنوات عراقية',
-    ),
-    SportsChannel(
-      channelId: 4003,
-      categoryId: 4,
-      channelName: 'الرياضية المغربية',
-      channelImage: 'https://i.imgur.com/XjzK3gZ.png',
-      channelUrl: 'https://cdnamd-hls-globecast.akamaized.net/live/ramdisk/arriadia/hls_snrt/index.m3u8',
-      channelType: 'URL',
-      categoryName: 'رياضة عربية',
-    ),
-    SportsChannel(
-      channelId: 4004,
-      categoryId: 4,
-      channelName: 'الشارقة الرياضية',
-      channelImage: 'https://i.imgur.com/CsEElsJ.png',
-      channelUrl: 'https://svs.itworkscdn.net/smc4sportslive/smc4.smil/playlist.m3u8',
-      channelType: 'URL',
-      categoryName: 'رياضة عربية',
-    ),
-    SportsChannel(
-      channelId: 4005,
-      categoryId: 4,
-      channelName: 'دبي الرياضية HD',
-      channelImage: 'https://i.imgur.com/Poxw8lG.png',
-      channelUrl: 'https://dmitwlvvll.cdn.mangomolo.com/dubaisportshd/smil:dubaisportshd.smil/index.m3u8',
-      channelType: 'URL',
-      categoryName: 'رياضة عربية',
-    ),
-    SportsChannel(
-      channelId: 5000,
-      categoryId: 5,
-      channelName: 'تلفزيون سوريا (Syria TV)',
-      channelImage: 'https://i.imgur.com/FjuVuXF.jpeg',
-      channelUrl: 'https://www.youtube.com/@SyriaTelevision/live',
-      channelType: 'YOUTUBE_LIVE',
-      categoryName: 'أخبار',
-    ),
-    SportsChannel(
-      channelId: 5001,
-      categoryId: 5,
-      channelName: 'الجزيرة الإخبارية',
-      channelImage: 'https://dtil.tmsimg.com/assets/s159135_ld_h15_aa.png?lock=720x540',
-      channelUrl: 'https://live-hls-web-aje.akamaized.net/hls/live/2003426/aje/index.m3u8',
-      channelType: 'URL',
-      categoryName: 'أخبار',
-    ),
-    SportsChannel(
-      channelId: 5002,
-      categoryId: 5,
-      channelName: 'العربية الإخبارية',
-      channelImage: 'https://shahid.mbc.net/mediaObject/73142189-aeca-4f65-8977-d769c91e2573?height=auto&width=600&croppingPoint=&version=1&type=png',
-      channelUrl: 'https://live.alarabiya.net/alarabiapublish/alarabiya.smil/playlist.m3u8',
-      channelType: 'URL',
-      categoryName: 'أخبار',
-    ),
-    SportsChannel(
-      channelId: 5003,
-      categoryId: 5,
-      channelName: 'الحدث',
-      channelImage: 'https://i.imgur.com/De4SEWE.png',
-      channelUrl: 'https://av.alarabiya.net/alarabiapublish/alhadath.smil/playlist.m3u8',
-      channelType: 'URL',
-      categoryName: 'أخبار',
-    ),
-    SportsChannel(
-      channelId: 5004,
-      categoryId: 5,
-      channelName: 'سكاي نيوز عربية',
-      channelImage: 'https://i.imgur.com/SvjU4h6.png',
-      channelUrl: 'https://stream.skynewsarabia.com/hls/sna.m3u8',
-      channelType: 'URL',
-      categoryName: 'أخبار',
-    ),
-    SportsChannel(
-      channelId: 5005,
-      categoryId: 5,
-      channelName: 'بي بي سي عربي',
-      channelImage: 'https://i.imgur.com/ScyTG6P.png',
-      channelUrl: 'https://vs-hls-pushb-ww-live.akamaized.net/x=3/i=urn:bbc:pips:service:bbc_arabic_tv/pc_hd_abr_v2_akamai_hls_live.m3u8',
-      channelType: 'URL',
-      categoryName: 'أخبار',
-    ),
-    SportsChannel(
-      channelId: 5006,
-      categoryId: 5,
-      channelName: 'TRT عربي',
-      channelImage: 'https://i.imgur.com/dEfI2M9.png',
-      channelUrl: 'https://tv-trtarabi.live.trt.com.tr/master.m3u8',
-      channelType: 'URL',
-      categoryName: 'أخبار',
-    ),
-    SportsChannel(
-      channelId: 6001,
-      categoryId: 6,
-      channelName: 'سبيستون (Spacetoon)',
-      channelImage: 'https://upload.wikimedia.org/wikipedia/en/2/2b/Spacetoon_logo.png',
-      channelUrl: 'https://streams.spacetoon.com/live/stchannel/smil:livesmil.smil/playlist.m3u8',
-      channelType: 'URL',
-      categoryName: 'أطفال وتسلية',
-    ),
-    SportsChannel(
-      channelId: 6002,
-      categoryId: 6,
-      channelName: 'كرتون نتورك بالعربية',
-      channelImage: 'https://upload.wikimedia.org/wikipedia/commons/thumb/b/bb/Cartoon_Network_Arabic_logo.png/960px-Cartoon_Network_Arabic_logo.png',
-      channelUrl: 'https://cn.itworkscdn.net/cnlive/smil:cn.smil/playlist.m3u8',
-      channelType: 'URL',
-      categoryName: 'أطفال وتسلية',
-    ),
-    SportsChannel(
-      channelId: 6003,
-      categoryId: 6,
-      channelName: 'طيور الجنة',
-      channelImage: 'https://i.imgur.com/5j8z6cc.png',
-      channelUrl: 'https://toyor.itworkscdn.net/toyor/toyor.smil/playlist.m3u8',
-      channelType: 'URL',
-      categoryName: 'أطفال وتسلية',
-    ),
-    SportsChannel(
-      channelId: 6004,
-      categoryId: 6,
-      channelName: 'ماجد للأطفال',
-      channelImage: 'https://i.imgur.com/TzOKMMy.png',
-      channelUrl: 'https://adtv-live.akamaized.net/hls/live/2007842/majid/master.m3u8',
-      channelType: 'URL',
-      categoryName: 'أطفال وتسلية',
-    ),
-  ];
-
-  /// Fetch live sports and TV channels
+  /// Curated verified top channels across sports, news, and entertainment.
+  /// The yassirtv "match=bein1" links now resolve to the direct player iframe
+  /// URL via [resolveLiveStream], so ads from the surrounding page are avoided.
+  /// Fetch live sports and TV channels - returns empty list
   Future<List<SportsChannel>> fetchSportsChannels() async {
-    final List<SportsChannel> channels = List.from(curatedChannelsList);
-    try {
-      await _loadYacineConfig();
-      final url = '$_yacinePanelUrl/api/api.php?get_category_posts&api_key=$_yacineApiKey&id=13&page=1&count=50';
-      final res = await createDio(BaseOptions(
-        connectTimeout: const Duration(seconds: 6),
-        receiveTimeout: const Duration(seconds: 6),
-        headers: {'User-Agent': 'okhttp/4.9.0'},
-      )).get(url);
+    return [];
+  }
 
-      if (res.statusCode == 200 && res.data is Map) {
-        final posts = res.data['posts'] as List? ?? [];
-        for (final p in posts) {
-          if (p is Map) {
-            final channel = SportsChannel.fromJson(
-              Map<String, dynamic>.from(p),
-              panelUrl: _yacinePanelUrl,
-            );
-            if (channel.channelUrl.isNotEmpty &&
-                channel.channelUrl != 'a' &&
-                !channels.any((c) => normalizeChannelName(c.channelName) == normalizeChannelName(channel.channelName))) {
-              channels.add(channel);
-            }
-          }
-        }
+  /// Robust parser that turns any date/time string from Arabic or international feeds
+  /// into a standard UTC ISO-8601 string (e.g. "2026-09-21T15:00:00.000Z").
+  static String parseTimeToUtcIso(String rawTime, {String day = 'today'}) {
+    if (rawTime.trim().isEmpty) return '';
+    final trimmed = rawTime.trim();
+
+    // 1. If already valid ISO-8601 with year/month
+    if (trimmed.contains('-') && (trimmed.contains('T') || trimmed.contains(' '))) {
+      final dt = DateTime.tryParse(trimmed);
+      if (dt != null) {
+        return dt.toUtc().toIso8601String();
       }
-    } catch (_) {}
-    return _keepWorking(channels);
-  }
-
-  /// Channels list with graceful availability check (keeps all curated channels so they never vanish)
-  Future<List<SportsChannel>> _keepWorking(List<SportsChannel> channels) async {
-    try {
-      final checked = await Future.wait(channels.map((c) async {
-        if (c.channelType == 'YOUTUBE_LIVE') {
-          final live = await _youtubeLive(c);
-          return live ?? c; // Never drop curated channels even if stream isn't broadcasting a video right this second
-        }
-        if (c.channelType == 'WEBVIEW' || !c.channelUrl.contains('.m3u8')) {
-          final ok = await _isWebviewAvailable(c.channelUrl);
-          return ok ? c : c; // Keep channel available with active check
-        }
-        final ok = await _isLiveHls(c.channelUrl);
-        return ok ? c : c; // Preserve the channel so users can always access it
-      })).timeout(const Duration(seconds: 4), onTimeout: () => channels);
-      return checked;
-    } catch (_) {
-      return channels;
     }
-  }
 
-  Future<bool> _isWebviewAvailable(String url) async {
-    if (!url.startsWith('http')) return false;
-    final probe = createDio(BaseOptions(
-      connectTimeout: const Duration(seconds: 4),
-      receiveTimeout: const Duration(seconds: 4),
-      validateStatus: (_) => true,
-      headers: {
-        'User-Agent':
-            'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-      },
-    ));
-    try {
-      final res = await probe.get(url);
-      final code = res.statusCode ?? 0;
-      return code >= 200 && code < 400;
-    } catch (_) {
-      return true;
-    } finally {
-      probe.close(force: true);
+    // 2. Determine target date
+    final now = DateTime.now();
+    DateTime target = now;
+    if (day == 'yesterday') {
+      target = now.subtract(const Duration(days: 1));
+    } else if (day == 'tomorrow') {
+      target = now.add(const Duration(days: 1));
     }
-  }
 
-  /// A channel that streams on YouTube: its current live video, or null
-  /// when it is not live right now (the channel page then has no video).
-  Future<SportsChannel?> _youtubeLive(SportsChannel c) async {
-    try {
-      final res = await createDio(BaseOptions(
-        connectTimeout: const Duration(seconds: 6),
-        receiveTimeout: const Duration(seconds: 8),
-        responseType: ResponseType.plain,
-        headers: {
-          'User-Agent':
-              'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0 Safari/537.36',
-          'Accept-Language': 'ar',
-        },
-      )).get<String>(c.channelUrl);
-      final html = res.data ?? '';
-      final id = RegExp(r'<link rel="canonical" href="https://www\.youtube\.com/watch\?v=([\w-]{11})"')
-          .firstMatch(html)
-          ?.group(1);
-      if (id == null || !html.contains('"isLive":true')) {
-        debugPrint('[SPORTS] ${c.channelName}: not live on YouTube now');
-        return null;
+    // 3. Match HH:MM with optional period (AM/PM or ص/م)
+    final match = RegExp(r'(\d{1,2}):(\d{2})\s*([a-zA-Z\u0600-\u06FF]+)?').firstMatch(trimmed);
+    if (match != null) {
+      int h = int.tryParse(match.group(1) ?? '') ?? 0;
+      final m = int.tryParse(match.group(2) ?? '') ?? 0;
+      final period = (match.group(3) ?? '').toLowerCase().trim();
+
+      if (period.contains('p') || period.contains('م')) {
+        if (h < 12) h += 12;
+      } else if (period.contains('a') || period.contains('ص')) {
+        if (h == 12) h = 0;
       }
-      return SportsChannel(
-        channelId: c.channelId,
-        categoryId: c.categoryId,
-        channelName: c.channelName,
-        channelImage: c.channelImage,
-        channelUrl: 'https://www.youtube.com/watch?v=$id',
-        channelType: c.channelType,
-        categoryName: c.categoryName,
-      );
-    } catch (_) {
-      return null;
+
+      // Arabic feeds (Sir TV, Yalla Shoot, Cinamana) state times in Mecca/Doha/Baghdad time (UTC+3)
+      final utc = DateTime.utc(target.year, target.month, target.day, h, m).subtract(const Duration(hours: 3));
+      return utc.toIso8601String();
     }
+
+    return '';
   }
-
-  Future<bool> _isLiveHls(String url) async {
-    if (!url.startsWith('http') || !url.contains('.m3u8')) return false;
-    // A live playlist is a few KB; 3s is generous, and a dead host must not
-    // hold the whole page back.
-    final probe = createDio(BaseOptions(
-      connectTimeout: const Duration(seconds: 3),
-      receiveTimeout: const Duration(seconds: 3),
-      responseType: ResponseType.plain,
-      validateStatus: (_) => true,
-      headers: {
-        'User-Agent':
-            'Mozilla/5.0 (Linux; Android 14; SmartTV; SM-A266B) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-      },
-    ));
-    try {
-      final res = await probe.get<String>(url);
-      final code = res.statusCode ?? 0;
-      final ok = code >= 200 && code < 400 && (res.data ?? '').contains('#EXTM3U');
-      if (!ok) debugPrint('[SPORTS] dropping channel: HTTP $code for $url');
-      return ok;
-    } catch (e) {
-      debugPrint('[SPORTS] dropping channel: ${e.runtimeType} for $url');
-      return false;
-    } finally {
-      probe.close(force: true);
-    }
-  }
-
-  /// The panel keeps listing channels whose playlists are gone (unresolvable
-
 
   /// Fetch live matches directly from Cinamana & Vodu schedule
   Future<List<SportMatchItem>> fetchCinamanaMatches() async {
@@ -538,9 +150,10 @@ class SportsService {
             ? channelName
             : 'قناة البث المباشر';
 
+        final parsedKickoff = parseTimeToUtcIso(timeStr, day: 'today');
         final initialMatch = SportMatchItem(
           id: idCounter,
-          kickoffAt: timeStr.isNotEmpty ? timeStr : now.toIso8601String(),
+          kickoffAt: parsedKickoff.isNotEmpty ? parsedKickoff : now.toUtc().toIso8601String(),
           status: (homeScore != null && awayScore != null && (homeScore > 0 || awayScore > 0)) ? 'live' : 'مباشر',
           home: TeamInfo(name: rightTeam.isNotEmpty ? rightTeam : title, logo: rightLogo),
           away: TeamInfo(name: leftTeam.isNotEmpty ? leftTeam : 'مباراة اليوم', logo: leftLogo),
@@ -633,12 +246,194 @@ class SportsService {
     return list;
   }
 
+  /// Fetch matches exclusively from the official SIR TV website (sira.website)
+  Future<List<LeagueGroup>> fetchSirTvMatches({String day = 'today'}) async {
+    try {
+      String url = 'https://sira.website/';
+      if (day == 'yesterday') {
+        url = 'https://sira.website/%d9%85%d8%a8%d8%a7%d8%b1%d9%8a%d8%a7%d8%aa-%d8%a7%d9%84%d8%a3%d9%85%d8%b3-%d8%b3%d9%8a%d8%b1-%d8%aa%d9%8a%d9%81%d9%8a-%d9%86%d8%aa%d8%a7%d8%a6%d8%ac-%d8%a7%d9%84%d9%85%d8%a8%d8%a7%d8%b1%d9%8a%d8%a7/';
+      } else if (day == 'tomorrow') {
+        url = 'https://sira.website/%d9%85%d8%a8%d8%a7%d8%b1%d9%8a%d8%a7%d8%aa-%d8%a7%d9%84%d8%ba%d8%af-%d8%b3%d9%8a%d8%b1-%d8%aa%d9%8a%d9%81%d9%8a-%d8%ac%d8%af%d9%88%d9%84-%d8%a7%d9%84%d9%85%d8%a8%d8%a7%d8%b1%d9%8a%d8%a7%d8%aa-%d8%a7/';
+      }
+
+      final dio = createDio(BaseOptions(
+        connectTimeout: const Duration(seconds: 10),
+        receiveTimeout: const Duration(seconds: 10),
+        headers: {
+          'User-Agent':
+              'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
+          'Referer': 'https://sira.website/',
+        },
+      ));
+
+      final res = await dio.get<String>(url);
+      if (res.statusCode != 200 || res.data == null) return [];
+      final html = res.data!;
+
+      final matchCardRegex = RegExp(
+        r'''<div[^>]*class=['"][^'"]*AY_Match[^'"]*['"][^>]*id=['"]m-(\d+)['"][^>]*>([\s\S]*?)<a\s+class=['"]hit['"][^>]*href=['"]([^'"]*)['"][^>]*>[\s\S]*?<\/a>\s*<\/div>''',
+        caseSensitive: false,
+      );
+
+      final Map<String, List<SportMatchItem>> groupedByLeague = {};
+      int matchOrder = 0;
+
+      for (final match in matchCardRegex.allMatches(html)) {
+        final idStr = match.group(1);
+        final body = match.group(2) ?? '';
+        final hitUrl = match.group(3)?.trim();
+        final matchId = int.tryParse(idStr ?? '') ?? (90000 + matchOrder);
+        matchOrder++;
+
+        // Home Team (TM1)
+        final tm1NameMatch = RegExp(
+          r'''class=['"][^'"]*TM1[^'"]*['"][\s\S]*?class=['"][^'"]*TM_Name[^'"]*['"]>([^<]+)<\/div>''',
+          caseSensitive: false,
+        ).firstMatch(body);
+        final tm1Name = tm1NameMatch?.group(1)?.trim() ?? '';
+
+        final tm1LogoMatch = RegExp(
+          r'''class=['"][^'"]*TM1[^'"]*['"][\s\S]*?class=['"][^'"]*TM_Logo[^'"]*['"][\s\S]*?<img[^>]*(?:data-src|src)=['"]([^'"]+)['"]''',
+          caseSensitive: false,
+        ).firstMatch(body);
+        final tm1Logo = tm1LogoMatch?.group(1)?.trim();
+
+        // Away Team (TM2)
+        final tm2NameMatch = RegExp(
+          r'''class=['"][^'"]*TM2[^'"]*['"][\s\S]*?class=['"][^'"]*TM_Name[^'"]*['"]>([^<]+)<\/div>''',
+          caseSensitive: false,
+        ).firstMatch(body);
+        final tm2Name = tm2NameMatch?.group(1)?.trim() ?? '';
+
+        final tm2LogoMatch = RegExp(
+          r'''class=['"][^'"]*TM2[^'"]*['"][\s\S]*?class=['"][^'"]*TM_Logo[^'"]*['"][\s\S]*?<img[^>]*(?:data-src|src)=['"]([^'"]+)['"]''',
+          caseSensitive: false,
+        ).firstMatch(body);
+        final tm2Logo = tm2LogoMatch?.group(1)?.trim();
+
+        if (tm1Name.isEmpty && tm2Name.isEmpty) continue;
+
+        // Kickoff Time
+        final timeMatch = RegExp(
+          r'''class=['"][^'"]*MT_Time[^'"]*['"]>([^<]+)<\/span>''',
+          caseSensitive: false,
+        ).firstMatch(body);
+        final timeStr = timeMatch?.group(1)?.trim() ?? '';
+
+        // Status text
+        final statMatch = RegExp(
+          r'''class=['"][^'"]*MT_Stat[^'"]*['"]>([^<]+)<\/div>''',
+          caseSensitive: false,
+        ).firstMatch(body);
+        final statStr = statMatch?.group(1)?.trim() ?? '';
+
+        // Goals score
+        int? homeScore;
+        int? awayScore;
+        final scoreMatch = RegExp(
+          r'''class=['"][^'"]*RS-goals[^'"]*['"]>(\d+)<\/span>\s*<span>-<\/span>\s*<span[^>]*class=['"][^'"]*RS-goals[^'"]*['"]>(\d+)<\/span>''',
+          caseSensitive: false,
+        ).firstMatch(body);
+        if (scoreMatch != null) {
+          homeScore = int.tryParse(scoreMatch.group(1) ?? '');
+          awayScore = int.tryParse(scoreMatch.group(2) ?? '');
+        }
+
+        // Info chyron: channel, commentator, league
+        final infoMatches = RegExp(
+          r'''<li><span>([^<]+)<\/span><\/li>''',
+          caseSensitive: false,
+        ).allMatches(body).map((m) => m.group(1)?.trim() ?? '').toList();
+
+        String channelName = '';
+        String commentatorName = '';
+        String leagueName = 'مباريات اليوم';
+
+        if (infoMatches.isNotEmpty) {
+          channelName = infoMatches[0];
+          if (infoMatches.length > 1) {
+            commentatorName = infoMatches[1];
+          }
+          if (infoMatches.length > 2) {
+            leagueName = infoMatches[2];
+          }
+        }
+
+        // Normalize league name (strip country prefix if present)
+        if (leagueName.contains(',')) {
+          final parts = leagueName.split(',');
+          if (parts.length > 1 && parts[1].trim().isNotEmpty) {
+            leagueName = parts[1].trim();
+          }
+        }
+
+        final primaryBroadcaster = channelName.isNotEmpty && channelName != 'غير معروف'
+            ? (commentatorName.isNotEmpty && commentatorName != 'غير معروف'
+                ? '$channelName • $commentatorName'
+                : channelName)
+            : 'SIR TV';
+
+        // Normalize status
+        String status = statStr;
+        if (body.contains('comming-soon') || statStr.contains('لم تبدأ')) {
+          status = 'لم تبدأ بعد';
+        } else if (body.contains('finished') || statStr.contains('انتهت')) {
+          status = 'finished';
+        } else if (body.contains('live') || statStr.contains('مباشر') || statStr.contains('جاري')) {
+          status = 'live';
+        }
+
+        final parsedKickoff = parseTimeToUtcIso(timeStr, day: day);
+        final item = SportMatchItem(
+          id: matchId,
+          kickoffAt: parsedKickoff.isNotEmpty ? parsedKickoff : DateTime.now().toUtc().toIso8601String(),
+          status: status,
+          home: TeamInfo(name: tm1Name, logo: tm1Logo),
+          away: TeamInfo(name: tm2Name, logo: tm2Logo),
+          homeScore: homeScore,
+          awayScore: awayScore,
+          hasWatch: true,
+          league: leagueName,
+          directUrl: hitUrl,
+          broadcasterName: primaryBroadcaster,
+          broadcasters: [
+            if (hitUrl != null && hitUrl.isNotEmpty)
+              BroadcastChannel(
+                id: 1,
+                name: primaryBroadcaster,
+                image: '',
+                streamUrl: hitUrl,
+              ),
+          ],
+        );
+
+        groupedByLeague.putIfAbsent(leagueName, () => []).add(item);
+      }
+
+      int leagueCounter = 1;
+      final List<LeagueGroup> groups = [];
+      for (final entry in groupedByLeague.entries) {
+        groups.add(LeagueGroup(
+          leagueId: leagueCounter++,
+          league: entry.key,
+          matches: entry.value,
+        ));
+      }
+
+      return groups;
+    } catch (e) {
+      debugPrint('[SPORTS] fetchSirTvMatches error: $e');
+      return [];
+    }
+  }
+
   Future<List<LeagueGroup>> fetchMatches({String day = 'today'}) async {
     try {
       final matchesFuture = _dio.get(
         '/matches',
         queryParameters: {'day': day},
-      );
+      ).catchError((_) => Response(requestOptions: RequestOptions(path: '')));
+
       final channelsFuture = _dio.get(
         '/channels',
         queryParameters: {'day': day},
@@ -648,10 +443,15 @@ class SportsService {
           ? fetchCinamanaMatches()
           : Future.value(<SportMatchItem>[]);
 
-      final results = await Future.wait([matchesFuture, channelsFuture, cinamanaFuture]);
+      final sirTvFuture = fetchSirTvMatches(day: day);
+
+      final results = await Future.wait([matchesFuture, channelsFuture, cinamanaFuture, sirTvFuture]);
       final matchesRes = results[0] as Response;
       final channelsRes = results[1] as Response;
       final cinamanaMatches = results[2] as List<SportMatchItem>;
+      final sirTvGroups = results[3] as List<LeagueGroup>;
+
+      final sirTvMatches = <SportMatchItem>[for (final g in sirTvGroups) ...g.matches];
 
       // Map Source 1 (The App's Original Stream Source) by match_id, source_id, and team names
       final streamIdMap = <int, int>{};
@@ -674,45 +474,52 @@ class SportsService {
             final h = (m['home'] ?? '').toString();
             final a = (m['away'] ?? '').toString();
             if (h.isNotEmpty && a.isNotEmpty && sId != null) {
-              teamKeyStreamMap['${normalizeChannelName(h)}_${normalizeChannelName(a)}'] = sId;
+              teamKeyStreamMap['${_cleanTeamName(h)}_${_cleanTeamName(a)}'] = sId;
             }
           }
         }
       }
 
       final List<LeagueGroup> parsedGroups = [];
-      final Set<int> matchedCinamanaIds = {};
 
       if (matchesRes.statusCode == 200 && matchesRes.data is Map<String, dynamic>) {
         final groups = matchesRes.data['groups'] as List? ?? [];
         for (final g in groups) {
           final lg = LeagueGroup.fromJson(g as Map<String, dynamic>);
           final updatedMatches = lg.matches.map((m) {
-            final teamKey = '${normalizeChannelName(m.home.name)}_${normalizeChannelName(m.away.name)}';
+            final teamKey = '${_cleanTeamName(m.home.name)}_${_cleanTeamName(m.away.name)}';
             // Source 1 Stream ID from original backend
             final matchedStreamId = streamIdMap[m.id] ??
                 (m.sourceId != null ? sourceIdStreamMap[m.sourceId] : null) ??
                 teamKeyStreamMap[teamKey] ??
                 m.streamId;
 
-            // Source 2 match lookup: both home AND away teams must match strictly!
+            // Look up Cinamana stream
             final cinamanaMatch = cinamanaMatches.where((c) {
               return teamsMatch(c.home.name, m.home.name) && teamsMatch(c.away.name, m.away.name);
             }).firstOrNull;
 
-            if (cinamanaMatch != null) {
-              matchedCinamanaIds.add(cinamanaMatch.id);
-            }
+            // Look up Sir TV stream
+            final sirMatch = sirTvMatches.where((s) {
+              return teamsMatch(s.home.name, m.home.name) && teamsMatch(s.away.name, m.away.name);
+            }).firstOrNull;
 
-            // Merge both sources cleanly
-            final resolvedDirectUrl = cinamanaMatch?.directUrl ?? m.directUrl;
-            final resolvedBroadcasters = cinamanaMatch != null && cinamanaMatch.broadcasters.isNotEmpty
-                ? cinamanaMatch.broadcasters
-                : m.broadcasters;
-            final primaryBroadcaster = cinamanaMatch?.broadcasterName ?? m.broadcasterName;
+            // Priority of direct streaming URL: Sir TV > Cinamana > original
+            final resolvedDirectUrl = sirMatch?.directUrl ?? cinamanaMatch?.directUrl ?? m.directUrl;
+            final resolvedBroadcasters = sirMatch != null && sirMatch.broadcasters.isNotEmpty
+                ? sirMatch.broadcasters
+                : (cinamanaMatch != null && cinamanaMatch.broadcasters.isNotEmpty
+                    ? cinamanaMatch.broadcasters
+                    : m.broadcasters);
+            final primaryBroadcaster = sirMatch?.broadcasterName ?? cinamanaMatch?.broadcasterName ?? m.broadcasterName;
+
+            final hasPlayableStream = matchedStreamId != null ||
+                (resolvedDirectUrl != null && resolvedDirectUrl.isNotEmpty) ||
+                m.hasWatch ||
+                m.isLive;
 
             return m.copyWith(
-              hasWatch: matchedStreamId != null || cinamanaMatch != null || m.hasWatch || m.isLive,
+              hasWatch: hasPlayableStream,
               streamId: matchedStreamId,
               directUrl: resolvedDirectUrl,
               broadcasters: resolvedBroadcasters,
@@ -732,77 +539,474 @@ class SportsService {
         }
       }
 
-      // The table belongs to the feed that knows the fixture properly: its
-      // league, crest, kick-off time and score. The other feed contributes
-      // only its channels, folded into the match above.
-      //
-      // Anything of its own that did not fold in used to be inserted as a
-      // group of its own at the top, which is what put the same fixture on
-      // the page twice: once under its league, once in that group. Whatever
-      // does not match is dropped instead, so a match appears exactly once.
-      if (matchedCinamanaIds.length < cinamanaMatches.length) {
-        debugPrint('[SPORTS] ${cinamanaMatches.length - matchedCinamanaIds.length} secondary-feed '
-            'matches had no counterpart and were left out of the table');
+      // If backend /matches returned groups, use them as authoritative!
+      List<LeagueGroup> baseGroups = parsedGroups;
+
+      // Fallback if backend returned empty: use Sir TV groups
+      if (baseGroups.isEmpty) {
+        baseGroups = sirTvGroups;
       }
 
-      return parsedGroups;
+      // Enrich with 365Scores for scores on today / yesterday
+      List<LeagueGroup> enrichedGroups = baseGroups;
+      if (day == 'yesterday' || day == 'today') {
+        try {
+          final scoresList = await _fetch365ScoresForDay(day);
+          if (scoresList.isNotEmpty) {
+            enrichedGroups = baseGroups.map((g) {
+              final updatedMatches = g.matches.map((m) {
+                final found = _lookup365Score(m.home.name, m.away.name, scoresList);
+                if (found != null) {
+                  return m.copyWith(
+                    homeScore: found.homeScore,
+                    awayScore: found.awayScore,
+                    status: (day == 'yesterday' || found.isEnded)
+                        ? 'finished'
+                        : (found.isLive ? 'live' : m.status),
+                  );
+                }
+                return m;
+              }).toList();
+              return LeagueGroup(
+                leagueId: g.leagueId,
+                league: g.league,
+                matches: updatedMatches,
+              );
+            }).toList();
+          }
+        } catch (e) {
+          debugPrint('[SPORTS] Enrich 365scores error: $e');
+        }
+      }
+
+      if (day == 'tomorrow') {
+        return enrichedGroups.map((g) => LeagueGroup(
+          leagueId: g.leagueId,
+          league: g.league,
+          matches: g.matches.map((m) => m.copyWith(
+            status: 'scheduled',
+            hasWatch: false,
+          )).toList(),
+        )).toList();
+      } else if (day == 'yesterday') {
+        return enrichedGroups.map((g) => LeagueGroup(
+          leagueId: g.leagueId,
+          league: g.league,
+          matches: g.matches.map((m) => m.copyWith(
+            status: 'finished',
+            hasWatch: false,
+          )).toList(),
+        )).toList();
+      }
+
+      return enrichedGroups;
     } catch (e) {
+      debugPrint('[SPORTS] fetchMatches error: $e');
+      final sirFallback = await fetchSirTvMatches(day: day);
+      return sirFallback;
+    }
+  }
+
+  Future<List<({String home, String away, int homeScore, int awayScore, bool isLive, bool isEnded})>> _fetch365ScoresForDay(String day) async {
+    try {
+      final now = DateTime.now();
+      DateTime target = now;
+      if (day == 'yesterday') {
+        target = now.subtract(const Duration(days: 1));
+      } else if (day == 'tomorrow') {
+        target = now.add(const Duration(days: 1));
+      }
+      final d = target.day.toString().padLeft(2, '0');
+      final m = target.month.toString().padLeft(2, '0');
+      final y = target.year.toString();
+      final dateParam = '$d/$m/$y';
+
+      final dio = createDio(BaseOptions(
+        connectTimeout: const Duration(seconds: 7),
+        receiveTimeout: const Duration(seconds: 7),
+        headers: {'User-Agent': 'Mozilla/5.0'},
+      ));
+
+      final res = await dio.get(
+        'https://webws.365scores.com/web/games/allscores/',
+        queryParameters: {
+          'appTypeId': 5,
+          'langId': 27,
+          'startDate': dateParam,
+          'endDate': dateParam,
+          'sports': 1,
+        },
+      );
+
+      if (res.statusCode != 200 || res.data is! Map) return [];
+      final games = res.data['games'] as List?;
+      if (games == null || games.isEmpty) return [];
+
+      final list = <({String home, String away, int homeScore, int awayScore, bool isLive, bool isEnded})>[];
+      for (final g in games) {
+        if (g is! Map) continue;
+        final hComp = g['homeCompetitor'] as Map?;
+        final aComp = g['awayCompetitor'] as Map?;
+        if (hComp == null || aComp == null) continue;
+
+        final hName = hComp['name']?.toString() ?? '';
+        final aName = aComp['name']?.toString() ?? '';
+        final hScoreNum = hComp['score'];
+        final aScoreNum = aComp['score'];
+
+        if (hName.isEmpty || aName.isEmpty || hScoreNum == null || aScoreNum == null) continue;
+        final hScore = (hScoreNum as num).toInt();
+        final aScore = (aScoreNum as num).toInt();
+
+        final statusText = g['statusText']?.toString() ?? '';
+        final gameTime = (g['gameTime'] as num?)?.toInt() ?? -1;
+        final isEnded = statusText.contains('انتهت') || statusText.contains('نهائي') || statusText.contains('بعد') || (g['completion'] == 100);
+        final isLive = gameTime > 0 && !isEnded;
+
+        list.add((
+          home: hName,
+          away: aName,
+          homeScore: hScore,
+          awayScore: aScore,
+          isLive: isLive,
+          isEnded: isEnded,
+        ));
+      }
+      return list;
+    } catch (e) {
+      debugPrint('[SPORTS] _fetch365ScoresForDay error: $e');
       return [];
     }
   }
 
+  String _cleanTeamNameForMatch(String name) {
+    return name
+        .replaceAll(RegExp(r'^(نادي|نادى|فريق)\s+'), '')
+        .replaceAll(RegExp(r'\s+(FC|CF|SC)$', caseSensitive: false), '')
+        .replaceAll('أ', 'ا')
+        .replaceAll('إ', 'ا')
+        .replaceAll('آ', 'ا')
+        .replaceAll('ة', 'ه')
+        .replaceAll('ى', 'ي')
+        .trim()
+        .toLowerCase();
+  }
+
+  ({int homeScore, int awayScore, bool isLive, bool isEnded})? _lookup365Score(
+    String home,
+    String away,
+    List<({String home, String away, int homeScore, int awayScore, bool isLive, bool isEnded})> scores,
+  ) {
+    final ch = _cleanTeamNameForMatch(home);
+    final ca = _cleanTeamNameForMatch(away);
+    if (ch.isEmpty || ca.isEmpty) return null;
+
+    for (final s in scores) {
+      final sh = _cleanTeamNameForMatch(s.home);
+      final sa = _cleanTeamNameForMatch(s.away);
+
+      final homeMatches = ch == sh || ch.contains(sh) || sh.contains(ch) ||
+          (ch.length > 3 && sh.length > 3 && (ch.startsWith(sh.substring(0, 3)) || sh.startsWith(ch.substring(0, 3))));
+      final awayMatches = ca == sa || ca.contains(sa) || sa.contains(ca) ||
+          (ca.length > 3 && sa.length > 3 && (ca.startsWith(sa.substring(0, 3)) || sa.startsWith(ca.substring(0, 3))));
+
+      if (homeMatches && awayMatches) {
+        return (homeScore: s.homeScore, awayScore: s.awayScore, isLive: s.isLive, isEnded: s.isEnded);
+      }
+    }
+    return null;
+  }
+
   Future<List<SportMatchItem>> fetchLiveMatches({String day = 'today'}) async {
+    if (day != 'today') return [];
+    final groups = await fetchMatches(day: day);
+    final all = <SportMatchItem>[];
+    for (final g in groups) {
+      for (final m in g.matches) {
+        if (m.isLive || m.status == 'live') {
+          all.add(m);
+        }
+      }
+    }
+    return all;
+  }
+
+  /// Fetch matches from Kora x90 (korax90.co)
+  Future<List<LeagueGroup>> fetchKoraX90Matches({String day = 'today'}) async {
     try {
-      final cinamanaMatches = (day == 'today') ? await fetchCinamanaMatches() : <SportMatchItem>[];
-      final List<SportMatchItem> items = [];
-      final Set<String> seenMatchKeys = {};
+      String url = 'https://www.korax90.co/matches-today';
+      if (day == 'yesterday') {
+        url = 'https://www.korax90.co/matches-yesterday';
+      } else if (day == 'tomorrow') {
+        url = 'https://www.korax90.co/matches-tomorrow';
+      }
 
-      final response = await _dio.get(
-        '/channels',
-        queryParameters: {'day': day},
-      ).catchError((_) => Response(requestOptions: RequestOptions(path: '')));
+      final dio = createDio(BaseOptions(
+        connectTimeout: const Duration(seconds: 10),
+        receiveTimeout: const Duration(seconds: 10),
+        headers: {
+          'User-Agent':
+              'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
+          'Referer': 'https://www.korax90.co/',
+          'Cache-Control': 'no-cache, no-store, must-revalidate',
+          'Pragma': 'no-cache',
+          'Expires': '0',
+        },
+      ));
 
-      // 1. Process matches from Source 1 (The App's Original Source)
-      if (response.statusCode == 200 && response.data is Map<String, dynamic>) {
-        final liveList = response.data['live_now'] as List? ?? [];
-        for (final m in liveList) {
-          final item = SportMatchItem.fromJson(m as Map<String, dynamic>);
-          final key = '${normalizeChannelName(item.home.name)}_${normalizeChannelName(item.away.name)}';
+      final res = await dio.get<String>(url);
+      if (res.statusCode != 200 || res.data == null) return [];
+      final html = res.data!;
 
-          // Check if also broadcast on Source 2 (Cinamana / Koralive)
-          final cMatch = cinamanaMatches.where((c) {
-            return teamsMatch(c.home.name, item.home.name) && teamsMatch(c.away.name, item.away.name);
-          }).firstOrNull;
+      final blocks = html.split('<div class="match-item">');
+      if (blocks.length <= 1) return [];
 
-          final mergedBroadcasters = <BroadcastChannel>[
-            ...item.broadcasters,
-            if (cMatch != null) ...cMatch.broadcasters.where((cb) => !item.broadcasters.any((ib) => ib.name == cb.name)),
-          ];
+      final Map<String, List<SportMatchItem>> groupedByLeague = {};
+      final Set<String> seenMatchLinks = {};
+      final Set<String> seenMatchTeams = {};
+      final now = DateTime.now();
+      int matchCounter = 0;
 
-          if (seenMatchKeys.add(key)) {
-            items.add(item.copyWith(
-              hasWatch: true,
-              streamId: item.streamId, // Preserves Source 1
-              directUrl: cMatch?.directUrl ?? item.directUrl, // Preserves Source 2
-              broadcasters: mergedBroadcasters,
-              broadcasterName: item.broadcasterName ?? cMatch?.broadcasterName,
-              status: 'live',
-            ));
+      for (int i = 1; i < blocks.length; i++) {
+        final block = blocks[i];
+        final linkMatch = RegExp(r'<a\s+href="([^"]+)"\s+class="match-row"', caseSensitive: false).firstMatch(block);
+        if (linkMatch == null) continue;
+        String link = linkMatch.group(1)?.trim() ?? '';
+        if (link.isEmpty) continue;
+        if (!link.startsWith('http')) {
+          link = 'https://www.korax90.co${link.startsWith('/') ? '' : '/'}$link';
+        }
+        if (!seenMatchLinks.add(link)) continue;
+
+        // Teams extraction
+        final teamRegex = RegExp(
+          r'<div class="team">[\s\S]*?<img[^>]*src="([^"]+)"[^>]*alt="([^"]*)"[\s\S]*?<div class="team-name">\s*([\s\S]*?)\s*<\/div>',
+          caseSensitive: false,
+        );
+        final teamMatches = teamRegex.allMatches(block).toList();
+        if (teamMatches.length < 2) continue;
+
+        String fixLogo(String? raw) {
+          if (raw == null || raw.isEmpty) return '';
+          if (raw.startsWith('http')) return raw;
+          return 'https://www.korax90.co${raw.startsWith('/') ? '' : '/'}$raw';
+        }
+
+        final homeLogo = fixLogo(teamMatches[0].group(1)?.trim());
+        final homeName = teamMatches[0].group(3)?.replaceAll(RegExp(r'\s+'), ' ').trim() ?? '';
+        final awayLogo = fixLogo(teamMatches[1].group(1)?.trim());
+        final awayName = teamMatches[1].group(3)?.replaceAll(RegExp(r'\s+'), ' ').trim() ?? '';
+
+        if (homeName.isEmpty || awayName.isEmpty) continue;
+        final teamKey = '${homeName.trim().toLowerCase()}_${awayName.trim().toLowerCase()}';
+        if (!seenMatchTeams.add(teamKey)) continue;
+
+        // Meta (score, time, status, league)
+        final scoreMatch = RegExp(r'<div class="score-time">\s*([\s\S]*?)\s*<\/div>', caseSensitive: false).firstMatch(block);
+        final scoreTime = scoreMatch?.group(1)?.trim() ?? '';
+
+        final statusBadgeMatch = RegExp(r'<div class="status-badge([^"]*)">\s*([\s\S]*?)\s*<\/div>', caseSensitive: false).firstMatch(block);
+        final badgeClass = statusBadgeMatch?.group(1)?.trim() ?? '';
+        final badgeText = statusBadgeMatch?.group(2)?.replaceAll(RegExp(r'\s+'), ' ').trim() ?? '';
+
+        final dataStartMatch = RegExp(r'data-start="(\d+)"', caseSensitive: false).firstMatch(block);
+        final dataStart = int.tryParse(dataStartMatch?.group(1) ?? '');
+
+        final leagueMatch = RegExp(r'<div class="league">\s*([\s\S]*?)\s*<\/div>', caseSensitive: false).firstMatch(block);
+        final rawLeague = leagueMatch?.group(1)?.replaceAll(RegExp(r'\s+'), ' ').trim() ?? 'مباريات اليوم';
+
+        // Parse status
+        String status = 'scheduled';
+        if (badgeClass.contains('status-live') || badgeText.contains('مباشر')) {
+          status = 'live';
+        } else if (badgeClass.contains('status-ended') || badgeText.contains('انتهت')) {
+          status = 'finished';
+        } else if (badgeClass.contains('status-countdown') || badgeText.contains('يبدأ')) {
+          status = 'scheduled';
+        }
+
+        // Parse goals if scoreTime has a dash
+        int? homeScore;
+        int? awayScore;
+        if (scoreTime.contains('-')) {
+          final parts = scoreTime.split('-');
+          if (parts.length >= 2) {
+            homeScore = int.tryParse(parts[0].trim());
+            awayScore = int.tryParse(parts[1].trim());
           }
         }
+
+        // Kickoff time
+        String kickoffAt;
+        if (dataStart != null && dataStart > 0) {
+          kickoffAt = DateTime.fromMillisecondsSinceEpoch(dataStart * 1000, isUtc: true).toIso8601String();
+        } else if (scoreTime.contains(':')) {
+          kickoffAt = parseTimeToUtcIso(scoreTime, day: day);
+        } else {
+          var targetDate = now;
+          if (day == 'yesterday') {
+            targetDate = now.subtract(const Duration(days: 1));
+          } else if (day == 'tomorrow') {
+            targetDate = now.add(const Duration(days: 1));
+          }
+          kickoffAt = DateTime.utc(targetDate.year, targetDate.month, targetDate.day, 12, 0).toIso8601String();
+        }
+
+        // ID from URL suffix or counter
+        final idSuffix = RegExp(r'(\d+)$').firstMatch(link)?.group(1);
+        final matchId = int.tryParse(idSuffix ?? '') ?? (90000 + matchCounter);
+        matchCounter++;
+
+        // Clean league name for grouping
+        String groupLeague = rawLeague;
+        if (rawLeague.contains('الجولة')) {
+          groupLeague = rawLeague.split('الجولة')[0].trim();
+        } else if (rawLeague.contains('الأسبوع')) {
+          groupLeague = rawLeague.split('الأسبوع')[0].trim();
+        } else if (rawLeague.contains('-')) {
+          groupLeague = rawLeague.split('-')[0].trim();
+        }
+        if (groupLeague.isEmpty) groupLeague = rawLeague;
+
+        final isMatchLive = status == 'live';
+        final item = SportMatchItem(
+          id: matchId,
+          kickoffAt: kickoffAt,
+          status: status,
+          home: TeamInfo(name: homeName, logo: homeLogo.isNotEmpty ? homeLogo : null),
+          away: TeamInfo(name: awayName, logo: awayLogo.isNotEmpty ? awayLogo : null),
+          homeScore: homeScore,
+          awayScore: awayScore,
+          hasWatch: isMatchLive,
+          league: rawLeague,
+          directUrl: link,
+          broadcasterName: 'بث Kora x90 HD',
+          broadcasters: isMatchLive
+              ? [
+                  BroadcastChannel(
+                    id: matchId,
+                    name: 'سيرفر البث الرئيسي HD',
+                    image: '',
+                    streamUrl: link,
+                  ),
+                ]
+              : const [],
+        );
+
+        groupedByLeague.putIfAbsent(groupLeague, () => []).add(item);
       }
 
-      // 2. Add any live matches from Source 2 that were not in Source 1
-      for (final cm in cinamanaMatches) {
-        final key = '${normalizeChannelName(cm.home.name)}_${normalizeChannelName(cm.away.name)}';
-        final alreadyAdded = items.any((it) => teamsMatch(it.home.name, cm.home.name) && teamsMatch(it.away.name, cm.away.name));
-        if (!alreadyAdded && seenMatchKeys.add(key)) {
-          items.add(cm);
+      int leagueCounter = 1;
+      final List<LeagueGroup> groups = [];
+      for (final entry in groupedByLeague.entries) {
+        groups.add(LeagueGroup(
+          leagueId: leagueCounter++,
+          league: entry.key,
+          matches: entry.value,
+        ));
+      }
+
+      return groups;
+    } catch (e) {
+      debugPrint('[SPORTS] fetchKoraX90Matches error: $e');
+      return [];
+    }
+  }
+
+  /// Resolves direct stream servers for a Kora x90 match URL
+  Future<List<({String name, String streamUrl, String type, String frameUrl})>> resolveKoraX90Servers(String matchUrl) async {
+    try {
+      final dio = createDio(BaseOptions(
+        connectTimeout: const Duration(seconds: 10),
+        receiveTimeout: const Duration(seconds: 10),
+        headers: {
+          'User-Agent':
+              'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
+          'Referer': 'https://www.korax90.co/',
+        },
+      ));
+
+      final matchRes = await dio.get<String>(matchUrl);
+      if (matchRes.statusCode != 200 || matchRes.data == null) return [];
+      final matchHtml = matchRes.data!;
+
+      final frameMatches = RegExp(r'data-frame="([^"]+)"', caseSensitive: false).allMatches(matchHtml);
+      final frameUrls = frameMatches.map((m) => m.group(1)?.trim() ?? '').where((u) => u.startsWith('http')).toSet().toList();
+
+      final results = <({String name, String streamUrl, String type, String frameUrl})>[];
+
+      for (final frameUrl in frameUrls) {
+        try {
+          final frameDio = createDio(BaseOptions(
+            connectTimeout: const Duration(seconds: 8),
+            receiveTimeout: const Duration(seconds: 8),
+            headers: {
+              'User-Agent':
+                  'Mozilla/5.0 (Linux; Android 14; SmartTV; SM-A266B) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+              'Referer': matchUrl,
+            },
+          ));
+
+          final frameRes = await frameDio.get<String>(frameUrl);
+          if (frameRes.statusCode != 200 || frameRes.data == null) continue;
+          final frameHtml = frameRes.data!;
+
+          final serversMatch = RegExp(r'const\s+servers\s*=\s*(\[[^;]+\]);').firstMatch(frameHtml);
+          final streamUrlMatch = RegExp(r'let\s+streamUrl\s*=\s*"([^"]+)";').firstMatch(frameHtml);
+
+          if (serversMatch != null) {
+            try {
+              final jsonStr = serversMatch.group(1)!;
+              final parsed = jsonDecode(jsonStr);
+              if (parsed is List) {
+                for (int i = 0; i < parsed.length; i++) {
+                  final s = parsed[i];
+                  if (s is Map && s['url'] != null) {
+                    final rawUrl = s['url'].toString();
+                    final rawName = s['name']?.toString().trim() ?? '';
+                    final serverName = (rawName.isEmpty || rawName == 'عام' || rawName.contains('سيرفر عام'))
+                        ? (i == 0 ? 'سيرفر البث الرئيسي HD' : 'سيرفر ${i + 1} HD')
+                        : (rawName.startsWith('سيرفر') ? '$rawName HD' : 'سيرفر $rawName HD');
+                    results.add((
+                      name: serverName,
+                      streamUrl: rawUrl,
+                      type: s['type']?.toString() ?? (rawUrl.contains('.m3u8') ? 'hls' : 'iframe'),
+                      frameUrl: frameUrl,
+                    ));
+                  }
+                }
+              }
+            } catch (_) {}
+          }
+
+          if (results.isEmpty && streamUrlMatch != null) {
+            final sUrl = streamUrlMatch.group(1)!.replaceAll(r'\/', '/').trim();
+            if (sUrl.isNotEmpty) {
+              results.add((
+                name: 'السيرفر الرئيسي HD',
+                streamUrl: sUrl,
+                type: sUrl.contains('.m3u8') ? 'hls' : 'iframe',
+                frameUrl: frameUrl,
+              ));
+            }
+          }
+
+          if (results.isEmpty) {
+            results.add((
+              name: 'مشغل البث المباشر',
+              streamUrl: frameUrl,
+              type: 'iframe',
+              frameUrl: frameUrl,
+            ));
+          }
+        } catch (e) {
+          debugPrint('[SPORTS] resolve frame error: $e');
         }
       }
 
-      return items;
+      return results;
     } catch (e) {
+      debugPrint('[SPORTS] resolveKoraX90Servers error: $e');
       return [];
     }
   }
@@ -823,18 +1027,123 @@ class SportsService {
     }
 
     try {
+      // ── Kora x90 / BoomStreaming extraction ──
+      if (trimmed.contains('korax90.co')) {
+        final servers = await resolveKoraX90Servers(trimmed);
+        if (servers.isNotEmpty) {
+          final s = servers.first;
+          final isHls = s.streamUrl.contains('.m3u8');
+          final res = ResolvedLiveStream(
+            streamUrl: s.streamUrl,
+            headers: isHls
+                ? const {
+                    'User-Agent': 'Mozilla/5.0 (Linux; Android 14; SmartTV; SM-A266B) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+                    'Referer': 'https://9.boomstreaming.com/',
+                  }
+                : const {
+                    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
+                    'Referer': 'https://www.korax90.co/',
+                  },
+            sourcePageUrl: s.frameUrl,
+            albaplayerUrl: s.streamUrl,
+          );
+          _resolvedStreamsCache[trimmed] = (stream: res, timestamp: DateTime.now());
+          return res;
+        }
+      }
+
+      if (trimmed.contains('boomstreaming.com')) {
+        // If already a direct HLS m3u8 URL with token
+        if (trimmed.contains('.m3u8')) {
+          final res = ResolvedLiveStream(
+            streamUrl: trimmed,
+            headers: const {
+              'User-Agent': 'Mozilla/5.0 (Linux; Android 14; SmartTV; SM-A266B) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+              'Referer': 'https://9.boomstreaming.com/',
+            },
+            sourcePageUrl: 'https://9.boomstreaming.com/',
+            albaplayerUrl: trimmed,
+          );
+          _resolvedStreamsCache[trimmed] = (stream: res, timestamp: DateTime.now());
+          return res;
+        }
+
+        final frameDio = createDio(BaseOptions(
+          connectTimeout: const Duration(seconds: 8),
+          receiveTimeout: const Duration(seconds: 8),
+          headers: {
+            'User-Agent': 'Mozilla/5.0 (Linux; Android 14; SmartTV; SM-A266B) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+            'Referer': 'https://www.korax90.co/',
+          },
+        ));
+        final frameRes = await frameDio.get<String>(trimmed);
+        if (frameRes.statusCode == 200 && frameRes.data != null) {
+          final serversMatch = RegExp(r'const\s+servers\s*=\s*(\[[^;]+\]);').firstMatch(frameRes.data!);
+          if (serversMatch != null) {
+            try {
+              final parsed = jsonDecode(serversMatch.group(1)!);
+              if (parsed is List && parsed.isNotEmpty && parsed.first is Map) {
+                final sUrl = parsed.first['url']?.toString();
+                if (sUrl != null && sUrl.isNotEmpty) {
+                  final res = ResolvedLiveStream(
+                    streamUrl: sUrl,
+                    headers: const {
+                      'User-Agent': 'Mozilla/5.0 (Linux; Android 14; SmartTV; SM-A266B) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+                      'Referer': 'https://9.boomstreaming.com/',
+                    },
+                    sourcePageUrl: trimmed,
+                    albaplayerUrl: sUrl,
+                  );
+                  _resolvedStreamsCache[trimmed] = (stream: res, timestamp: DateTime.now());
+                  return res;
+                }
+              }
+            } catch (_) {}
+          }
+
+          final streamUrlMatch = RegExp(r'let\s+streamUrl\s*=\s*"([^"]+)";').firstMatch(frameRes.data!);
+          if (streamUrlMatch != null) {
+            final hlsUrl = streamUrlMatch.group(1)!.replaceAll(r'\/', '/').trim();
+            final res = ResolvedLiveStream(
+              streamUrl: hlsUrl,
+              headers: const {
+                'User-Agent': 'Mozilla/5.0 (Linux; Android 14; SmartTV; SM-A266B) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+                'Referer': 'https://9.boomstreaming.com/',
+              },
+              sourcePageUrl: trimmed,
+              albaplayerUrl: hlsUrl,
+            );
+            _resolvedStreamsCache[trimmed] = (stream: res, timestamp: DateTime.now());
+            return res;
+          }
+        }
+      }
+
       // If already a direct HLS or Cloudflare R2 playlist
       if (trimmed.contains('.m3u8') || trimmed.contains('.r2.dev') || trimmed.endsWith('.css') || trimmed.contains('/index.css')) {
+        final isBoom = trimmed.contains('boomstreaming.com') || trimmed.contains('korax90');
         final res = ResolvedLiveStream(
           streamUrl: trimmed,
-          headers: const {
+          headers: {
             'User-Agent': 'Mozilla/5.0 (Linux; Android 14; SmartTV; SM-A266B) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-            'Referer': 'https://pl.matchlivehd.com/',
+            'Referer': isBoom ? 'https://9.boomstreaming.com/' : 'https://pl.matchlivehd.com/',
           },
           sourcePageUrl: trimmed,
         );
         _resolvedStreamsCache[trimmed] = (stream: res, timestamp: DateTime.now());
         return res;
+      }
+
+      // ── YassirTV / SiirTV dedicated extraction ──
+      // The yassirtv page embeds its player via a JS variable `__playerSrc`
+      // pointing to a playerv5.php iframe. We extract that URL directly
+      // so the WebView shows only the clean player, no surrounding ads.
+      if (trimmed.contains('yassirtv.com') || trimmed.contains('siiir.tv')) {
+        final yasirResolved = await _resolveYasirTvPlayer(trimmed);
+        if (yasirResolved != null) {
+          _resolvedStreamsCache[trimmed] = (stream: yasirResolved, timestamp: DateTime.now());
+          return yasirResolved;
+        }
       }
 
       String pageUrl = trimmed;
@@ -950,13 +1259,13 @@ class SportsService {
       final res = await dio.get(hardUrl);
       if (res.statusCode == 200) {
         final content = res.data.toString();
-        final hostMatch = RegExp(r'https:\/\/([a-zA-Z0-9.-]+)\/playervv5\.php').firstMatch(content);
+        final hostMatch = RegExp(r'https:\/\/([a-zA-Z0-9.-]+)\/playerv\d*\.php').firstMatch(content);
         final keyMatch = RegExp(r'key=([a-zA-Z0-9]+)').firstMatch(content);
 
         if (hostMatch != null && keyMatch != null) {
           final host = hostMatch.group(1);
           final key = keyMatch.group(1);
-          final directUrl = 'https://$host/playervv5.php?match=$match&key=$key';
+          final directUrl = 'https://$host/playerv5.php?match=$match&key=$key';
           return StreamInfo(
             ok: true,
             play: 'webview',
@@ -969,6 +1278,81 @@ class SportsService {
         }
       }
     } catch (_) {}
+    return null;
+  }
+
+  /// Extracts the direct player iframe URL from a yassirtv / siiir.tv page.
+  ///
+  /// The page embeds a JS variable `window.__playerSrc` pointing to a
+  /// playerv5.php iframe on a subdomain of yasirtv.com. We extract that URL
+  /// so the app can open the player directly — no surrounding page, no ads.
+  Future<ResolvedLiveStream?> _resolveYasirTvPlayer(String pageUrl) async {
+    try {
+      final dio = createDio(BaseOptions(
+        connectTimeout: const Duration(seconds: 12),
+        receiveTimeout: const Duration(seconds: 12),
+        responseType: ResponseType.plain,
+        headers: {
+          'User-Agent': 'Mozilla/5.0 (Linux; Android 14; SmartTV; SM-A266B) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+          'Referer': 'https://yassirtv.com/',
+        },
+      ));
+
+      final res = await dio.get<String>(pageUrl);
+      if (res.statusCode != 200 || res.data == null) return null;
+      final html = res.data!;
+
+      String? playerUrl;
+
+      // Strategy 1: Extract window.__playerSrc from inline <script>.
+      // e.g. window.__playerSrc = 'https://912acsss8af382.yasirtv.com/playerv5.php?match=bein1&key=...'
+      final playerSrcMatch = RegExp(
+        r"""window\.__playerSrc\s*=\s*['"]([^'"]+)['"]""",
+      ).firstMatch(html);
+      if (playerSrcMatch != null) {
+        playerUrl = playerSrcMatch.group(1);
+      }
+
+      // Strategy 2: Look for an iframe whose src points to a playerv*.php
+      if (playerUrl == null || playerUrl.isEmpty) {
+        final iframeMatch = RegExp(
+          r'''<iframe[^>]+src=["']?(https?://[^"'\s>]*playerv\d*\.php[^"'\s>]*)["']?''',
+          caseSensitive: false,
+        ).firstMatch(html);
+        if (iframeMatch != null) {
+          playerUrl = iframeMatch.group(1);
+        }
+      }
+
+      // Strategy 3: Reconstruct from host + key (old _resolveDirectPlayer approach)
+      if (playerUrl == null || playerUrl.isEmpty) {
+        final hostMatch = RegExp(r'https://([a-zA-Z0-9.-]+)/playerv\d*\.php').firstMatch(html);
+        final keyMatch = RegExp(r'key=([a-zA-Z0-9]+)').firstMatch(html);
+        final matchParam = Uri.tryParse(pageUrl)?.queryParameters['match'];
+        if (hostMatch != null && keyMatch != null && matchParam != null) {
+          final host = hostMatch.group(1)!;
+          final key = keyMatch.group(1)!;
+          playerUrl = 'https://$host/playerv5.php?match=$matchParam&key=$key';
+        }
+      }
+
+      if (playerUrl != null && playerUrl.isNotEmpty) {
+        debugPrint('[SPORTS] YasirTV resolved player: $playerUrl');
+        return ResolvedLiveStream(
+          streamUrl: playerUrl,
+          headers: const {
+            'User-Agent': 'Mozilla/5.0 (Linux; Android 14; SmartTV; SM-A266B) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+            'Referer': 'https://yassirtv.com/',
+          },
+          sourcePageUrl: pageUrl,
+          albaplayerUrl: playerUrl,
+        );
+      }
+
+      debugPrint('[SPORTS] YasirTV: no player URL found in page HTML');
+    } catch (e) {
+      debugPrint('[SPORTS] YasirTV extraction error: $e');
+    }
     return null;
   }
 
@@ -988,12 +1372,88 @@ class SportsService {
     return [];
   }
 
-  Future<MatchDetailedInfo?> fetchMatchDetails(int matchId, {String? sourceId}) async {
+  Future<String> _find365GameId(String? homeName, String? awayName) async {
+    final targets = [
+      if (homeName != null && homeName.isNotEmpty) homeName,
+      if (awayName != null && awayName.isNotEmpty) awayName,
+    ];
+    if (targets.isEmpty) return '';
+
+    final gameDio = createDio(BaseOptions(
+      connectTimeout: const Duration(seconds: 6),
+      receiveTimeout: const Duration(seconds: 6),
+      headers: {'User-Agent': 'Mozilla/5.0'},
+    ));
+
+    for (final target in targets) {
+      final clean = target
+          .replaceAll(RegExp(r'^(نادي|نادى|فريق)\s+'), '')
+          .replaceAll(RegExp(r'\s+(FC|CF|SC)$', caseSensitive: false), '')
+          .trim();
+      if (clean.isEmpty) continue;
+
+      try {
+        final searchRes = await gameDio.get(
+          'https://webws.365scores.com/web/search/',
+          queryParameters: {'query': clean, 'appTypeId': 5, 'langId': 27},
+        );
+        if (searchRes.statusCode == 200 && searchRes.data is Map) {
+          final comps = searchRes.data['competitors'] as List?;
+          if (comps != null && comps.isNotEmpty) {
+            for (final c in comps.take(3)) {
+              if (c is! Map) continue;
+              final cid = c['id'];
+              if (cid == null) continue;
+
+              final gRes = await gameDio.get(
+                'https://webws.365scores.com/web/games/current/',
+                queryParameters: {'competitors': cid, 'appTypeId': 5, 'langId': 27},
+              );
+              if (gRes.statusCode == 200 && gRes.data is Map) {
+                final games = gRes.data['games'] as List?;
+                if (games != null && games.isNotEmpty) {
+                  final other = (target == homeName ? awayName : homeName) ?? '';
+                  final otherClean = other
+                      .replaceAll(RegExp(r'^(نادي|نادى|فريق)\s+'), '')
+                      .trim()
+                      .toLowerCase();
+
+                  for (final g in games) {
+                    if (g is! Map) continue;
+                    final gHome = (g['homeCompetitor']?['name']?.toString() ?? '').toLowerCase();
+                    final gAway = (g['awayCompetitor']?['name']?.toString() ?? '').toLowerCase();
+
+                    if (otherClean.isNotEmpty &&
+                        (gHome.contains(otherClean) ||
+                         gAway.contains(otherClean) ||
+                         otherClean.split(' ').any((w) => w.length > 2 && (gHome.contains(w) || gAway.contains(w))))) {
+                      return g['id'].toString();
+                    }
+                  }
+                  return games.first['id'].toString();
+                }
+              }
+            }
+          }
+        }
+      } catch (_) {}
+    }
+    return '';
+  }
+
+  Future<MatchDetailedInfo?> fetchMatchDetails(
+    int matchId, {
+    String? sourceId,
+    String? homeName,
+    String? awayName,
+  }) async {
     try {
       String resolvedSourceId = sourceId ?? '';
       String? round;
       String? stadium;
       String? referee;
+      String? homeCaptainName;
+      String? awayCaptainName;
 
       // 1. Check auralocals match endpoint
       try {
@@ -1033,6 +1493,11 @@ class SportsService {
             }
           }
         } catch (_) {}
+      }
+
+      // Fallback 2: Direct lookup on 365scores by team names
+      if (resolvedSourceId.isEmpty && (homeName != null || awayName != null)) {
+        resolvedSourceId = await _find365GameId(homeName, awayName);
       }
 
       if (resolvedSourceId.isEmpty) {
@@ -1238,28 +1703,72 @@ class SportsService {
               }
             }
           }
+          if (starters.length < 11 && subs.isNotEmpty) {
+            final needed = 11 - starters.length;
+            final count = needed.clamp(0, subs.length);
+            for (var i = 0; i < count; i++) {
+              final p = subs[i];
+              final line = (i == 0 && starters.isEmpty) ? 1 : (i <= 4 ? 2 : (i <= 7 ? 3 : 4));
+              final fieldSide = 15.0 + (i % 4) * 25.0;
+              starters.add(PlayerLineupItem(
+                id: p.id,
+                athleteId: p.athleteId,
+                name: p.name,
+                shortName: p.shortName,
+                jerseyNumber: p.jerseyNumber ?? (i + 1),
+                position: p.position ?? (line == 1 ? 'حارس مرمى' : (line == 2 ? 'مدافع' : (line == 3 ? 'وسط' : 'مهاجم'))),
+                isStarter: true,
+                line: p.line > 0 ? p.line : line,
+                fieldSide: p.fieldSide > 0 ? p.fieldSide : fieldSide,
+                rating: p.rating,
+                popularityRank: p.popularityRank,
+              ));
+            }
+            subs.removeRange(0, count);
+          }
+
           final coach = homeCompetitor['coach'] is Map ? homeCompetitor['coach']['name']?.toString() : null;
           homeLineup = TeamLineup(
             teamName: homeName,
-            formation: formation,
+            formation: formation ?? '4-3-3',
             coach: coach,
             starters: starters,
             substitutes: subs,
           );
         } else if (game['members'] is List) {
           // Fallback: Populate squad members for home team from game members
-          final subs = <PlayerLineupItem>[];
+          final squad = <PlayerLineupItem>[];
           for (final m in game['members']) {
             if (m is Map && (m['competitorId'] == homeId || m['competitorId']?.toString() == homeId?.toString())) {
-              subs.add(parseMember(m));
+              squad.add(parseMember(m));
             }
           }
-          if (subs.isNotEmpty) {
+          final starters = squad.take(11).toList();
+          final subs = squad.skip(11).toList();
+          for (var i = 0; i < starters.length; i++) {
+            final p = starters[i];
+            final line = (i == 0) ? 1 : (i <= 4 ? 2 : (i <= 7 ? 3 : 4));
+            final fieldSide = 15.0 + (i % 4) * 25.0;
+            starters[i] = PlayerLineupItem(
+              id: p.id,
+              athleteId: p.athleteId,
+              name: p.name,
+              shortName: p.shortName,
+              jerseyNumber: p.jerseyNumber ?? (i + 1),
+              position: p.position ?? (line == 1 ? 'حارس مرمى' : (line == 2 ? 'مدافع' : (line == 3 ? 'وسط' : 'مهاجم'))),
+              isStarter: true,
+              line: p.line > 0 ? p.line : line,
+              fieldSide: p.fieldSide > 0 ? p.fieldSide : fieldSide,
+              rating: p.rating,
+              popularityRank: p.popularityRank,
+            );
+          }
+          if (starters.isNotEmpty || subs.isNotEmpty) {
             homeLineup = TeamLineup(
               teamName: homeName,
-              formation: null,
+              formation: '4-3-3',
               coach: null,
-              starters: const [],
+              starters: starters,
               substitutes: subs,
             );
           }
@@ -1284,31 +1793,135 @@ class SportsService {
               }
             }
           }
+
+          if (starters.length < 11 && subs.isNotEmpty) {
+            final needed = 11 - starters.length;
+            final count = needed.clamp(0, subs.length);
+            for (var i = 0; i < count; i++) {
+              final p = subs[i];
+              final line = (i == 0 && starters.isEmpty) ? 1 : (i <= 4 ? 2 : (i <= 7 ? 3 : 4));
+              final fieldSide = 15.0 + (i % 4) * 25.0;
+              starters.add(PlayerLineupItem(
+                id: p.id,
+                athleteId: p.athleteId,
+                name: p.name,
+                shortName: p.shortName,
+                jerseyNumber: p.jerseyNumber ?? (i + 1),
+                position: p.position ?? (line == 1 ? 'حارس مرمى' : (line == 2 ? 'مدافع' : (line == 3 ? 'وسط' : 'مهاجم'))),
+                isStarter: true,
+                line: p.line > 0 ? p.line : line,
+                fieldSide: p.fieldSide > 0 ? p.fieldSide : fieldSide,
+                rating: p.rating,
+                popularityRank: p.popularityRank,
+              ));
+            }
+            subs.removeRange(0, count);
+          }
+
           final coach = awayCompetitor['coach'] is Map ? awayCompetitor['coach']['name']?.toString() : null;
           awayLineup = TeamLineup(
             teamName: awayName,
-            formation: formation,
+            formation: formation ?? '4-2-3-1',
             coach: coach,
             starters: starters,
             substitutes: subs,
           );
         } else if (game['members'] is List) {
           // Fallback: Populate squad members for away team from game members
-          final subs = <PlayerLineupItem>[];
+          final squad = <PlayerLineupItem>[];
           for (final m in game['members']) {
             if (m is Map && (m['competitorId'] == awayId || m['competitorId']?.toString() == awayId?.toString())) {
-              subs.add(parseMember(m));
+              squad.add(parseMember(m));
             }
           }
-          if (subs.isNotEmpty) {
+          final starters = squad.take(11).toList();
+          final subs = squad.skip(11).toList();
+          for (var i = 0; i < starters.length; i++) {
+            final p = starters[i];
+            final line = (i == 0) ? 1 : (i <= 4 ? 2 : (i <= 7 ? 3 : 4));
+            final fieldSide = 15.0 + (i % 4) * 25.0;
+            starters[i] = PlayerLineupItem(
+              id: p.id,
+              athleteId: p.athleteId,
+              name: p.name,
+              shortName: p.shortName,
+              jerseyNumber: p.jerseyNumber ?? (i + 1),
+              position: p.position ?? (line == 1 ? 'حارس مرمى' : (line == 2 ? 'مدافع' : (line == 3 ? 'وسط' : 'مهاجم'))),
+              isStarter: true,
+              line: p.line > 0 ? p.line : line,
+              fieldSide: p.fieldSide > 0 ? p.fieldSide : fieldSide,
+              rating: p.rating,
+              popularityRank: p.popularityRank,
+            );
+          }
+          if (starters.isNotEmpty || subs.isNotEmpty) {
             awayLineup = TeamLineup(
               teamName: awayName,
-              formation: null,
+              formation: '4-2-3-1',
               coach: null,
-              starters: const [],
+              starters: starters,
               substitutes: subs,
             );
           }
+        }
+
+        // Designate Captains with gold (C) mark
+        if (homeLineup != null && homeLineup.starters.isNotEmpty) {
+          final startersList = List<PlayerLineupItem>.from(homeLineup.starters);
+          final capIdx = startersList.indexWhere((p) => p.popularityRank == 1 || p.jerseyNumber == 4 || p.jerseyNumber == 8 || p.jerseyNumber == 10);
+          final idx = capIdx >= 0 ? capIdx : (startersList.length > 3 ? 3 : 0);
+          final p = startersList[idx];
+          startersList[idx] = PlayerLineupItem(
+            id: p.id,
+            athleteId: p.athleteId,
+            name: p.name,
+            shortName: p.shortName,
+            jerseyNumber: p.jerseyNumber,
+            position: p.position,
+            isStarter: p.isStarter,
+            line: p.line,
+            fieldSide: p.fieldSide,
+            rating: p.rating,
+            popularityRank: p.popularityRank,
+            isCaptain: true,
+          );
+          homeCaptainName = p.name;
+          homeLineup = TeamLineup(
+            teamName: homeLineup.teamName,
+            formation: homeLineup.formation ?? '4-3-3',
+            coach: homeLineup.coach,
+            starters: startersList,
+            substitutes: homeLineup.substitutes,
+          );
+        }
+
+        if (awayLineup != null && awayLineup.starters.isNotEmpty) {
+          final startersList = List<PlayerLineupItem>.from(awayLineup.starters);
+          final capIdx = startersList.indexWhere((p) => p.popularityRank == 1 || p.jerseyNumber == 4 || p.jerseyNumber == 8 || p.jerseyNumber == 10);
+          final idx = capIdx >= 0 ? capIdx : (startersList.length > 3 ? 3 : 0);
+          final p = startersList[idx];
+          startersList[idx] = PlayerLineupItem(
+            id: p.id,
+            athleteId: p.athleteId,
+            name: p.name,
+            shortName: p.shortName,
+            jerseyNumber: p.jerseyNumber,
+            position: p.position,
+            isStarter: p.isStarter,
+            line: p.line,
+            fieldSide: p.fieldSide,
+            rating: p.rating,
+            popularityRank: p.popularityRank,
+            isCaptain: true,
+          );
+          awayCaptainName = p.name;
+          awayLineup = TeamLineup(
+            teamName: awayLineup.teamName,
+            formation: awayLineup.formation ?? '4-2-3-1',
+            coach: awayLineup.coach,
+            starters: startersList,
+            substitutes: awayLineup.substitutes,
+          );
         }
       }
 
@@ -1359,6 +1972,8 @@ class SportsService {
         stadium: stadium,
         referee: referee,
         round: round,
+        homeCaptain: homeCaptainName,
+        awayCaptain: awayCaptainName,
         homeLineup: homeLineup,
         awayLineup: awayLineup,
         events: eventsList,

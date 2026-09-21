@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:youtube_downloader/core/constants/app_colors.dart';
+import 'package:youtube_downloader/core/constants/app_palette.dart';
 import 'package:youtube_downloader/core/constants/app_theme.dart';
 import 'package:youtube_downloader/features/downloads/presentation/providers/downloads_provider.dart';
 import '../../domain/series_models.dart';
@@ -38,6 +39,7 @@ class _BatchDownloadDialogState extends ConsumerState<BatchDownloadDialog> {
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
+    final palette = AppPalette.of(context);
     final totalEps = widget.episodesToDownload.length;
 
     return Dialog(
@@ -115,6 +117,7 @@ class _BatchDownloadDialogState extends ConsumerState<BatchDownloadDialog> {
                           color: isDark ? AppColors.darkSecondaryBg : AppColors.lightSecondaryBg,
                           borderRadius: BorderRadius.circular(8),
                           border: Border.all(color: isDark ? AppColors.darkBorder : AppColors.lightBorder),
+                          boxShadow: palette.cardShadow,
                         ),
                         child: Row(
                           children: [

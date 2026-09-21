@@ -26,7 +26,7 @@ class SeriesBannerCard extends ConsumerWidget {
         gradient: LinearGradient(
           colors: isDark
               ? [const Color(0xFF131A27), AppColors.darkCard]
-              : [Colors.white, AppColors.lightSecondaryBg],
+              : [Colors.white, Colors.white],
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
         ),
@@ -35,13 +35,6 @@ class SeriesBannerCard extends ConsumerWidget {
           color: isDark ? AppColors.darkBorder : AppColors.primary.withOpacity(0.2),
           width: 1.5,
         ),
-        boxShadow: [
-          BoxShadow(
-            color: AppColors.primary.withOpacity(0.08),
-            blurRadius: 16,
-            offset: const Offset(0, 4),
-          ),
-        ],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,

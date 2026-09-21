@@ -24,6 +24,10 @@ class TurkishSerieService {
   List<CinemanaItem>? _cachedCatalog;
   DateTime? _lastFetchTime;
 
+  /// Concurrent callers (a search, the Arabic-series row, an item lookup)
+  /// share one in-flight catalogue download.
+  Future<List<CinemanaItem>>? _catalogInflight;
+
   /// Map of known Turkish to Arabic titles for enriched display
   static const Map<String, String> _arabicAliases = {
     'esaret': 'الأسيرة (Esaret)',
@@ -42,14 +46,17 @@ class TurkishSerieService {
   };
 
   /// 1. Fetch all Turkish series catalog from turkishserie.com
-  Future<List<CinemanaItem>> fetchCatalog({bool forceRefresh = false}) async {
+  Future<List<CinemanaItem>> fetchCatalog({bool forceRefresh = false}) {
     if (!forceRefresh &&
         _cachedCatalog != null &&
         _lastFetchTime != null &&
         DateTime.now().difference(_lastFetchTime!).inMinutes < 30) {
-      return _cachedCatalog!;
+      return Future.value(_cachedCatalog!);
     }
+    return _catalogInflight ??= _fetchCatalog().whenComplete(() => _catalogInflight = null);
+  }
 
+  Future<List<CinemanaItem>> _fetchCatalog() async {
     try {
       final res = await _dio.get('ar/series');
       if (res.statusCode == 200) {

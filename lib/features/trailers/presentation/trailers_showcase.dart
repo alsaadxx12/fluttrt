@@ -1,9 +1,10 @@
+import 'dart:async';
 import 'dart:io';
 
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:video_player/video_player.dart';
+import 'package:youtube_downloader/core/network/image_cache.dart';
 
 import '../../../core/constants/app_palette.dart';
 import '../../../core/tv/tv_mode.dart';
@@ -12,6 +13,7 @@ import '../data/movie_trailer.dart';
 import '../data/tmdb_service.dart';
 import '../data/trailer_stream_resolver.dart';
 import '../tmdb_config.dart';
+import 'inline_trailer_player.dart';
 import '../../cinemana/data/models/cinemana_models.dart';
 import '../../cinemana/data/services/cinemana_service.dart';
 import '../../cinemana/presentation/screens/cinemana_detail_screen.dart';
@@ -30,12 +32,18 @@ class TrailerFeedState {
       );
 }
 
-/// Loads the trailers feed one TMDB page at a time and never runs dry: it
-/// walks the popular list (hundreds of pages), dropping films without a
-/// trailer and repeats already shown.
+/// Loads the trailers feed one TMDB page at a time and never runs dry.
 class TrailerFeedNotifier extends StateNotifier<TrailerFeedState> {
   TrailerFeedNotifier(this._service) : super(const TrailerFeedState()) {
-    loadMore();
+    _init();
+  }
+
+  /// Make sure the TMDB token is loaded (from the bundled asset when the build
+  /// did not compile one in) before the first fetch, so the section works even
+  /// if startup did not preload it.
+  Future<void> _init() async {
+    await TmdbConfig.ensureLoaded();
+    await loadMore();
   }
 
   final TmdbService _service;
@@ -46,19 +54,28 @@ class TrailerFeedNotifier extends StateNotifier<TrailerFeedState> {
   Future<void> loadMore() async {
     if (state.loading || state.done) return;
     state = state.copyWith(loading: true);
-    final page = await _service.feedPage(_page);
-    _page++;
 
-    final fresh = <MovieTrailer>[];
-    for (final t in page) {
-      final id = t.youtubeId;
-      if (id == null || !_seen.add(id)) continue;
-      fresh.add(t);
+    // Walk forward until this call adds at least one trailer, so a page that
+    // holds no trailers never leaves the section empty (and therefore hidden).
+    final gathered = <MovieTrailer>[...state.items];
+    final before = gathered.length;
+    var done = false;
+    for (var guard = 0; guard < 6; guard++) {
+      final page = await _service.feedPage(_page);
+      _page++;
+      for (final t in page) {
+        final id = t.youtubeId;
+        if (id == null || !_seen.add(id)) continue;
+        gathered.add(t);
+      }
+      _empties = page.isEmpty ? _empties + 1 : 0;
+      if (_page > 500 || _empties >= 3) {
+        done = true;
+        break;
+      }
+      if (gathered.length > before) break; // got at least one new trailer
     }
-    _empties = page.isEmpty ? _empties + 1 : 0;
-    // TMDB caps popular paging at 500; stop there or after a few empty pages.
-    final done = _page > 500 || _empties >= 3;
-    state = state.copyWith(items: [...state.items, ...fresh], loading: false, done: done);
+    state = state.copyWith(items: gathered, loading: false, done: done);
   }
 }
 
@@ -66,20 +83,13 @@ final trailerFeedProvider = StateNotifierProvider<TrailerFeedNotifier, TrailerFe
   (ref) => TrailerFeedNotifier(TmdbService()),
 );
 
-/// One trailer's player, held in the pool: its controller and readiness.
-class _Pooled {
-  final VideoPlayerController controller;
-  bool ready = false;
-  bool failed = false;
-  _Pooled(this.controller);
-}
-
 /// "مقاطع وإعلانات": the endless trailers row. Phone only.
 ///
 /// Plays like a short-video feed: the card at the front plays on its own, and
-/// as the row is scrolled the newly fronted card takes over — no tapping. A
-/// small pool keeps the neighbouring trailers initialised and buffering ahead
-/// of time, so moving to the next one starts it at once.
+/// as the row is scrolled the newly fronted card takes over — no tapping.
+/// Playback stops when the row leaves the screen, the app goes to the
+/// background, or the card is tapped; a card whose trailer will not play is
+/// skipped automatically.
 class TrailersShowcase extends ConsumerStatefulWidget {
   const TrailersShowcase({super.key});
 
@@ -91,32 +101,37 @@ class _TrailersShowcaseState extends ConsumerState<TrailersShowcase> with Widget
   static const double cardW = 360, imageH = 250, rowH = 330, gap = 12, lead = 16;
   static const double itemExtent = cardW + gap;
 
-  /// A phone: not a television, not a desktop.
   bool get _isPhone => (Platform.isAndroid || Platform.isIOS);
 
   final ScrollController _scroll = ScrollController();
 
-  /// The fronted card that is playing.
   int _activeIndex = 0;
-
-  /// How far into the list we have already precached artwork for.
   int _warmedTo = 0;
 
-  /// Whether the row is on screen, the app is in the foreground, and the user
-  /// has not tapped to pause. The active trailer plays only when all hold.
-  bool _visible = true;
+  // Unknown until the ancestor scroll attach measures the row; false keeps
+  // the first screen from paying for a trailer that may be off-screen.
+  bool _visible = false;
   bool _foreground = true;
   bool _userPaused = false;
-  bool get _shouldPlay => _visible && _foreground && !_userPaused;
 
-  /// The scrollable the row sits inside (the home page), watched so playback
-  /// can pause when the row is scrolled out of view.
+  // The route holding the row is on top (TickerMode): a page pushed over the
+  // home must not keep the trailer running underneath it.
+  bool _routeActive = true;
+
+  // The row has been on screen for 1500 ms. Only then does it play or
+  // prewarm, so a pass-by scroll or the first screen never pays for it.
+  bool _settled = false;
+  Timer? _settleTimer;
+
+  // Once the row has settled the fronted card's player is kept mounted and
+  // merely paused when playback should stop, so coming back never rebuilds it.
+  bool _playerArmed = false;
+  bool _hadItems = false;
+
+  bool get _onScreen => _visible && _routeActive;
+  bool get _shouldPlay => _visible && _routeActive && _settled && _foreground && !_userPaused;
+
   ScrollPosition? _ancestorPos;
-
-  /// Initialised players, keyed by video id, for the active card and its
-  /// neighbours; the rest are disposed to stay light.
-  final Map<String, _Pooled> _pool = {};
-  final Set<String> _creating = {};
 
   @override
   void initState() {
@@ -129,73 +144,89 @@ class _TrailersShowcaseState extends ConsumerState<TrailersShowcase> with Widget
   @override
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
+    _settleTimer?.cancel();
     _ancestorPos?.removeListener(_onAncestorScroll);
     _scroll.removeListener(_onScroll);
     _scroll.dispose();
-    for (final e in _pool.values) {
-      e.controller.dispose();
-    }
-    _pool.clear();
     super.dispose();
   }
 
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
+    // A rebuild is already under way here, so the field is set directly.
+    final active = TickerMode.of(context);
+    if (active != _routeActive) {
+      _routeActive = active;
+      _updateSettle();
+    }
     _attachAncestor();
   }
 
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
-    final fg = state == AppLifecycleState.resumed;
-    if (fg != _foreground) {
-      _foreground = fg;
-      _applyPlayback();
-    }
+    // Only a real background counts. `inactive` (a system sheet, the app
+    // switcher opening) must not tear the player down.
+    final fg = state != AppLifecycleState.paused &&
+        state != AppLifecycleState.hidden &&
+        state != AppLifecycleState.detached;
+    if (fg != _foreground && mounted) setState(() => _foreground = fg);
   }
 
-  /// Watch the enclosing page's scroll so the row pauses when it leaves view.
   void _attachAncestor() {
     if (!mounted) return;
     final pos = Scrollable.maybeOf(context)?.position;
-    if (pos == _ancestorPos) return;
-    _ancestorPos?.removeListener(_onAncestorScroll);
-    _ancestorPos = pos;
-    _ancestorPos?.addListener(_onAncestorScroll);
+    if (pos != _ancestorPos) {
+      _ancestorPos?.removeListener(_onAncestorScroll);
+      _ancestorPos = pos;
+      _ancestorPos?.addListener(_onAncestorScroll);
+    }
+    // Re-measured even when the position is unchanged: the post-frame call
+    // after the first layout is what computes the real value.
     _onAncestorScroll();
   }
 
   void _onAncestorScroll() {
+    if (!mounted) return;
     final visible = _computeVisible();
-    if (visible != _visible) {
+    if (visible == _visible) return;
+    setState(() {
       _visible = visible;
-      _applyPlayback();
-      if (mounted) setState(() {});
+      _updateSettle();
+    });
+  }
+
+  /// Starts the settle timer while the row is on screen; the moment it is
+  /// not, the pending timer is cancelled and the settled state cleared.
+  /// Callers are inside a setState or a pending rebuild, so the fields are
+  /// set directly here.
+  void _updateSettle() {
+    if (_onScreen) {
+      if (_settled || _settleTimer != null) return;
+      _settleTimer = Timer(const Duration(milliseconds: 1500), () {
+        _settleTimer = null;
+        if (!mounted || !_onScreen) return;
+        setState(() {
+          _settled = true;
+          _playerArmed = true;
+        });
+        _prewarmAround(_activeIndex);
+      });
+    } else {
+      _settleTimer?.cancel();
+      _settleTimer = null;
+      _settled = false;
     }
   }
 
-  /// True when any meaningful part of the row is within the screen.
   bool _computeVisible() {
     final box = context.findRenderObject() as RenderBox?;
     if (box == null || !box.hasSize) return _visible;
     final top = box.localToGlobal(Offset.zero).dy;
     final bottom = top + box.size.height;
     final screenH = MediaQuery.of(context).size.height;
-    // Consider it in view once at least a third of it shows.
-    final visiblePx = (bottom.clamp(0.0, screenH)) - (top.clamp(0.0, screenH));
-    return visiblePx > box.size.height * 0.33;
-  }
-
-  /// Play or pause the active card to match [_shouldPlay].
-  void _applyPlayback() {
-    final activeId = _idAt(_activeIndex);
-    final pooled = activeId == null ? null : _pool[activeId];
-    if (pooled == null || !pooled.ready) return;
-    if (_shouldPlay) {
-      pooled.controller.play();
-    } else {
-      pooled.controller.pause();
-    }
+    final shown = bottom.clamp(0.0, screenH) - top.clamp(0.0, screenH);
+    return shown > box.size.height * 0.33;
   }
 
   List<MovieTrailer> get _items => ref.read(trailerFeedProvider).items;
@@ -203,123 +234,56 @@ class _TrailersShowcaseState extends ConsumerState<TrailersShowcase> with Widget
   void _onScroll() {
     if (!_scroll.hasClients) return;
     final pos = _scroll.position;
-    // Fetch the next page well before the edge, so it is ready on arrival.
     if (pos.pixels > pos.maxScrollExtent - cardW * 3) {
       ref.read(trailerFeedProvider.notifier).loadMore();
     }
-    // Whichever card is centred in the viewport becomes the one that plays.
     final items = _items;
     if (items.isEmpty) return;
     final center = pos.pixels + pos.viewportDimension / 2;
     final idx = ((center - lead - cardW / 2) / itemExtent).round().clamp(0, items.length - 1);
     if (idx != _activeIndex) {
-      _activeIndex = idx;
-      _userPaused = false; // a freshly fronted card plays on its own
-      _syncPool();
-      if (mounted) setState(() {});
+      setState(() {
+        _activeIndex = idx;
+        _userPaused = false; // a freshly fronted card plays on its own
+      });
+      if (_settled) _prewarmAround(idx);
     }
   }
 
-  /// The video id at [index], or null.
   String? _idAt(int index) {
     final items = _items;
     if (index < 0 || index >= items.length) return null;
     return items[index].youtubeId;
   }
 
-  /// Keep initialised players for the active card and its immediate
-  /// neighbours (so the next one is buffered ahead), dispose the rest, and
-  /// play the active card while pausing the others.
-  void _syncPool() {
-    final activeId = _idAt(_activeIndex);
-    final keep = <String>{};
-    // The active card, the next two (scroll direction), and the previous one.
-    for (final k in [_activeIndex, _activeIndex + 1, _activeIndex + 2, _activeIndex - 1]) {
-      final id = _idAt(k);
-      if (id != null) {
-        keep.add(id);
-        _ensure(id);
-      }
-    }
-    for (final id in _pool.keys.toList()) {
-      if (!keep.contains(id)) {
-        _pool.remove(id)!.controller.dispose();
-      }
-    }
-    for (final entry in _pool.entries) {
-      final pooled = entry.value;
-      if (!pooled.ready) continue;
-      if (entry.key == activeId) {
-        if (_shouldPlay) {
-          pooled.controller.play();
-        } else {
-          pooled.controller.pause();
-        }
-      } else {
-        pooled.controller
-          ..pause()
-          ..seekTo(Duration.zero);
-      }
-    }
-  }
-
-  /// If the active card's trailer cannot be played, move on to the next one.
-  void _autoSkip(String failedId) {
-    if (_idAt(_activeIndex) != failedId) return;
+  /// Resolve stream URLs and precache artwork for the active card and the next
+  /// couple, so switching to them is fast.
+  void _prewarmAround(int active) {
     final items = _items;
-    if (_activeIndex + 1 < items.length) {
-      _scrollTo(_activeIndex + 1);
+    if (items.isEmpty) return;
+    final ids = <String>[];
+    for (var k = active; k <= active + 2 && k < items.length; k++) {
+      final id = items[k].youtubeId;
+      if (id != null) ids.add(id);
     }
+    TrailerStreamResolver.instance.prewarm(ids);
   }
 
-  /// Create and initialise a player for [videoId] if not already present.
-  Future<void> _ensure(String videoId) async {
-    if (_pool.containsKey(videoId) || _creating.contains(videoId)) return;
-    _creating.add(videoId);
-    try {
-      final url = await TrailerStreamResolver.instance.resolve(videoId);
-      if (!mounted) return;
-      if (url == null) {
-        // No playable stream: skip past it if it is the fronted card.
-        _autoSkip(videoId);
-        return;
-      }
-      final controller = VideoPlayerController.networkUrl(url);
-      final pooled = _Pooled(controller);
-      _pool[videoId] = pooled;
-      await controller.setLooping(true);
-      await controller.initialize();
-      pooled.ready = true;
-      if (!mounted) {
-        _pool.remove(videoId);
-        await controller.dispose();
-        return;
-      }
-      // If it became the active card while initialising, start it now.
-      if (_idAt(_activeIndex) == videoId && _shouldPlay) controller.play();
-      setState(() {});
-    } catch (_) {
-      final pooled = _pool[videoId];
-      if (pooled != null) pooled.failed = true;
-      if (mounted) {
-        setState(() {});
-        _autoSkip(videoId);
-      }
-    } finally {
-      _creating.remove(videoId);
-    }
-  }
-
-  /// Precache the artwork of items not yet warmed, and resolve their streams.
-  void _warm(List<MovieTrailer> items) {
+  /// Precache artwork for the next few items not yet warmed (three, so the
+  /// first screen's own pictures are never queued behind trailer stills).
+  void _warmImages(List<MovieTrailer> items) {
     if (_warmedTo >= items.length) return;
     final next = items.sublist(_warmedTo);
     _warmedTo = items.length;
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      TrailerStreamResolver.instance.prewarm(next.map((t) => t.youtubeId).whereType<String>().take(8));
-      for (final t in next.take(8)) {
+      if (!mounted) return;
+      final cacheW = (cardW * MediaQuery.of(context).devicePixelRatio).round();
+      for (final t in next.take(3)) {
         if (t.bestImage.isEmpty) continue;
-        precacheImage(CachedNetworkImageProvider(t.bestImage), context).ignore();
+        precacheImage(
+          ResizeImage(CachedNetworkImageProvider(t.bestImage, cacheManager: appImageCache), width: cacheW),
+          context,
+        ).ignore();
       }
     });
   }
@@ -333,20 +297,26 @@ class _TrailersShowcaseState extends ConsumerState<TrailersShowcase> with Widget
     );
   }
 
-  /// A single tap: on the fronted card, pause or resume it; on another card,
-  /// bring it to the front so it starts playing.
+  /// A single tap: pause/resume the fronted card, or bring another to front.
   void _tap(int i) {
     if (i == _activeIndex) {
       setState(() => _userPaused = !_userPaused);
-      _applyPlayback();
     } else {
       _userPaused = false;
       _scrollTo(i);
     }
   }
 
-  /// Double-tapping a card opens the film: search the library for its title
-  /// and go to that title's detail page, or say so when it is not carried.
+  /// The fronted trailer could not be played: move on to the next one. A
+  /// failure reported for a card that is no longer fronted is ignored, so it
+  /// never skips the card the user has since moved to.
+  void _skipFailed(String? failedId) {
+    if (failedId == null || _idAt(_activeIndex) != failedId) return;
+    final items = _items;
+    if (_activeIndex + 1 < items.length) _scrollTo(_activeIndex + 1);
+  }
+
+  /// Double-tap opens the film: search the library for its title and open it.
   Future<void> _open(MovieTrailer t) async {
     final messenger = ScaffoldMessenger.maybeOf(context);
     final nav = Navigator.of(context);
@@ -367,9 +337,11 @@ class _TrailersShowcaseState extends ConsumerState<TrailersShowcase> with Widget
 
   @override
   Widget build(BuildContext context) {
-    // Phone only; hidden entirely on TV, desktop, and when TMDB is not set up.
     final isTv = ref.watch(tvModeProvider).valueOrNull ?? false;
-    if (!_isPhone || isTv || !TmdbConfig.isConfigured) return const SizedBox.shrink();
+    // Phone only, and never on a television. The token is ensured by the feed
+    // notifier, so a missing token simply yields an empty feed (hidden below)
+    // rather than hiding the section before the token finishes loading.
+    if (!_isPhone || isTv) return const SizedBox.shrink();
 
     final feed = ref.watch(trailerFeedProvider);
     final p = AppPalette.of(context);
@@ -379,11 +351,20 @@ class _TrailersShowcaseState extends ConsumerState<TrailersShowcase> with Widget
       return const SizedBox.shrink();
     }
 
-    _warm(feed.items);
-    // Once the first items are in, start the fronted card playing.
-    if (_pool.isEmpty && _creating.isEmpty) {
+    _warmImages(feed.items);
+    if (!_hadItems) {
+      // The row has just gained its full size: measure its visibility once
+      // it is laid out, since no scroll may follow to do it.
+      _hadItems = true;
       WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (mounted) _syncPool();
+        if (mounted) _onAncestorScroll();
+      });
+    }
+    // Warm the first cards once the row has settled, so the opening trailer
+    // starts quickly without competing with the first screen.
+    if (_activeIndex == 0 && _settled) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) _prewarmAround(0);
       });
     }
 
@@ -411,14 +392,15 @@ class _TrailersShowcaseState extends ConsumerState<TrailersShowcase> with Widget
             }
             final trailer = feed.items[i];
             final isActive = trailer.youtubeId != null && trailer.youtubeId == activeId;
-            final pooled = trailer.youtubeId == null ? null : _pool[trailer.youtubeId];
             return _TrailerCard(
               trailer: trailer,
               isActive: isActive,
+              showVideo: isActive && _playerArmed,
+              play: isActive && _shouldPlay,
               isPaused: isActive && _userPaused,
-              controller: isActive && (pooled?.ready ?? false) ? pooled!.controller : null,
               onTap: () => _tap(i),
               onOpen: () => _open(trailer),
+              onFailed: () => _skipFailed(trailer.youtubeId),
             );
           },
         ),
@@ -479,34 +461,38 @@ class _TrailersShowcaseState extends ConsumerState<TrailersShowcase> with Widget
 
 class _TrailerCard extends StatelessWidget {
   final MovieTrailer trailer;
-
-  /// The fronted card that should be playing.
   final bool isActive;
 
-  /// The fronted card, paused by a tap.
+  /// Keep the video mounted on this (fronted) card.
+  final bool showVideo;
+
+  /// Play the mounted video; false pauses it in place rather than tearing
+  /// it down, so it resumes at once.
+  final bool play;
+
+  /// Fronted card, paused by a tap.
   final bool isPaused;
-
-  /// The ready player for this card, when it is the active one; else null.
-  final VideoPlayerController? controller;
   final VoidCallback onTap;
-
-  /// Double-tap: open the film.
   final VoidCallback onOpen;
+  final VoidCallback onFailed;
 
   const _TrailerCard({
     required this.trailer,
     required this.isActive,
+    required this.showVideo,
+    required this.play,
     required this.isPaused,
-    required this.controller,
     required this.onTap,
     required this.onOpen,
+    required this.onFailed,
   });
 
   @override
   Widget build(BuildContext context) {
     final p = AppPalette.of(context);
     const width = _TrailersShowcaseState.cardW, imageH = _TrailersShowcaseState.imageH;
-    final playing = controller != null && controller!.value.isInitialized;
+    final cacheW = (width * MediaQuery.of(context).devicePixelRatio).round();
+    final mountVideo = showVideo && trailer.youtubeId != null;
 
     return GestureDetector(
       onTap: onTap,
@@ -522,7 +508,6 @@ class _TrailerCard extends StatelessWidget {
               decoration: BoxDecoration(
                 borderRadius: BorderRadius.circular(18),
                 border: Border.all(color: isActive ? const Color(0xFFE50914) : p.border, width: isActive ? 1.6 : 1),
-                boxShadow: p.cardShadow,
               ),
               clipBehavior: Clip.antiAlias,
               child: Stack(
@@ -531,14 +516,28 @@ class _TrailerCard extends StatelessWidget {
                   // Artwork always underneath, so the card is filled at once.
                   CachedNetworkImage(
                     imageUrl: trailer.bestImage,
+                    cacheManager: appImageCache,
                     fit: BoxFit.cover,
-                    filterQuality: FilterQuality.high,
-                    fadeInDuration: const Duration(milliseconds: 120),
+                    filterQuality: FilterQuality.medium,
+                    memCacheWidth: cacheW,
+                    fadeInDuration: Duration.zero,
+                    fadeOutDuration: Duration.zero,
+                    placeholderFadeInDuration: Duration.zero,
+                    useOldImageOnUrlChange: true,
                     placeholder: (_, __) => ColoredBox(color: p.skeleton),
+                    // The TMDB still failed: fall back to YouTube's own thumb
+                    // before giving up on a picture.
                     errorWidget: (_, __, ___) => CachedNetworkImage(
                       imageUrl: trailer.youtubeFallbackThumb,
+                      cacheManager: appImageCache,
                       fit: BoxFit.cover,
-                      filterQuality: FilterQuality.high,
+                      filterQuality: FilterQuality.medium,
+                      memCacheWidth: cacheW,
+                      fadeInDuration: Duration.zero,
+                      fadeOutDuration: Duration.zero,
+                      placeholderFadeInDuration: Duration.zero,
+                      useOldImageOnUrlChange: true,
+                      placeholder: (_, __) => ColoredBox(color: p.skeleton),
                       errorWidget: (_, __, ___) => ColoredBox(
                         color: p.skeleton,
                         child: Icon(Icons.theaters_rounded, color: p.textFaint, size: 40),
@@ -546,39 +545,23 @@ class _TrailerCard extends StatelessWidget {
                     ),
                   ),
 
-                  // The video on top of its poster once it is ready.
-                  if (playing)
-                    FittedBox(
-                      fit: BoxFit.cover,
-                      clipBehavior: Clip.hardEdge,
-                      child: SizedBox(
-                        width: controller!.value.size.width,
-                        height: controller!.value.size.height,
-                        child: VideoPlayer(controller!),
-                      ),
+                  // The video, mounted for the fronted card and kept there:
+                  // it is paused, not unmounted, when it should not play.
+                  if (mountVideo)
+                    InlineTrailerPlayer(
+                      key: ValueKey(trailer.youtubeId),
+                      videoId: trailer.youtubeId!,
+                      playing: play,
+                      onFailed: onFailed,
                     ),
 
-                  // A loading bar on the active card while its video buffers.
-                  if (isActive && !playing && !isPaused)
-                    const Align(
-                      alignment: Alignment.bottomCenter,
-                      child: LinearProgressIndicator(
-                        minHeight: 3,
-                        backgroundColor: Colors.white10,
-                        valueColor: AlwaysStoppedAnimation(Color(0xFFE50914)),
-                      ),
-                    ),
-
-                  // A play badge when the fronted card was tapped to pause.
+                  // A play badge when the fronted card is paused by a tap.
                   if (isPaused)
                     Center(
                       child: Container(
                         width: 52,
                         height: 52,
-                        decoration: BoxDecoration(
-                          color: Colors.black.withOpacity(0.55),
-                          shape: BoxShape.circle,
-                        ),
+                        decoration: BoxDecoration(color: Colors.black.withOpacity(0.55), shape: BoxShape.circle),
                         child: const Icon(Icons.play_arrow_rounded, color: Colors.white, size: 32),
                       ),
                     ),

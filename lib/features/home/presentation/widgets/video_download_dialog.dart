@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:youtube_explode_dart/youtube_explode_dart.dart';
 import 'package:youtube_downloader/core/constants/app_colors.dart';
+import 'package:youtube_downloader/core/constants/app_palette.dart';
 import 'package:youtube_downloader/core/utils/file_utils.dart';
 import 'package:youtube_downloader/core/utils/formatters.dart';
 import 'package:youtube_downloader/features/downloads/data/models/download_task_model.dart';
@@ -121,6 +122,7 @@ class _VideoDownloadDialogState extends ConsumerState<VideoDownloadDialog> {
   Widget build(BuildContext context) {
     final strings = ref.watch(stringsProvider);
     final isDark = Theme.of(context).brightness == Brightness.dark;
+    final palette = AppPalette.of(context);
     final screenHeight = MediaQuery.of(context).size.height;
 
     return Dialog(
@@ -128,7 +130,7 @@ class _VideoDownloadDialogState extends ConsumerState<VideoDownloadDialog> {
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(18),
         side: BorderSide(
-          color: isDark ? const Color(0xFF2B2C3A) : const Color(0xFFE2E4EE),
+          color: isDark ? const Color(0xFF2B2C3A) : palette.border,
           width: 1.2,
         ),
       ),
@@ -186,11 +188,12 @@ class _VideoDownloadDialogState extends ConsumerState<VideoDownloadDialog> {
                       Container(
                         padding: const EdgeInsets.all(10),
                         decoration: BoxDecoration(
-                          color: isDark ? const Color(0xFF1D1F2B) : const Color(0xFFF4F6FB),
+                          color: isDark ? const Color(0xFF1D1F2B) : Colors.white,
                           borderRadius: BorderRadius.circular(12),
                           border: Border.all(
-                            color: isDark ? const Color(0xFF282B3B) : const Color(0xFFE3E6F0),
+                            color: isDark ? const Color(0xFF282B3B) : palette.border,
                           ),
+                          boxShadow: palette.cardShadow,
                         ),
                         child: Row(
                           crossAxisAlignment: CrossAxisAlignment.start,
@@ -352,14 +355,14 @@ class _VideoDownloadDialogState extends ConsumerState<VideoDownloadDialog> {
                                 ),
                                 selected: isSelected,
                                 selectedColor: AppColors.primary,
-                                backgroundColor: isDark ? const Color(0xFF1F2230) : const Color(0xFFEEF1F6),
+                                backgroundColor: isDark ? const Color(0xFF1F2230) : Colors.white,
                                 labelStyle: TextStyle(
                                   fontSize: 11.5,
                                   fontWeight: FontWeight.bold,
                                   color: isSelected ? Colors.white : (isDark ? Colors.white : AppColors.lightTextPrimary),
                                 ),
                                 side: BorderSide(
-                                  color: isSelected ? AppColors.primary : (isDark ? const Color(0xFF2E3246) : const Color(0xFFE0E3EC)),
+                                  color: isSelected ? AppColors.primary : (isDark ? const Color(0xFF2E3246) : palette.border),
                                 ),
                                 onSelected: (selected) {
                                   if (selected) {
@@ -391,14 +394,14 @@ class _VideoDownloadDialogState extends ConsumerState<VideoDownloadDialog> {
                                 ),
                                 selected: isSelected,
                                 selectedColor: AppColors.primary,
-                                backgroundColor: isDark ? const Color(0xFF1F2230) : const Color(0xFFEEF1F6),
+                                backgroundColor: isDark ? const Color(0xFF1F2230) : Colors.white,
                                 labelStyle: TextStyle(
                                   fontSize: 11.5,
                                   fontWeight: FontWeight.bold,
                                   color: isSelected ? Colors.white : (isDark ? Colors.white : AppColors.lightTextPrimary),
                                 ),
                                 side: BorderSide(
-                                  color: isSelected ? AppColors.primary : (isDark ? const Color(0xFF2E3246) : const Color(0xFFE0E3EC)),
+                                  color: isSelected ? AppColors.primary : (isDark ? const Color(0xFF2E3246) : palette.border),
                                 ),
                                 onSelected: (selected) {
                                   if (selected) {

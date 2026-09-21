@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:youtube_downloader/core/constants/app_colors.dart';
+import 'package:youtube_downloader/core/constants/app_palette.dart';
 import 'package:youtube_downloader/core/constants/app_theme.dart';
 import 'package:youtube_downloader/core/services/file_opener_service.dart';
 import 'package:youtube_downloader/core/utils/file_utils.dart';
@@ -19,6 +20,7 @@ class DownloadProgressCard extends ConsumerWidget {
     final strings = ref.watch(stringsProvider);
     final settings = ref.watch(settingsProvider);
     final isDark = Theme.of(context).brightness == Brightness.dark;
+    final palette = AppPalette.of(context);
 
     final isDone = task.status == DownloadStatus.completed;
     final isPaused = task.status == DownloadStatus.paused;
@@ -40,13 +42,6 @@ class DownloadProgressCard extends ConsumerWidget {
               : (isDark ? AppColors.darkBorder : AppColors.lightBorder),
           width: 1,
         ),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(isDark ? 0.2 : 0.03),
-            blurRadius: 8,
-            offset: const Offset(0, 3),
-          ),
-        ],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -63,7 +58,7 @@ class DownloadProgressCard extends ConsumerWidget {
                     task.thumbnailUrl,
                     fit: BoxFit.cover,
                     errorBuilder: (_, __, ___) => Container(
-                      color: isDark ? AppColors.darkSecondaryBg : AppColors.lightSecondaryBg,
+                      color: isDark ? AppColors.darkSecondaryBg : palette.skeleton,
                       child: const Icon(Icons.video_library_rounded, size: 20, color: AppColors.primary),
                     ),
                   ),
@@ -124,7 +119,7 @@ class DownloadProgressCard extends ConsumerWidget {
             child: LinearProgressIndicator(
               value: isDone ? 1.0 : task.progress,
               minHeight: 6,
-              backgroundColor: isDark ? AppColors.darkSecondaryBg : AppColors.lightSecondaryBg,
+              backgroundColor: isDark ? AppColors.darkSecondaryBg : palette.skeleton,
               valueColor: AlwaysStoppedAnimation<Color>(
                 isDone
                     ? AppColors.success

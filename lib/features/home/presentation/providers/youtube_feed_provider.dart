@@ -1,5 +1,6 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:youtube_explode_dart/youtube_explode_dart.dart';
+import 'package:youtube_downloader/core/network/http_cache.dart';
 import 'package:youtube_downloader/features/downloads/domain/download_service.dart';
 import 'package:youtube_downloader/features/downloads/presentation/providers/downloads_provider.dart';
 
@@ -141,6 +142,7 @@ class YouTubeFeedNotifier extends StateNotifier<YouTubeFeedState> {
   }
 
   Future<void> refresh() async {
+    HttpCache.instance.markStale();
     if (state.searchQuery.isNotEmpty) {
       await search(state.searchQuery);
     } else {
@@ -153,3 +155,7 @@ final youtubeFeedProvider = StateNotifierProvider<YouTubeFeedNotifier, YouTubeFe
   final downloadService = ref.watch(downloadServiceProvider);
   return YouTubeFeedNotifier(downloadService);
 });
+
+/// Currently active playing card in the YouTube feed (single-active playback)
+final activeYouTubeCardIdProvider = StateProvider<String?>((ref) => null);
+

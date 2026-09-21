@@ -3,12 +3,14 @@ import 'dart:async';
 import 'dart:io';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:dio/dio.dart';
+import 'package:flutter/foundation.dart' show listEquals;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:window_manager/window_manager.dart';
 import '../../../../presentation/widgets/window_caption_buttons.dart';
+import 'package:youtube_downloader/presentation/widgets/app_search_field.dart';
 import 'package:youtube_downloader/features/cinemana/data/models/cinemana_models.dart';
 import 'package:youtube_downloader/features/cinemana/presentation/providers/cinemana_provider.dart';
 import 'package:youtube_downloader/features/cinemana/presentation/screens/cinemana_catalog_screen.dart';
@@ -17,22 +19,26 @@ import 'package:youtube_downloader/features/sports/data/models/sports_models.dar
 import 'package:youtube_downloader/features/sports/presentation/providers/sports_provider.dart';
 import 'package:youtube_downloader/features/sports/presentation/screens/sports_player_screen.dart';
 import 'package:youtube_downloader/features/sports/presentation/widgets/match_score_line.dart';
-import 'package:youtube_downloader/features/settings/presentation/providers/settings_provider.dart';
 import 'package:youtube_downloader/presentation/screens/main_scaffold.dart';
-import 'package:youtube_downloader/features/sports/presentation/screens/channels_screen.dart';
 import 'package:youtube_downloader/features/viu/data/viu_models.dart';
 import 'package:youtube_downloader/features/viu/presentation/viu_widgets.dart';
 import 'package:youtube_downloader/features/viu/presentation/other_films.dart';
 import 'package:youtube_downloader/core/constants/app_palette.dart';
+import 'package:youtube_downloader/core/network/http_cache.dart';
+import 'package:youtube_downloader/core/network/image_cache.dart';
 import 'package:youtube_downloader/features/home/presentation/widgets/football_showcase.dart';
 import 'package:youtube_downloader/features/home/presentation/widgets/franchise_showcase.dart';
+import '../widgets/dynamic_franchises_showcase.dart';
 import 'package:youtube_downloader/features/cinemana/data/cinemana_franchises.dart';
 import 'package:youtube_downloader/features/sports/presentation/widgets/glowing_crest.dart';
 import '../../../../presentation/widgets/reveal.dart';
 import '../../../sports/data/match_merge.dart';
+import '../../../sports/data/match_order.dart';
 import '../widgets/film_deck.dart';
 import '../../../../core/video/desktop_video.dart';
 import '../../../trailers/presentation/trailers_showcase.dart';
+import '../../../sports/presentation/widgets/match_highlights_banner.dart';
+import 'package:youtube_downloader/core/scroll/app_scroll_physics.dart';
 
 class HomeScreen extends ConsumerStatefulWidget {
   const HomeScreen({super.key});
@@ -45,7 +51,14 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
   late final PageController _heroPageController;
   late final TextEditingController _searchController;
   final FocusNode _searchFocusNode = FocusNode();
-  int _currentHeroPage = 0;
+  // The slide on screen. A notifier rather than setState: only the dots and
+  // the details listen, so a slide change never rebuilds the whole page.
+  final ValueNotifier<int> _heroPage = ValueNotifier<int>(0);
+  // False while another page or branch covers this one; the hero then holds.
+  bool _routeActive = true;
+  // What the last precache covered, so a rebuild alone never re-warms it.
+  int _precachedPage = -1;
+  List<CinemanaItem>? _precachedList;
 
   // Number of slides the hero is actually rendering, kept in sync from build so
   // the auto-slide timer advances over the same list the user sees.
@@ -72,35 +85,69 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     _startAutoSlideTimer();
   }
 
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    // TickerMode is off while this page sits behind another route or an
+    // inactive branch; the hero must not advance out of sight.
+    _routeActive = TickerMode.of(context);
+  }
+
+  /// The wide cover art for [m], or '' when Cinemana has none.
+  static String _heroWideCover(CinemanaItem m) =>
+      (m.backdropUrl != null && m.backdropUrl!.isNotEmpty && m.backdropUrl!.contains('cover')) ? m.backdropUrl! : '';
+
+  /// The artwork a hero slide draws for [m]. The slide and the precache both
+  /// ask here, so they always name the same file.
+  static String _heroImageUrl(CinemanaItem m, bool isDesktop) {
+    final wideCover = _heroWideCover(m);
+    final highResPoster = (m.imgUrl != null && m.imgUrl!.isNotEmpty) ? m.imgUrl! : m.bestPosterUrl;
+    return isDesktop
+        ? (wideCover.isNotEmpty ? wideCover : (m.bestBackdropUrl.isNotEmpty ? m.bestBackdropUrl : highResPoster))
+        : (highResPoster.isNotEmpty ? highResPoster : m.bestBackdropUrl);
+  }
+
   /// Warm the disk/memory cache for the slides right after the current one,
   /// so a swipe (or the auto-advance) never waits on the network.
+  ///
+  /// Runs once per (page, list): a rebuild with the same slide showing and
+  /// the same titles is a no-op.
   void _precacheNextHeroSlides(List<CinemanaItem> movies, double width) {
     if (!mounted || movies.isEmpty) return;
+    final page = _heroPage.value;
+    if (page == _precachedPage && listEquals(movies, _precachedList)) return;
+    _precachedPage = page;
+    _precachedList = movies;
     final isDesktop = width >= 700;
     for (var i = 1; i <= 2; i++) {
-      final m = movies[(_currentHeroPage + i) % movies.length];
-      final wideCover = (m.backdropUrl != null && m.backdropUrl!.isNotEmpty && m.backdropUrl!.contains('cover'))
-          ? m.backdropUrl!
-          : '';
-      final highResPoster = (m.imgUrl != null && m.imgUrl!.isNotEmpty) ? m.imgUrl! : m.bestPosterUrl;
-      final url = isDesktop
-          ? (wideCover.isNotEmpty ? wideCover : (m.bestBackdropUrl.isNotEmpty ? m.bestBackdropUrl : highResPoster))
-          : (highResPoster.isNotEmpty ? highResPoster : m.bestBackdropUrl);
+      final m = movies[(page + i) % movies.length];
+      final url = _heroImageUrl(m, isDesktop);
       if (url.isEmpty) continue;
-      precacheImage(
-        CachedNetworkImageProvider(url),
-        context,
-      ).catchError((_) {});
+      // Exactly the provider the slide decodes with - same url, same resize
+      // width, same cache - so the swipe is served from the memory cache.
+      // CachedNetworkImage wraps its provider in ResizeImage(width:
+      // memCacheWidth); mobile slides decode at the screen's own width, the
+      // desktop slide at native size.
+      final base = CachedNetworkImageProvider(url, cacheManager: appImageCache);
+      if (isDesktop) {
+        precacheImage(base, context).catchError((_) {});
+        if (_heroWideCover(m).isEmpty) {
+          // The poster's blurred backdrop is a 400px decode of the same file.
+          precacheImage(ResizeImage(base, width: 400), context).catchError((_) {});
+        }
+      } else {
+        precacheImage(ResizeImage(base, width: _decodeWidthFor(width)), context).catchError((_) {});
+      }
     }
   }
 
   void _startAutoSlideTimer() {
     _heroAutoSlideTimer?.cancel();
     _heroAutoSlideTimer = Timer.periodic(const Duration(seconds: 8), (timer) {
-      if (!mounted || _isAutoSlidePaused || !_heroPageController.hasClients) return;
+      if (!mounted || !_routeActive || _isAutoSlidePaused || !_heroPageController.hasClients) return;
       final total = _heroSlideCount;
       if (total <= 1) return;
-      final nextPage = (_currentHeroPage + 1) % total;
+      final nextPage = (_heroPage.value + 1) % total;
       _heroPageController.animateToPage(
         nextPage,
         duration: const Duration(milliseconds: 600),
@@ -111,10 +158,12 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
 
   @override
   void dispose() {
+    _barScrolled.dispose();
     _heroAutoSlideTimer?.cancel();
     _searchDebounceTimer?.cancel();
     _searchCancelToken?.cancel('disposed');
     _heroPageController.dispose();
+    _heroPage.dispose();
     _searchController.dispose();
     _searchFocusNode.dispose();
     super.dispose();
@@ -216,6 +265,28 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     }
   }
 
+  /// Pull-to-refresh: every request bypasses the fresh window once, then all
+  /// the page's providers reload together. The indicator stays until each
+  /// has answered; a failing one is swallowed so it never throws out of the
+  /// indicator.
+  Future<void> _refreshHome() async {
+    HttpCache.instance.markStale();
+    Future<void> quiet(Future<Object?> f) => f.then<void>((_) {}, onError: (_, __) {});
+    await Future.wait<void>([
+      quiet(ref.refresh(heroBannerMoviesProvider.future)),
+      quiet(ref.refresh(homeFeaturedProvider.future)),
+      quiet(ref.refresh(homeRecentlyAddedProvider.future)),
+      quiet(ref.refresh(homeLatestMoviesProvider.future)),
+      quiet(ref.refresh(homeLatestSeriesProvider.future)),
+      quiet(ref.refresh(homeAnimeProvider.future)),
+      quiet(ref.refresh(sportsChannelsProvider.future)),
+      quiet(ref.refresh(homeMostViewedProvider.future)),
+      quiet(ref.refresh(homeArabicMoviesProvider.future)),
+      quiet(ref.refresh(homeArabicSeriesProvider.future)),
+      quiet(ref.read(sportsNotifierProvider('today').notifier).refresh()),
+    ]);
+  }
+
   void _openCatalog({required String kind, String? order, int? categoryId}) {
     Navigator.of(context, rootNavigator: true).push(
       MaterialPageRoute(
@@ -228,19 +299,37 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     );
   }
 
-  // Format kickoff ISO timestamp into clean local time (e.g. 19:45) and small date (e.g. 09/09)
+  // Format kickoff ISO timestamp into clean local time (e.g. 7:45 م) and small date (e.g. 09/09)
   Map<String, String> _formatMatchTimeAndDate(String rawKickoff) {
-    if (rawKickoff.isEmpty) {
+    if (rawKickoff.trim().isEmpty) {
       return {'time': 'VS', 'date': ''};
     }
-    final dt = DateTime.tryParse(rawKickoff);
+    final raw = rawKickoff.trim();
+    DateTime? dt = DateTime.tryParse(raw);
     if (dt == null) {
-      return {'time': rawKickoff, 'date': ''};
+      final match = RegExp(r'(\d{1,2}):(\d{2})\s*([a-zA-Z\u0600-\u06FF]+)?').firstMatch(raw);
+      if (match != null) {
+        int h = int.tryParse(match.group(1) ?? '') ?? 0;
+        final m = int.tryParse(match.group(2) ?? '') ?? 0;
+        final period = (match.group(3) ?? '').toLowerCase().trim();
+        if (period.contains('p') || period.contains('م')) {
+          if (h < 12) h += 12;
+        } else if (period.contains('a') || period.contains('ص')) {
+          if (h == 12) h = 0;
+        }
+        final now = DateTime.now();
+        dt = DateTime.utc(now.year, now.month, now.day, h, m).subtract(const Duration(hours: 3));
+      }
+    }
+    if (dt == null) {
+      return {'time': raw, 'date': ''};
     }
     final local = dt.toLocal();
-    final hour = local.hour.toString().padLeft(2, '0');
+    final h = local.hour;
     final min = local.minute.toString().padLeft(2, '0');
-    final timeStr = '$hour:$min';
+    final period = h >= 12 ? 'م' : 'ص';
+    final h12 = h == 0 ? 12 : (h > 12 ? h - 12 : h);
+    final timeStr = '$h12:$min $period';
     final dateStr = '${local.day.toString().padLeft(2, '0')}/${local.month.toString().padLeft(2, '0')}';
     return {'time': timeStr, 'date': dateStr};
   }
@@ -261,9 +350,12 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
         identical(groups, _mergedFromGroups)) {
       return _mergedMatches!;
     }
+    // The day's table owns each fixture (its real status and score); the
+    // channel feed only adds streams. Merged the other way round, a channel
+    // copy stamped `مباشر` decided the status and finished games looked live.
     final merged = MatchMerge.mergeAll([
-      live,
       [for (final g in groups) ...g.matches],
+      live,
     ]);
     _mergedFromLive = live;
     _mergedFromGroups = groups;
@@ -284,19 +376,13 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     final arabicMoviesAsync = ref.watch(homeArabicMoviesProvider);
     final arabicSeriesAsync = ref.watch(homeArabicSeriesProvider);
 
-    // Hero Section: Strictly official Cinemana banners ("الإصدارات الجديدة")
+    // Hero Section: Strictly official Cinemana banners ("الإصدارات الجديدة").
+    // The banner feed alone: while it loads the hero keeps its skeleton
+    // rather than showing the featured titles and then swapping them out.
     final heroMovies = bannerAsync.when(
-      data: (banners) => banners.take(20).toList(),
-      loading: () => featuredAsync.when(
-        data: (f) => f.take(20).toList(),
-        loading: () => const <CinemanaItem>[],
-        error: (_, __) => const <CinemanaItem>[],
-      ),
-      error: (_, __) => featuredAsync.when(
-        data: (f) => f.take(20).toList(),
-        loading: () => const <CinemanaItem>[],
-        error: (_, __) => const <CinemanaItem>[],
-      ),
+      data: (b) => b.take(20).toList(),
+      loading: () => const <CinemanaItem>[],
+      error: (_, __) => (featuredAsync.valueOrNull ?? const <CinemanaItem>[]).take(20).toList(),
     );
 
     _heroSlideCount = heroMovies.length;
@@ -311,12 +397,23 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
 
 
     // Dynamic title: "المباريات المباشرة" if live, otherwise "مباريات اليوم"
-    final bool hasLiveMatches = sportsState.liveMatches.isNotEmpty;
-    final String sportsSectionTitle = hasLiveMatches ? 'المباريات المباشرة' : 'مباريات اليوم';
+    // "Live" means actually in play right now — judged by each match's real
+    // status, not by the channel feed's `live_now`, whose entries are mostly
+    // still *scheduled* (it lists matches that have a stream today, not ones
+    // that have kicked off). Using it flipped the row to "live" and then
+    // showed the whole day, finished games included.
+    final liveNow = allTodayMatches.where((m) => m.isLive).toList();
+    final bool hasLiveMatches = liveNow.isNotEmpty;
+    // The row shows the whole day (live first), so it is titled as such; the
+    // live count and the red dot still flag what is in play right now.
+    final String sportsSectionTitle =
+        hasLiveMatches ? 'مباريات اليوم · ${liveNow.length} مباشرة' : 'مباريات اليوم';
 
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final bgColor = _p.bg;
-    final refreshBg = isDark ? const Color(0xFF131A27) : Colors.white;
+    // The floating top bar: status bar + 4px padding + 40px row + 4px padding.
+    // Status bar + 8 + the 48 px field + 8.
+    final topBarHeight = MediaQuery.of(context).padding.top + 64.0;
 
     return AnnotatedRegion<SystemUiOverlayStyle>(
       value: (isDark ? SystemUiOverlayStyle.light : SystemUiOverlayStyle.dark)
@@ -328,268 +425,259 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
           // Main Scrollable Content
           RefreshIndicator(
             color: const Color(0xFFE50914),
-            backgroundColor: refreshBg,
-            onRefresh: () async {
-              await Future.wait([
-                ref.refresh(heroBannerMoviesProvider.future),
-                ref.refresh(homeFeaturedProvider.future),
-                ref.refresh(homeRecentlyAddedProvider.future),
-                ref.refresh(homeLatestMoviesProvider.future),
-                ref.refresh(homeLatestSeriesProvider.future),
-                ref.refresh(homeAnimeProvider.future),
-                ref.refresh(sportsChannelsProvider.future),
-                ref.refresh(homeMostViewedProvider.future),
-                ref.refresh(homeArabicMoviesProvider.future),
-                ref.refresh(homeArabicSeriesProvider.future),
-                ref.read(sportsNotifierProvider('today').notifier).refresh(),
-              ]);
-            },
-            child: CustomScrollView(
+            backgroundColor: Colors.white,
+            strokeWidth: 2.4,
+            displacement: 48,
+            // The spinner drops in below the floating bar, never under it.
+            edgeOffset: topBarHeight,
+            triggerMode: RefreshIndicatorTriggerMode.anywhere,
+            onRefresh: _refreshHome,
+            child: NotificationListener<ScrollNotification>(
+              onNotification: (n) {
+                if (n.depth == 0) _barScrolled.value = n.metrics.pixels > 6;
+                return false;
+              },
+              child: CustomScrollView(
               key: const PageStorageKey('home'),
-              // Pull to refresh shows the spinner without dragging the page.
-              physics: const ClampingScrollPhysics(parent: AlwaysScrollableScrollPhysics()),
+              physics: kAppDefaultScrollPhysics,
+              cacheExtent: 1000,
               slivers: [
                 // 1. Full-Bleed Hero Movie Section (Screen-filling, Crystal Clear, Latest 20, Interactive & Pausable)
                 SliverToBoxAdapter(
-                  child: _buildHeroSection(heroMovies, bannerAsync.isLoading && heroMovies.isEmpty),
-                ),
-
-                // Sports Section: Real Matches (Dynamic title, increased card height, clean time/date, team logos)
-                SliverToBoxAdapter(
-                  child: _buildSportsSection(
-                    title: sportsSectionTitle,
-                    isLiveMode: hasLiveMatches,
-                    matches: allTodayMatches,
-                    isLoading: sportsState.isLoading,
+                  // The flat skeleton stays until there is something to
+                  // show - also while the featured fallback is still on its
+                  // way after the banner feed failed - so nothing flashes.
+                  child: RepaintBoundary(
+                    child: _buildHeroSection(
+                      heroMovies,
+                      heroMovies.isEmpty &&
+                          (bannerAsync.isLoading || (bannerAsync.hasError && featuredAsync.isLoading)),
+                    ),
                   ),
                 ),
 
-                const SliverToBoxAdapter(child: SizedBox(height: 24)),
-
-                // Official film trailers from TMDB, right after the matches.
-                // Phone only: hidden on TV, desktop, and when TMDB is unset.
-                const SliverToBoxAdapter(child: TrailersShowcase()),
-
-                const SliverToBoxAdapter(
-                  child: SizedBox(height: 24),
-                ),
-
-                // Channels Section (قسم القنوات التلفزيونية والرياضية)
-                SliverToBoxAdapter(
-                  child: Reveal(index: 1, child: _buildLiveChannelsSection()),
-                ),
-
-                const SliverToBoxAdapter(
-                  child: SizedBox(height: 24),
-                ),
-
-                // 2. أضيف حديثًا (Recently Added)
-                SliverToBoxAdapter(
-                  child: recentlyAddedAsync.when(
-                    data: (items) => _buildHorizontalCategorySection(
-                      title: 'أضيف حديثًا',
-                      items: items,
-                      isLoading: false,
-                      onViewAll: () => _openCatalog(kind: 'movies', order: 'desc'),
+                // Everything under the hero is one lazy list: a row is built
+                // only once it comes within cacheExtent of the viewport, so
+                // the first frame is the hero and the matches, not every
+                // section on the page.
+                SliverList(
+                  delegate: SliverChildListDelegate([
+                    // Sports Section: Real Matches (Dynamic title, increased card height, clean time/date, team logos)
+                    _buildSportsSection(
+                      title: sportsSectionTitle,
+                      isLiveMode: hasLiveMatches,
+                      // The whole day: in play first, then upcoming, then finished.
+                      matches: MatchOrder.dayOrder(allTodayMatches),
+                      isLoading: sportsState.isLoading,
                     ),
-                    loading: () => _buildHorizontalCategorySection(
-                      title: 'أضيف حديثًا',
-                      items: const [],
-                      isLoading: true,
+
+                    // Official film trailers from TMDB, right after the matches.
+                    // Phone only: hidden on TV, desktop, and when TMDB is unset.
+                    const TrailersShowcase(),
+
+                    const SizedBox(height: 24),
+
+                    // Goal-summary reels + search, just below the live channels.
+                    // Phone only.
+                    const MatchHighlightsBanner(),
+
+                    const SizedBox(height: 24),
+
+                    // 2. أضيف حديثًا (Recently Added)
+                    recentlyAddedAsync.when(
+                      data: (items) => _buildHorizontalCategorySection(
+                        title: 'أضيف حديثًا',
+                        items: items,
+                        isLoading: false,
+                        onViewAll: () => _openCatalog(kind: 'movies', order: 'desc'),
+                      ),
+                      loading: () => _buildHorizontalCategorySection(
+                        title: 'أضيف حديثًا',
+                        items: const [],
+                        isLoading: true,
+                      ),
+                      error: (_, __) => const SizedBox.shrink(),
                     ),
-                    error: (_, __) => const SizedBox.shrink(),
-                  ),
-                ),
 
-                const SliverToBoxAdapter(
-                  child: SizedBox(height: 24),
-                ),
+                    const SizedBox(height: 24),
 
-                // 3. أحدث الأفلام (Latest Movies)
-                SliverToBoxAdapter(
-                  child: latestMoviesAsync.when(
-                    data: (items) => _buildHorizontalCategorySection(
-                      title: 'أحدث الأفلام',
-                      items: items,
-                      isLoading: false,
-                      onViewAll: () => _openCatalog(kind: 'movies', order: 'release'),
+                    // 3. أحدث الأفلام (Latest Movies)
+                    latestMoviesAsync.when(
+                      data: (items) => _buildHorizontalCategorySection(
+                        title: 'أحدث الأفلام',
+                        items: items,
+                        isLoading: false,
+                        onViewAll: () => _openCatalog(kind: 'movies', order: 'release'),
+                      ),
+                      loading: () => _buildHorizontalCategorySection(
+                        title: 'أحدث الأفلام',
+                        items: const [],
+                        isLoading: true,
+                      ),
+                      error: (_, __) => const SizedBox.shrink(),
                     ),
-                    loading: () => _buildHorizontalCategorySection(
-                      title: 'أحدث الأفلام',
-                      items: const [],
-                      isLoading: true,
+
+                    const SizedBox(height: 24),
+
+                    // Decorative: the big leagues, tall branded cards.
+                    const LeaguesShowcase(),
+                    const SizedBox(height: 12),
+
+                    // 4. أحدث المسلسلات (Latest Series) - Wide Card layout
+                    latestSeriesAsync.when(
+                      data: (items) => _buildWideSeriesSection(
+                        title: 'أحدث المسلسلات',
+                        badge: 'جديد',
+                        items: items,
+                        isLoading: false,
+                        onViewAll: () => _openCatalog(kind: 'series', order: 'release'),
+                      ),
+                      loading: () => _buildWideSeriesSection(
+                        title: 'أحدث المسلسلات',
+                        items: const [],
+                        isLoading: true,
+                      ),
+                      error: (_, __) => const SizedBox.shrink(),
                     ),
-                    error: (_, __) => const SizedBox.shrink(),
-                  ),
-                ),
 
-                const SliverToBoxAdapter(
-                  child: SizedBox(height: 24),
-                ),
+                    const SizedBox(height: 24),
 
-                // Decorative: the big leagues, tall branded cards.
-                const SliverToBoxAdapter(child: Reveal(index: 1, child: LeaguesShowcase())),
-                const SliverToBoxAdapter(child: SizedBox(height: 12)),
+                    // The big film series, each complete and in order.
+                    // Live, endless film franchises (seeded with the curated ones).
+                    const DynamicFranchisesShowcase(section: FranchiseSection.films),
+                    const SizedBox(height: 12),
 
-                // 4. أحدث المسلسلات (Latest Series) - Wide Card layout
-                SliverToBoxAdapter(
-                  child: latestSeriesAsync.when(
-                    data: (items) => _buildWideSeriesSection(
-                      title: 'أحدث المسلسلات',
-                      badge: 'جديد',
-                      items: items,
-                      isLoading: false,
-                      onViewAll: () => _openCatalog(kind: 'series', order: 'release'),
+                    // 5. قسم الأنمي (Anime)
+                    animeAsync.when(
+                      data: (items) => _buildHorizontalCategorySection(
+                        title: 'الأنمي',
+                        items: items,
+                        isLoading: false,
+                        onViewAll: () => _openCatalog(kind: 'anime', order: 'release'),
+                      ),
+                      loading: () => _buildHorizontalCategorySection(
+                        title: 'الأنمي',
+                        items: const [],
+                        isLoading: true,
+                      ),
+                      error: (_, __) => const SizedBox.shrink(),
                     ),
-                    loading: () => _buildWideSeriesSection(
-                      title: 'أحدث المسلسلات',
-                      items: const [],
-                      isLoading: true,
+
+                    const SizedBox(height: 24),
+
+                    // Anime franchises: each franchise's series and films together.
+                    const DynamicFranchisesShowcase(section: FranchiseSection.anime),
+                    const SizedBox(height: 12),
+
+                    // Decorative: the game's stars, tall portrait cards.
+                    const StarsShowcase(),
+                    const SizedBox(height: 12),
+
+                    // 6. الأكثر مشاهدة (Most Viewed)
+                    mostViewedAsync.when(
+                      data: (items) => _buildHorizontalCategorySection(
+                        title: 'الأكثر مشاهدة',
+                        items: items,
+                        isLoading: false,
+                        onViewAll: () => _openCatalog(kind: 'movies', order: 'views'),
+                      ),
+                      loading: () => _buildHorizontalCategorySection(
+                        title: 'الأكثر مشاهدة',
+                        items: const [],
+                        isLoading: true,
+                      ),
+                      error: (_, __) => const SizedBox.shrink(),
                     ),
-                    error: (_, __) => const SizedBox.shrink(),
-                  ),
-                ),
 
-                const SliverToBoxAdapter(
-                  child: SizedBox(height: 24),
-                ),
+                    const SizedBox(height: 24),
 
-                // The big film series, each complete and in order.
-                const SliverToBoxAdapter(child: Reveal(index: 2, child: FranchisesShowcase())),
-                const SliverToBoxAdapter(child: SizedBox(height: 12)),
+                    // Decorative: the Arab leagues.
+                    const LeaguesShowcase(title: 'الدوريات العربية', leagues: FootballLeague.arab),
+                    const SizedBox(height: 12),
 
-                // 5. قسم الأنمي (Anime)
-                SliverToBoxAdapter(
-                  child: animeAsync.when(
-                    data: (items) => _buildHorizontalCategorySection(
-                      title: 'الأنمي',
-                      items: items,
-                      isLoading: false,
-                      onViewAll: () => _openCatalog(kind: 'anime', order: 'release'),
+                    // 7. الأفلام العربية (Arabic Movies)
+                    arabicMoviesAsync.when(
+                      data: (items) => _buildHorizontalCategorySection(
+                        title: 'الأفلام العربية',
+                        items: items,
+                        isLoading: false,
+                        onViewAll: () => _openCatalog(kind: 'movies', categoryId: 130),
+                      ),
+                      loading: () => _buildHorizontalCategorySection(
+                        title: 'الأفلام العربية',
+                        items: const [],
+                        isLoading: true,
+                      ),
+                      error: (_, __) => const SizedBox.shrink(),
                     ),
-                    loading: () => _buildHorizontalCategorySection(
-                      title: 'الأنمي',
-                      items: const [],
-                      isLoading: true,
+
+                    const SizedBox(height: 24),
+
+                    // 8. المسلسلات العربية (Arabic Series) - Wide Card layout
+                    arabicSeriesAsync.when(
+                      data: (items) => _buildWideSeriesSection(
+                        title: 'المسلسلات العربية',
+                        badge: 'عربي',
+                        items: items,
+                        isLoading: false,
+                        onViewAll: () => _openCatalog(kind: 'series', categoryId: 130),
+                      ),
+                      loading: () => _buildWideSeriesSection(
+                        title: 'المسلسلات العربية',
+                        items: const [],
+                        isLoading: true,
+                      ),
+                      error: (_, __) => const SizedBox.shrink(),
                     ),
-                    error: (_, __) => const SizedBox.shrink(),
-                  ),
+
+                    const SizedBox(height: 24),
+
+                    // TV-series universes (spin-offs and sequels together).
+                    const FranchisesShowcase(section: FranchiseSection.series),
+                    const SizedBox(height: 12),
+
+                    // 9. Viu: Arabic / Korean / Turkish series and free films,
+                    // played in the app's own player. Each row loads when it
+                    // scrolls near and hides itself if it has nothing.
+                    for (final category in ViuCategory.home.where((c) => !c.isMovies))
+                      ViuHomeSection(category: category),
+                    // "أفلام أخرى": Viu's free films plus varied films by genre.
+                    const OtherFilmsSection(),
+                    const SizedBox(height: 24),
+                  ]),
                 ),
-
-                const SliverToBoxAdapter(
-                  child: SizedBox(height: 24),
-                ),
-
-                // Anime franchises: each franchise's series and films together.
-                const SliverToBoxAdapter(
-                    child: Reveal(index: 3, child: FranchisesShowcase(section: FranchiseSection.anime))),
-                const SliverToBoxAdapter(child: SizedBox(height: 12)),
-
-                // Decorative: the game's stars, tall portrait cards.
-                const SliverToBoxAdapter(child: Reveal(index: 4, child: StarsShowcase())),
-                const SliverToBoxAdapter(child: SizedBox(height: 12)),
-
-                // 6. الأكثر مشاهدة (Most Viewed)
-                SliverToBoxAdapter(
-                  child: mostViewedAsync.when(
-                    data: (items) => _buildHorizontalCategorySection(
-                      title: 'الأكثر مشاهدة',
-                      items: items,
-                      isLoading: false,
-                      onViewAll: () => _openCatalog(kind: 'movies', order: 'views'),
-                    ),
-                    loading: () => _buildHorizontalCategorySection(
-                      title: 'الأكثر مشاهدة',
-                      items: const [],
-                      isLoading: true,
-                    ),
-                    error: (_, __) => const SizedBox.shrink(),
-                  ),
-                ),
-
-                const SliverToBoxAdapter(
-                  child: SizedBox(height: 24),
-                ),
-
-                // Decorative: the Arab leagues.
-                const SliverToBoxAdapter(
-                  child: LeaguesShowcase(title: 'الدوريات العربية', leagues: FootballLeague.arab),
-                ),
-                const SliverToBoxAdapter(child: SizedBox(height: 12)),
-
-                // 7. الأفلام العربية (Arabic Movies)
-                SliverToBoxAdapter(
-                  child: arabicMoviesAsync.when(
-                    data: (items) => _buildHorizontalCategorySection(
-                      title: 'الأفلام العربية',
-                      items: items,
-                      isLoading: false,
-                      onViewAll: () => _openCatalog(kind: 'movies', categoryId: 130),
-                    ),
-                    loading: () => _buildHorizontalCategorySection(
-                      title: 'الأفلام العربية',
-                      items: const [],
-                      isLoading: true,
-                    ),
-                    error: (_, __) => const SizedBox.shrink(),
-                  ),
-                ),
-
-                const SliverToBoxAdapter(
-                  child: SizedBox(height: 24),
-                ),
-
-                // 8. المسلسلات العربية (Arabic Series) - Wide Card layout
-                SliverToBoxAdapter(
-                  child: arabicSeriesAsync.when(
-                    data: (items) => _buildWideSeriesSection(
-                      title: 'المسلسلات العربية',
-                      badge: 'عربي',
-                      items: items,
-                      isLoading: false,
-                      onViewAll: () => _openCatalog(kind: 'series', categoryId: 130),
-                    ),
-                    loading: () => _buildWideSeriesSection(
-                      title: 'المسلسلات العربية',
-                      items: const [],
-                      isLoading: true,
-                    ),
-                    error: (_, __) => const SizedBox.shrink(),
-                  ),
-                ),
-
-                const SliverToBoxAdapter(
-                  child: SizedBox(height: 24),
-                ),
-
-                // TV-series universes (spin-offs and sequels together).
-                const SliverToBoxAdapter(
-                    child: Reveal(index: 5, child: FranchisesShowcase(section: FranchiseSection.series))),
-                const SliverToBoxAdapter(child: SizedBox(height: 12)),
-
-                // 9. Viu: Arabic / Korean / Turkish series and free films,
-                // played in the app's own player. Each row loads when it
-                // scrolls near and hides itself if it has nothing.
-                for (final category in ViuCategory.home.where((c) => !c.isMovies))
-                  SliverToBoxAdapter(child: Reveal(index: 6, child: ViuHomeSection(category: category))),
-                // "أفلام أخرى": Viu's free films plus varied films by genre.
-                const SliverToBoxAdapter(child: Reveal(index: 7, child: OtherFilmsSection())),
-                const SliverToBoxAdapter(child: SizedBox(height: 24)),
               ],
+            ),
             ),
           ),
 
-          // Fixed Pinned Top App Bar (Permanent compact header that stays at the top when scrolling)
+          // Pinned top bar: white and flat while the page is at rest; once
+          // the page has moved, the content shows through a soft blur and a
+          // faint shadow separates the bar from what scrolls under it.
           Positioned(
             top: 0,
             left: 0,
             right: 0,
-            child: Container(
-              color: _barColor,
+            child: ValueListenableBuilder<bool>(
+              valueListenable: _barScrolled,
+              builder: (context, scrolled, child) => ClipRect(
+                child: BackdropFilter(
+                  filter: ImageFilter.blur(sigmaX: scrolled ? 14 : 0, sigmaY: scrolled ? 14 : 0),
+                  child: Container(
+                    decoration: BoxDecoration(
+                      color: scrolled ? _barColor.withOpacity(0.86) : _barColor,
+                      boxShadow: scrolled
+                          ? const [BoxShadow(color: Color(0x0F0F172A), blurRadius: 14, offset: Offset(0, 4))]
+                          : null,
+                    ),
+                    child: child,
+                  ),
+                ),
+              ),
               child: SafeArea(
                 bottom: false,
                 child: Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 4),
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                   child: _buildFloatingTopBar(),
                 ),
               ),
@@ -636,6 +724,9 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
   /// The top bar: matches the page and sidebar background so everything is one seamless canvas.
   Color get _barColor => _p.bg;
 
+  /// True once the page has scrolled past the top; the bar blurs and lifts.
+  final ValueNotifier<bool> _barScrolled = ValueNotifier<bool>(false);
+
   Widget _buildHeroSection(List<CinemanaItem> movies, bool isLoading) {
     return LayoutBuilder(
       builder: (context, constraints) => _buildHeroContent(movies, isLoading, constraints.maxWidth),
@@ -650,7 +741,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     final media = MediaQuery.of(context);
     final isDesktop = availableWidth > 680;
     // Pinned top bar: media.padding.top + 36px content + 10px padding = media.padding.top + 46.0
-    final topBarHeight = media.padding.top + 46.0;
+    final topBarHeight = media.padding.top + 64.0;
     // Clear 14px separation gap so the image container NEVER encroaches or hides behind the top bar:
     final artworkTop = topBarHeight + 14.0;
     // On Windows/Desktop, provide a generous, well-proportioned height (420-520px)
@@ -659,7 +750,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
         ? (availableWidth * 0.35).clamp(420.0, 520.0)
         : availableWidth / _heroArtworkAspect;
 
-    final currentMovie = movies.isEmpty ? null : movies[_currentHeroPage.clamp(0, movies.length - 1)];
+    // Warm the next slides once the list is on screen; the guard inside makes
+    // this free on a rebuild that changed neither the page nor the list.
     if (movies.length > 1) {
       WidgetsBinding.instance.addPostFrameCallback(
         (_) => _precacheNextHeroSlides(movies, availableWidth),
@@ -684,9 +776,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                 child: movies.isNotEmpty
                     ? GestureDetector(
                         onTap: () {
-                          setState(() {
-                            _isAutoSlidePaused = !_isAutoSlidePaused;
-                          });
+                          // Only the timer reads this; no rebuild needed.
+                          _isAutoSlidePaused = !_isAutoSlidePaused;
                           ScaffoldMessenger.of(context).showSnackBar(
                             SnackBar(
                               content: Text(
@@ -703,7 +794,10 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                           controller: _heroPageController,
                           physics: const BouncingScrollPhysics(),
                           onPageChanged: (index) {
-                            setState(() => _currentHeroPage = index);
+                            // Dots and details listen to the notifier; the
+                            // page itself is left alone.
+                            _heroPage.value = index;
+                            _precacheNextHeroSlides(movies, availableWidth);
                           },
                           itemCount: movies.length,
                           itemBuilder: (context, index) {
@@ -718,7 +812,14 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
             // Only the dots sit below the picture; everything else is on it.
             SizedBox(
               height: 18,
-              child: movies.length > 1 ? Center(child: _buildHeroDots(movies.length)) : null,
+              child: movies.length > 1
+                  ? Center(
+                      child: ValueListenableBuilder<int>(
+                        valueListenable: _heroPage,
+                        builder: (_, page, __) => _buildHeroDots(movies.length, page),
+                      ),
+                    )
+                  : null,
             ),
           ],
         ),
@@ -751,7 +852,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
 
         // Title, rating, plot and the play button, laid over the lower part of
         // the artwork rather than on a panel beneath it.
-        if (currentMovie != null)
+        if (movies.isNotEmpty)
           Positioned(
             left: 20,
             right: 20,
@@ -761,7 +862,11 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
               alignment: Alignment.bottomCenter,
               child: Padding(
                 padding: const EdgeInsets.only(bottom: 12),
-                child: _buildHeroRealMovieDetails(currentMovie),
+                child: ValueListenableBuilder<int>(
+                  valueListenable: _heroPage,
+                  builder: (_, page, __) =>
+                      _buildHeroRealMovieDetails(movies[page.clamp(0, movies.length - 1)]),
+                ),
               ),
             ),
           ),
@@ -777,20 +882,13 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
   // One hero slide: the complete artwork, uncropped, edge to edge.
   Widget _buildHeroFullPoster(CinemanaItem movie, double availableWidth) {
     final isDesktop = availableWidth >= 700;
-    final wideCover = (movie.backdropUrl != null &&
-            movie.backdropUrl!.isNotEmpty &&
-            movie.backdropUrl!.contains('cover'))
-        ? movie.backdropUrl!
-        : '';
-    final highResPoster = (movie.imgUrl != null && movie.imgUrl!.isNotEmpty)
-        ? movie.imgUrl!
-        : movie.bestPosterUrl;
+    final wideCover = _heroWideCover(movie);
 
     // On mobile phone portrait, always prioritize the official high-resolution
     // portrait poster (1280x1920) rather than the low-res 2.7:1 horizontal strip!
-    final imageUrl = isDesktop
-        ? (wideCover.isNotEmpty ? wideCover : (movie.bestBackdropUrl.isNotEmpty ? movie.bestBackdropUrl : highResPoster))
-        : (highResPoster.isNotEmpty ? highResPoster : movie.bestBackdropUrl);
+    // `_precacheNextHeroSlides` resolves the very same URL and decode width,
+    // so a warmed slide is a memory-cache hit, not a second decode.
+    final imageUrl = _heroImageUrl(movie, isDesktop);
 
     if (imageUrl.isEmpty) return _buildHeroEmptyPlaceholder();
 
@@ -801,12 +899,16 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
           children: [
             CachedNetworkImage(
               imageUrl: wideCover,
+              cacheManager: appImageCache,
               fit: BoxFit.cover,
               alignment: Alignment.topCenter,
               filterQuality: FilterQuality.high,
               memCacheWidth: null, // Full native razor-sharp resolution
               memCacheHeight: null,
-              fadeInDuration: const Duration(milliseconds: 150),
+              fadeInDuration: Duration.zero,
+              fadeOutDuration: Duration.zero,
+              placeholderFadeInDuration: Duration.zero,
+              useOldImageOnUrlChange: true,
               placeholder: (_, __) => _buildHeroLoadingSkeleton(),
               errorWidget: (_, __, ___) => _buildHeroEmptyPlaceholder(),
             ),
@@ -821,10 +923,14 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
             imageFilter: ImageFilter.blur(sigmaX: 45, sigmaY: 45),
             child: CachedNetworkImage(
               imageUrl: imageUrl,
+              cacheManager: appImageCache,
               fit: BoxFit.cover,
               alignment: Alignment.center,
               memCacheWidth: 400, // a blur needs no detail
-              fadeInDuration: const Duration(milliseconds: 150),
+              fadeInDuration: Duration.zero,
+              fadeOutDuration: Duration.zero,
+              placeholderFadeInDuration: Duration.zero,
+              useOldImageOnUrlChange: true,
               errorWidget: (_, __, ___) => const SizedBox.shrink(),
             ),
           ),
@@ -836,11 +942,15 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                 borderRadius: BorderRadius.circular(16),
                 child: CachedNetworkImage(
                   imageUrl: imageUrl,
+                  cacheManager: appImageCache,
                   fit: BoxFit.contain,
                   filterQuality: FilterQuality.high,
                   memCacheWidth: null, // Native full resolution without downsampling
                   memCacheHeight: null,
-                  fadeInDuration: const Duration(milliseconds: 150),
+                  fadeInDuration: Duration.zero,
+                  fadeOutDuration: Duration.zero,
+                  placeholderFadeInDuration: Duration.zero,
+                  useOldImageOnUrlChange: true,
                   placeholder: (_, __) => _buildHeroLoadingSkeleton(),
                   errorWidget: (_, __, ___) => _buildHeroEmptyPlaceholder(),
                 ),
@@ -851,34 +961,29 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
       );
     }
 
-    // Mobile: Full-bleed crystal-clear native resolution without downsampling
+    // Mobile: decode at the screen's own pixel width, not the poster's full
+    // 1280x1920. A phone screen cannot show more pixels than it has, so this is
+    // visually identical yet decodes far faster and uses a fraction of the
+    // memory — which is what made the top images slow to appear.
     return CachedNetworkImage(
       imageUrl: imageUrl,
+      cacheManager: appImageCache,
       fit: BoxFit.cover,
       alignment: Alignment.topCenter,
-      filterQuality: FilterQuality.high,
-      memCacheWidth: null,
-      memCacheHeight: null,
-      fadeInDuration: const Duration(milliseconds: 150),
+      filterQuality: FilterQuality.medium,
+      memCacheWidth: _decodeWidthFor(availableWidth),
+      fadeInDuration: Duration.zero,
+      fadeOutDuration: Duration.zero,
+      placeholderFadeInDuration: Duration.zero,
+      useOldImageOnUrlChange: true,
       placeholder: (_, __) => _buildHeroLoadingSkeleton(),
       errorWidget: (_, __, ___) => _buildHeroEmptyPlaceholder(),
     );
   }
 
+  /// A flat block in the skeleton colour: no spinner, nothing to flash.
   Widget _buildHeroLoadingSkeleton() {
-    return Container(
-      color: _p.skeleton,
-      child: const Center(
-        child: SizedBox(
-          width: 36,
-          height: 36,
-          child: CircularProgressIndicator(
-            color: Color(0xFFE50914),
-            strokeWidth: 2.5,
-          ),
-        ),
-      ),
-    );
+    return ColoredBox(color: _p.skeleton);
   }
 
   Widget _buildHeroEmptyPlaceholder() {
@@ -895,159 +1000,62 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
   // ==========================================
   Widget _buildFloatingTopBar() {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final searchBarBg = isDark ? const Color(0xFF111726).withOpacity(0.96) : Colors.white.withOpacity(0.98);
-    final searchBorder = isDark
-        ? Border.all(color: Colors.white.withOpacity(0.12), width: 0.8)
-        : Border.all(color: const Color(0xFFCBD5E1), width: 1.0);
-    final searchTextColor = isDark ? Colors.white : const Color(0xFF0F172A);
-    final searchHintColor = isDark ? Colors.white38 : const Color(0xFF94A3B8);
-    const searchIconColor = Color(0xFFE50914);
-    final closeIconColor = isDark ? Colors.white70 : const Color(0xFF64748B);
 
     final isDesktop = Platform.isWindows || Platform.isLinux || Platform.isMacOS;
 
+    // One plain row, no animation: the sidebar button, a search field that
+    // is always there (typing searches in place; ✕ clears and brings the page
+    // back), the desktop window buttons, and the logo mark — no app name,
+    // no theme toggle.
     final topBarContent = SizedBox(
-      height: 36,
-      child: Stack(
+      height: 48,
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.center,
         children: [
-          // Base Top Bar (User Profile + Theme Toggle + Search Trigger + Caption Buttons + CINEBALL Logo)
-          AnimatedOpacity(
-            opacity: _isSearchExpanded ? 0.0 : 1.0,
-            duration: const Duration(milliseconds: 220),
-            curve: Curves.easeOut,
-            child: IgnorePointer(
-              ignoring: _isSearchExpanded,
-              child: Row(
-                crossAxisAlignment: CrossAxisAlignment.center,
-                children: [
-                  // Left: User Button - Tapping pops out the sidebar Drawer immediately!
-                  _buildTranslucentIconButton(
-                    icon: Icons.person_outline_rounded,
-                    onTap: () {
-                      mainScaffoldKey.currentState?.openDrawer();
-                    },
-                  ),
-                  const SizedBox(width: 8),
+          // Account / menu
+          _buildTranslucentIconButton(
+            icon: Icons.person_outline_rounded,
+            onTap: () => mainScaffoldKey.currentState?.openDrawer(),
+          ),
+          const SizedBox(width: 12),
 
-                  // Quick Theme Mode Toggle (Sun / Moon)
-                  _buildTranslucentIconButton(
-                    icon: isDark ? Icons.light_mode_rounded : Icons.dark_mode_rounded,
-                    onTap: () {
-                      ref.read(settingsProvider.notifier).setThemeMode(
-                            isDark ? ThemeMode.light : ThemeMode.dark,
-                          );
-                    },
-                  ),
-                  const SizedBox(width: 8),
-
-                  // Search Trigger Button
-                  _buildTranslucentIconButton(
-                    icon: Icons.search_rounded,
-                    onTap: () => _toggleSearch(true),
-                  ),
-
-                  // On Desktop: Elegant integrated window controls (frameless, seamless)
-                  if (isDesktop) ...[
-                    const SizedBox(width: 6),
-                    Container(
-                      height: 18,
-                      width: 1,
-                      margin: const EdgeInsets.symmetric(horizontal: 3),
-                      color: isDark ? Colors.white12 : Colors.black12,
-                    ),
-                    const WindowCaptionButtons(),
-                  ],
-
-                  const Spacer(),
-
-                  // Right: Enlarged, Professional CINEBALL Logo
-                  _buildCineballLogo(),
-                ],
-              ),
+          // The search field: taller and softer here than on inner pages.
+          Expanded(
+            child: AppSearchField(
+              controller: _searchController,
+              focusNode: _searchFocusNode,
+              height: 48,
+              soft: true,
+              hints: const ['ابحث عن فيلم، مسلسل، أو أنمي', 'ابحث عن ممثل', 'ابحث عن مباراة'],
+              onTap: () {
+                if (!_isSearchExpanded) setState(() => _isSearchExpanded = true);
+              },
+              onChanged: (q) {
+                if (!_isSearchExpanded) setState(() => _isSearchExpanded = true);
+                _onSearchQueryChanged(q);
+              },
+              onSubmitted: _performSearchNow,
+              isLoading: _isSearchLoading,
+              showClear: _isSearchExpanded || _searchController.text.isNotEmpty,
+              onClear: () => _toggleSearch(false),
             ),
           ),
 
-          // Unfolding & Folding Animated Search Bar
-          Align(
-            alignment: Alignment.center,
-            child: AnimatedContainer(
-              duration: const Duration(milliseconds: 320),
-              curve: Curves.easeOutCubic,
-              width: _isSearchExpanded ? double.infinity : 0.0,
-              height: 36,
-              decoration: BoxDecoration(
-                color: searchBarBg,
-                borderRadius: BorderRadius.circular(18),
-                border: _isSearchExpanded ? searchBorder : null,
-                boxShadow: _isSearchExpanded
-                    ? [
-                        BoxShadow(
-                          color: Colors.black.withOpacity(isDark ? 0.45 : 0.12),
-                          blurRadius: 16,
-                          offset: const Offset(0, 4),
-                        ),
-                      ]
-                    : null,
-              ),
-              child: _isSearchExpanded
-                  ? ClipRRect(
-                      borderRadius: BorderRadius.circular(18),
-                      child: SingleChildScrollView(
-                        scrollDirection: Axis.horizontal,
-                        physics: const NeverScrollableScrollPhysics(),
-                        child: SizedBox(
-                          width: MediaQuery.of(context).size.width - 32,
-                          child: Padding(
-                            padding: const EdgeInsets.symmetric(horizontal: 14),
-                            child: Row(
-                              children: [
-                                const Icon(Icons.search_rounded, color: searchIconColor, size: 22),
-                                const SizedBox(width: 10),
-                                Expanded(
-                                  child: TextField(
-                                    controller: _searchController,
-                                    focusNode: _searchFocusNode,
-                                    onChanged: _onSearchQueryChanged,
-                                    style: TextStyle(
-                                      color: searchTextColor,
-                                      fontSize: 14,
-                                      fontWeight: FontWeight.w500,
-                                    ),
-                                    decoration: InputDecoration(
-                                      hintText: 'ابحث عن أفلام، مسلسلات، أجزاء، مباريات...',
-                                      hintStyle: TextStyle(color: searchHintColor, fontSize: 13),
-                                      border: InputBorder.none,
-                                      enabledBorder: InputBorder.none,
-                                      focusedBorder: InputBorder.none,
-                                      contentPadding: EdgeInsets.zero,
-                                      isDense: true,
-                                    ),
-                                    textInputAction: TextInputAction.search,
-                                    onSubmitted: _performSearchNow,
-                                  ),
-                                ),
-                                if (_isSearchLoading)
-                                  const SizedBox(
-                                    width: 18,
-                                    height: 18,
-                                    child: CircularProgressIndicator(color: Color(0xFFE50914), strokeWidth: 2),
-                                  )
-                                else
-                                  IconButton(
-                                    icon: Icon(Icons.close_rounded, color: closeIconColor, size: 20),
-                                    padding: EdgeInsets.zero,
-                                    constraints: const BoxConstraints(),
-                                    onPressed: () => _toggleSearch(false),
-                                  ),
-                              ],
-                            ),
-                          ),
-                        ),
-                      ),
-                    )
-                  : const SizedBox.shrink(),
+          // On desktop: integrated window controls (frameless, seamless)
+          if (isDesktop) ...[
+            const SizedBox(width: 6),
+            Container(
+              height: 18,
+              width: 1,
+              margin: const EdgeInsets.symmetric(horizontal: 3),
+              color: isDark ? Colors.white12 : _p.border,
             ),
-          ),
+            const WindowCaptionButtons(),
+          ],
+
+          const SizedBox(width: 12),
+          // Logo mark only
+          _buildCineballLogo(),
         ],
       ),
     );
@@ -1079,19 +1087,22 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
       color: Colors.transparent,
       child: InkWell(
         onTap: onTap,
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(20),
         child: Container(
-          width: 32,
-          height: 32,
+          width: 40,
+          height: 40,
           decoration: BoxDecoration(
             shape: BoxShape.circle,
-            color: _p.isDark ? Colors.white.withOpacity(0.16) : const Color(0x0D0F172A),
-            border: Border.all(color: _p.isDark ? Colors.white.withOpacity(0.24) : const Color(0x1F0F172A), width: 1),
+            color: _p.isDark ? Colors.white.withOpacity(0.16) : Colors.white,
+            border: Border.all(color: _p.isDark ? Colors.white.withOpacity(0.24) : const Color(0xFFEDF0F5), width: 1),
+            boxShadow: _p.isDark
+                ? null
+                : const [BoxShadow(color: Color(0x0A0F172A), blurRadius: 10, offset: Offset(0, 3))],
           ),
           child: Icon(
             icon,
             color: _p.isDark ? Colors.white.withOpacity(0.95) : _p.icon,
-            size: 17,
+            size: 20,
           ),
         ),
       ),
@@ -1100,47 +1111,30 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
 
   // Compact, Professional CINEBALL Logo
   Widget _buildCineballLogo() {
+    // Logo mark only — the name was dropped from the top bar.
     return Row(
       mainAxisSize: MainAxisSize.min,
       children: [
-        Text(
-          'CINEBALL',
-          style: TextStyle(
-            color: _p.isDark ? Colors.white : _p.text,
-            fontSize: 14.5,
-            fontWeight: FontWeight.w900,
-            letterSpacing: 0.8,
-            shadows: _p.isDark ? const [Shadow(color: Color(0xFFE50914), blurRadius: 10)] : null,
-          ),
-        ),
-        const SizedBox(width: 7),
         Container(
-          width: 28,
-          height: 28,
+          width: 36,
+          height: 36,
           decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(8),
+            borderRadius: BorderRadius.circular(11),
             border: Border.all(
-              color: const Color(0xFFFF4D5B).withOpacity(0.55),
-              width: 1.2,
+              color: const Color(0xFFE50914).withOpacity(0.35),
+              width: 1,
             ),
-            boxShadow: [
-              BoxShadow(
-                color: const Color(0xFFE50914).withOpacity(0.35),
-                blurRadius: 8,
-                offset: const Offset(0, 2),
-              ),
-            ],
           ),
           child: ClipRRect(
-            borderRadius: BorderRadius.circular(7),
+            borderRadius: BorderRadius.circular(10),
             child: Image.asset(
               'assets/images/app_logo.png',
-              width: 28,
-              height: 28,
+              width: 36,
+              height: 36,
               fit: BoxFit.contain,
               errorBuilder: (_, __, ___) => Container(
-                width: 28,
-                height: 28,
+                width: 36,
+                height: 36,
                 color: const Color(0xFFE50914),
                 child: const Icon(Icons.movie_rounded, color: Colors.white, size: 16),
               ),
@@ -1293,14 +1287,14 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     );
   }
 
-  Widget _buildHeroDots(int totalSlides) {
+  Widget _buildHeroDots(int totalSlides, int currentPage) {
     return Row(
       mainAxisAlignment: MainAxisAlignment.center,
       mainAxisSize: MainAxisSize.min,
       children: List.generate(
         totalSlides,
         (dotIndex) {
-          final isCurrent = dotIndex == _currentHeroPage;
+          final isCurrent = dotIndex == currentPage;
           return AnimatedContainer(
             duration: const Duration(milliseconds: 250),
             margin: const EdgeInsets.symmetric(horizontal: 2.5),
@@ -1324,12 +1318,11 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     return (logicalWidth * MediaQuery.of(context).devicePixelRatio).round();
   }
 
-  /// A generous decode width for a card [logicalWidth] wide: twice its pixels,
-  /// so downscaling the full poster keeps its edges crisp, capped at 720 so a
-  /// large poster never decodes more than it can show.
+  /// The decode width for a card [logicalWidth] wide: its own pixels, no
+  /// more, kept between 200 and 480 so a poster is decoded once at draw size
+  /// and a large one never decodes more than it can show.
   int _hiResDecodeWidth(double logicalWidth) {
-    final px = logicalWidth * MediaQuery.of(context).devicePixelRatio * 2;
-    return px.clamp(200, 720).round();
+    return (logicalWidth * MediaQuery.of(context).devicePixelRatio).clamp(200, 480).round();
   }
 
   Widget _buildMetaSeparator() {
@@ -1351,7 +1344,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
   // ==========================================
   Widget _buildSearchResultsView() {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final overlayBg = isDark ? const Color(0xFF07090E).withOpacity(0.98) : const Color(0xFFF8FAFC).withOpacity(0.98);
+    final overlayBg = isDark ? const Color(0xFF07090E).withOpacity(0.98) : Colors.white.withOpacity(0.98);
     final titleColor = isDark ? Colors.white : const Color(0xFF0F172A);
 
     return Container(
@@ -1483,15 +1476,20 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
               child: (poster != null && poster.isNotEmpty)
                   ? CachedNetworkImage(
                       imageUrl: poster,
+                      cacheManager: appImageCache,
                       width: 55,
                       height: 70,
                       memCacheWidth: _decodeWidthFor(55),
                       fit: BoxFit.cover,
                       filterQuality: FilterQuality.high,
+                      fadeInDuration: Duration.zero,
+                      fadeOutDuration: Duration.zero,
+                      placeholderFadeInDuration: Duration.zero,
+                      useOldImageOnUrlChange: true,
                       errorWidget: (_, __, ___) => Container(
                         width: 55,
                         height: 70,
-                        color: isDark ? const Color(0xFF1A2234) : const Color(0xFFE2E8F0),
+                        color: isDark ? const Color(0xFF1A2234) : _p.skeleton,
                         child: Icon(
                           Icons.movie_outlined,
                           color: isDark ? Colors.white24 : Colors.black26,
@@ -1501,7 +1499,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                   : Container(
                       width: 55,
                       height: 70,
-                      color: isDark ? const Color(0xFF1A2234) : const Color(0xFFE2E8F0),
+                      color: isDark ? const Color(0xFF1A2234) : _p.skeleton,
                       child: Icon(
                         Icons.movie_outlined,
                         color: isDark ? Colors.white24 : Colors.black26,
@@ -1576,174 +1574,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
   // ==========================================
   // ==========================================
   // LIVE TV & SPORTS CHANNELS SECTION
-  // ==========================================
-  Widget _buildLiveChannelsSection() {
-    final channelsAsync = ref.watch(sportsChannelsProvider);
-    // Once the list is in, fetch every logo into the image cache, so the
-    // channels page and the list under the player show them at once.
-    ref.listen<AsyncValue<List<SportsChannel>>>(sportsChannelsProvider, (_, next) {
-      final list = next.valueOrNull;
-      if (list != null && mounted) precacheChannelLogos(context, list);
-    });
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    final titleColor = isDark ? Colors.white : const Color(0xFF0F172A);
 
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        // Section Header: "القنوات المباشرة" with LIVE badge and "عرض الكل"
-        Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 16),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Container(
-                    width: 7,
-                    height: 7,
-                    decoration: const BoxDecoration(
-                      shape: BoxShape.circle,
-                      color: Color(0xFFFF2A4A),
-                      boxShadow: [
-                        BoxShadow(color: Color(0xFFFF2A4A), blurRadius: 6, spreadRadius: 1),
-                      ],
-                    ),
-                  ),
-                  const SizedBox(width: 8),
-                  Text(
-                    'القنوات المباشرة',
-                    style: TextStyle(
-                      color: titleColor,
-                      fontSize: 18,
-                      fontWeight: FontWeight.w900,
-                      letterSpacing: -0.3,
-                    ),
-                  ),
-                ],
-              ),
-              InkWell(
-                onTap: () => context.push('/channels'),
-                borderRadius: BorderRadius.circular(8),
-                child: const Padding(
-                  padding: EdgeInsets.symmetric(horizontal: 6, vertical: 4),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Text(
-                        'عرض الكل',
-                        style: TextStyle(
-                          color: Color(0xFFE50914),
-                          fontSize: 13,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                      SizedBox(width: 2),
-                      Icon(Icons.chevron_left_rounded, size: 18, color: Color(0xFFE50914)),
-                    ],
-                  ),
-                ),
-              ),
-            ],
-          ),
-        ),
-        const SizedBox(height: 12),
-
-        // Horizontal Channels List
-        channelsAsync.when(
-          loading: () => SizedBox(
-            height: 108,
-            child: ListView.separated(
-              padding: const EdgeInsets.symmetric(horizontal: 16),
-              scrollDirection: Axis.horizontal,
-              physics: const NeverScrollableScrollPhysics(),
-              itemCount: 5,
-              separatorBuilder: (_, __) => const SizedBox(width: 12),
-              itemBuilder: (_, __) => Container(
-                width: 192,
-                decoration: BoxDecoration(
-                  color: _p.skeleton,
-                  borderRadius: BorderRadius.circular(16),
-                ),
-              ),
-            ),
-          ),
-          error: (_, __) => const SizedBox.shrink(),
-          data: (channels) {
-            if (channels.isEmpty) return const SizedBox.shrink();
-            final shared = channelsSharingLogo(channels);
-            return SizedBox(
-              height: 108,
-              child: ListView.separated(
-                padding: const EdgeInsets.symmetric(horizontal: 16),
-                scrollDirection: Axis.horizontal,
-                physics: const BouncingScrollPhysics(),
-                itemCount: channels.length,
-                separatorBuilder: (_, __) => const SizedBox(width: 12),
-                  itemBuilder: (context, index) {
-                  final channel = channels[index];
-                  return Reveal(
-                    index: index,
-                    step: const Duration(milliseconds: 45),
-                    maxDelay: const Duration(milliseconds: 320),
-                    offset: 12,
-                    child: _buildHomeChannelCard(channel, isDark,
-                        caption: shared.contains(channel.channelName) ? channel.channelName : null),
-                  );
-                },
-              ),
-            );
-          },
-        ),
-      ],
-    );
-  }
-
-  Widget _buildHomeChannelCard(SportsChannel channel, bool isDark, {String? caption}) {
-    // A 16:9 channel tile, a little larger than before, no name under it.
-    // Tapping goes to the channels page, which opens this channel in the
-    // native player - not the sports match page.
-    return GestureDetector(
-      onTap: () => context.push('/channels', extra: channel),
-      child: Container(
-        width: 192,
-        height: 108,
-        decoration: BoxDecoration(
-          color: isDark ? const Color(0xFF121724) : Colors.white,
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(
-            color: isDark ? Colors.white.withOpacity(0.08) : const Color(0xFFE2E8F0),
-          ),
-        ),
-        clipBehavior: Clip.antiAlias,
-        child: Stack(
-          children: [
-            Positioned.fill(child: channelTileImage(channel, caption: caption)),
-            PositionedDirectional(
-              top: 8,
-              start: 8,
-              child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                decoration: BoxDecoration(
-                  color: const Color(0xFFFF2A4A),
-                  borderRadius: BorderRadius.circular(5),
-                ),
-                child: const Text(
-                  'LIVE',
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontSize: 9,
-                    fontWeight: FontWeight.w900,
-                  ),
-                ),
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
 
   Widget _buildSportsSection({
     required String title,
@@ -1751,6 +1582,10 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     required List<SportMatchItem> matches,
     required bool isLoading,
   }) {
+    // A day with nothing to watch has no matches section at all — no header,
+    // no "no matches" box, no gap. (The section is a Column, so its spacer
+    // below is folded in here to vanish with it.)
+    if (!isLoading && matches.isEmpty) return const SizedBox.shrink();
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -1826,6 +1661,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
           SizedBox(
             height: 196,
             child: ListView.separated(
+              key: const PageStorageKey('row-sports'),
               padding: const EdgeInsets.symmetric(horizontal: 16),
               scrollDirection: Axis.horizontal,
               physics: const BouncingScrollPhysics(),
@@ -1874,6 +1710,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
               ),
             ),
           ),
+        const SizedBox(height: 24),
       ],
     );
   }
@@ -2091,8 +1928,9 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
       return Container(
         padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
         decoration: BoxDecoration(
-          color: _p.isDark ? Colors.white.withOpacity(0.12) : const Color(0x140F172A),
+          color: _p.isDark ? Colors.white.withOpacity(0.12) : Colors.white,
           borderRadius: BorderRadius.circular(8),
+          border: _p.isDark ? null : Border.all(color: _p.border),
         ),
         child: Text(
           'انتهت',
@@ -2205,23 +2043,15 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
             height: 195,
             child: WheelScroll(
               builder: (controller) => ListView.separated(
+              // Keeps the row's offset while the section is recycled.
+              key: PageStorageKey('row-$title'),
               controller: controller,
               padding: const EdgeInsets.symmetric(horizontal: 16),
               scrollDirection: Axis.horizontal,
               physics: const BouncingScrollPhysics(),
               itemCount: items.length,
               separatorBuilder: (_, __) => const SizedBox(width: 12),
-              itemBuilder: (context, index) {
-                final movie = items[index];
-                // Cards arrive one after the other as the row is read.
-                return Reveal(
-                  index: index,
-                  step: const Duration(milliseconds: 45),
-                  maxDelay: const Duration(milliseconds: 320),
-                  offset: 12,
-                  child: _buildRealMoviePosterCard(movie),
-                );
-              },
+              itemBuilder: (context, index) => _buildRealMoviePosterCard(items[index]),
             ),
             ),
           )
@@ -2251,6 +2081,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
             decoration: BoxDecoration(
               color: _p.cardAlt,
               borderRadius: BorderRadius.circular(16),
+              border: Border.all(color: _p.border),
             ),
             child: Center(
               child: Text(
@@ -2280,7 +2111,6 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
         decoration: BoxDecoration(
           borderRadius: BorderRadius.circular(16),
           border: Border.all(color: _p.border),
-          boxShadow: _p.cardShadow,
         ),
         child: ClipRRect(
           borderRadius: BorderRadius.circular(16),
@@ -2292,19 +2122,14 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
               if (poster.isNotEmpty)
                 CachedNetworkImage(
                   imageUrl: movie.imageForWidth(_decodeWidthFor(130).toDouble(), hiRes: preferFullArtwork),
+                  cacheManager: appImageCache,
                   fit: BoxFit.cover,
                   filterQuality: FilterQuality.high,
                   memCacheWidth: _hiResDecodeWidth(130),
                   fadeInDuration: Duration.zero,
                   fadeOutDuration: Duration.zero,
-                  imageBuilder: (_, provider) => RevealImage(
-                    child: Image(
-                      image: provider,
-                      fit: BoxFit.cover,
-                      width: double.infinity,
-                      height: double.infinity,
-                    ),
-                  ),
+                  placeholderFadeInDuration: Duration.zero,
+                  useOldImageOnUrlChange: true,
                   placeholder: (_, __) => Shimmer(
                     base: _p.skeleton,
                     highlight: _p.isDark ? const Color(0xFF1E2636) : const Color(0xFFF4F7FC),
@@ -2478,6 +2303,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
           SizedBox(
             height: 172,
             child: ListView.separated(
+              // Keeps the row's offset while the section is recycled.
+              key: PageStorageKey('wide-$title'),
               padding: const EdgeInsets.symmetric(horizontal: 16),
               scrollDirection: Axis.horizontal,
               physics: const BouncingScrollPhysics(),
@@ -2498,19 +2325,13 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
               physics: const NeverScrollableScrollPhysics(),
               itemCount: 3,
               separatorBuilder: (_, __) => const SizedBox(width: 14),
+              // A flat block the size of the card: reads as "already there".
               itemBuilder: (_, __) => Container(
-                width: 270,
+                width: 280,
                 decoration: BoxDecoration(
                   color: _p.skeleton,
-                  borderRadius: BorderRadius.circular(18),
+                  borderRadius: BorderRadius.circular(16),
                   border: Border.all(color: _p.border),
-                ),
-                child: const Center(
-                  child: SizedBox(
-                    width: 26,
-                    height: 26,
-                    child: CircularProgressIndicator(color: Color(0xFFE50914), strokeWidth: 2),
-                  ),
                 ),
               ),
             ),
@@ -2522,6 +2343,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
             decoration: BoxDecoration(
               color: _p.cardAlt,
               borderRadius: BorderRadius.circular(16),
+              border: Border.all(color: _p.border),
             ),
             child: Center(
               child: Text(
@@ -2536,9 +2358,12 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
 
   // Large Wide Card for TV Series ("بطاقة كبيرة عريضة")
   Widget _buildWideSeriesCard(CinemanaItem series) {
-    // Series come with portrait posters only; forcing one into a 260x165
-    // box cropped most of it. Show it whole in a 2:3 slot and put the text
-    // beside it instead of over it.
+    // A wide card: the poster takes 45% of the width, whole and uncropped
+    // enough at 2:3, and the other 55% is the story — a big title with its
+    // genre and year right under it, and one clear play button at the foot.
+    const double cardW = 280;
+    const double cardH = 172;
+    const double posterW = cardW * 0.45;
     final poster = series.cardImageUrl;
     final seasonNum = int.tryParse(series.season) ?? 0;
     final seasonText = seasonNum > 0 ? 'الموسم $seasonNum' : 'مسلسل';
@@ -2555,8 +2380,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
         );
       },
       child: Container(
-        width: 260,
-        height: 165,
+        width: cardW,
+        height: cardH,
         decoration: BoxDecoration(
           color: _p.card,
           borderRadius: BorderRadius.circular(16),
@@ -2565,24 +2390,27 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
         clipBehavior: Clip.antiAlias,
         child: Row(
           children: [
-            // Poster, whole: 110 x 165 = 2:3
+            // Poster: 45% of the card.
             SizedBox(
-              width: 110,
-              height: 165,
+              width: posterW,
+              height: cardH,
               child: poster.isNotEmpty
                   ? CachedNetworkImage(
-                      imageUrl: series.imageForWidth(_decodeWidthFor(110).toDouble(), hiRes: preferFullArtwork),
+                      imageUrl: series.imageForWidth(_decodeWidthFor(posterW).toDouble(), hiRes: preferFullArtwork),
+                      cacheManager: appImageCache,
                       fit: BoxFit.cover,
                       filterQuality: FilterQuality.high,
-                      memCacheWidth: _hiResDecodeWidth(110),
-                      fadeInDuration: const Duration(milliseconds: 120),
-                      fadeOutDuration: const Duration(milliseconds: 60),
+                      memCacheWidth: _hiResDecodeWidth(posterW),
+                      fadeInDuration: Duration.zero,
+                      fadeOutDuration: Duration.zero,
+                      placeholderFadeInDuration: Duration.zero,
+                      useOldImageOnUrlChange: true,
                       placeholder: (_, __) => _buildPosterPlaceholder(),
                       errorWidget: (_, __, ___) => _buildPosterPlaceholder(),
                     )
                   : _buildPosterPlaceholder(),
             ),
-            // Text panel
+            // Story: 55% of the card.
             Expanded(
               child: Padding(
                 padding: const EdgeInsets.fromLTRB(12, 10, 12, 10),
@@ -2607,63 +2435,65 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                           ),
                         ),
                         const Spacer(),
-                        const Icon(Icons.star_rounded, color: Color(0xFFFFB800), size: 13),
+                        const Icon(Icons.star_rounded, color: Color(0xFFFFB800), size: 14),
                         const SizedBox(width: 2),
                         Text(
                           rating,
                           style: TextStyle(
                             color: _p.text,
-                            fontSize: 11,
+                            fontSize: 11.5,
                             fontWeight: FontWeight.w800,
                           ),
                         ),
                       ],
                     ),
                     const SizedBox(height: 8),
+                    // The title, big, with what it is right under it.
                     Text(
                       series.displayTitle,
                       maxLines: 2,
                       overflow: TextOverflow.ellipsis,
                       style: TextStyle(
                         color: _p.text,
-                        fontSize: 13.5,
-                        fontWeight: FontWeight.w800,
-                        height: 1.25,
+                        fontSize: 15.5,
+                        fontWeight: FontWeight.w900,
+                        height: 1.2,
                       ),
                     ),
-                    const Spacer(),
+                    const SizedBox(height: 4),
                     Text(
                       '$genreText • $yearText',
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                       style: TextStyle(
                         color: _p.textMuted,
-                        fontSize: 11,
+                        fontSize: 11.5,
                         fontWeight: FontWeight.w600,
                       ),
                     ),
-                    const SizedBox(height: 6),
-                    Row(
-                      children: [
-                        Container(
-                          width: 26,
-                          height: 26,
-                          decoration: const BoxDecoration(
-                            color: Color(0xFFE50914),
-                            shape: BoxShape.circle,
+                    const Spacer(),
+                    // One clear, full-width play button.
+                    Container(
+                      height: 34,
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFE50914),
+                        borderRadius: BorderRadius.circular(17),
+                      ),
+                      child: const Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(Icons.play_arrow_rounded, color: Colors.white, size: 20),
+                          SizedBox(width: 4),
+                          Text(
+                            'شاهد الآن',
+                            style: TextStyle(
+                              color: Colors.white,
+                              fontSize: 12.5,
+                              fontWeight: FontWeight.w800,
+                            ),
                           ),
-                          child: const Icon(Icons.play_arrow_rounded, color: Colors.white, size: 18),
-                        ),
-                        const SizedBox(width: 6),
-                        Text(
-                          'شاهد',
-                          style: TextStyle(
-                            color: _p.text,
-                            fontSize: 11.5,
-                            fontWeight: FontWeight.w700,
-                          ),
-                        ),
-                      ],
+                        ],
+                      ),
                     ),
                   ],
                 ),

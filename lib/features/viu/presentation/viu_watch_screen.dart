@@ -14,6 +14,7 @@ import '../../cinemana/presentation/widgets/cinemana_player_view.dart';
 import '../data/viu_models.dart';
 import 'viu_providers.dart';
 import '../../../core/video/desktop_video.dart';
+import '../../../core/constants/app_palette.dart';
 import 'package:window_manager/window_manager.dart';
 
 /// A Viu series (or film): the player on top, its free episodes below.
@@ -408,13 +409,13 @@ class _ViuWatchScreenState extends ConsumerState<ViuWatchScreen> {
       backgroundColor: isDark ? const Color(0xFF0F0F13) : Colors.white,
       appBar: AppBar(
         titleSpacing: 0,
-        backgroundColor: Colors.black,
-        iconTheme: const IconThemeData(color: Colors.white),
+        backgroundColor: isDark ? Colors.black : Colors.white,
+        iconTheme: IconThemeData(color: isDark ? Colors.white : Colors.black87),
         title: Text(
           _title,
           maxLines: 1,
           overflow: TextOverflow.ellipsis,
-          style: const TextStyle(color: Colors.white, fontSize: 14.5, fontWeight: FontWeight.bold),
+          style: TextStyle(color: isDark ? Colors.white : Colors.black87, fontSize: 14.5, fontWeight: FontWeight.bold),
         ),
       ),
       body: Column(
@@ -449,7 +450,10 @@ class _ViuWatchScreenState extends ConsumerState<ViuWatchScreen> {
   Widget _qualityBar(bool isDark) {
     return Container(
       height: 38,
-      color: isDark ? const Color(0xFF16161D) : const Color(0xFFF1F1F5),
+      decoration: BoxDecoration(
+        color: isDark ? const Color(0xFF16161D) : Colors.white,
+        border: isDark ? null : Border(bottom: BorderSide(color: AppPalette.of(context).border)),
+      ),
       padding: const EdgeInsets.symmetric(horizontal: 14),
       child: Row(
         children: [
@@ -547,8 +551,9 @@ class _ViuWatchScreenState extends ConsumerState<ViuWatchScreen> {
   Widget _chip(String text, bool isDark, {bool red = false}) => Container(
         padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
         decoration: BoxDecoration(
-          color: red ? const Color(0xFFE50914) : (isDark ? const Color(0xFF1E1E26) : const Color(0xFFF0F0F5)),
+          color: red ? const Color(0xFFE50914) : (isDark ? const Color(0xFF1E1E26) : Colors.white),
           borderRadius: BorderRadius.circular(6),
+          border: (red || isDark) ? null : Border.all(color: AppPalette.of(context).border),
         ),
         child: Text(
           text,
@@ -569,9 +574,12 @@ class _ViuWatchScreenState extends ConsumerState<ViuWatchScreen> {
       child: Container(
         padding: const EdgeInsets.all(6),
         decoration: BoxDecoration(
-          color: isDark ? const Color(0xFF17171F) : const Color(0xFFF4F4F8),
+          color: isDark ? const Color(0xFF17171F) : Colors.white,
           borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: isCurrent ? const Color(0xFFE50914) : Colors.transparent, width: 1.5),
+          border: Border.all(
+            color: isCurrent ? const Color(0xFFE50914) : (isDark ? Colors.transparent : AppPalette.of(context).border),
+            width: 1.5,
+          ),
         ),
         child: Row(
           children: [

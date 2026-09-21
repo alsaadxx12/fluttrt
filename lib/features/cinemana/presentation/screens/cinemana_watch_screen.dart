@@ -6,6 +6,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:video_player/video_player.dart';
 import 'package:wakelock_plus/wakelock_plus.dart';
 import 'package:youtube_downloader/core/constants/app_colors.dart';
+import 'package:youtube_downloader/core/constants/app_palette.dart';
+import 'package:youtube_downloader/features/history/presentation/providers/watch_history_provider.dart';
 import '../../data/cinemana_subtitles.dart';
 import '../../data/models/cinemana_models.dart';
 import '../providers/cinemana_provider.dart';
@@ -61,6 +63,10 @@ class _CinemanaWatchScreenState extends ConsumerState<CinemanaWatchScreen> {
   void initState() {
     super.initState();
     _currentEpisode = widget.initialEpisode;
+    // «سجل المشاهدة»: the title goes in once, when its player opens. For a
+    // series or anime [widget.item] is the show, so the history lists it
+    // once however many episodes are watched.
+    ref.read(watchHistoryProvider.notifier).record(widget.item);
     _loadSubtitlePrefs();
     _allowRotation();
     _initSeasons();
@@ -326,17 +332,17 @@ class _CinemanaWatchScreenState extends ConsumerState<CinemanaWatchScreen> {
         backgroundColor: isDark ? const Color(0xFF0F0F13) : Colors.white,
         appBar: AppBar(
           titleSpacing: 0,
-          backgroundColor: Colors.black,
-          iconTheme: const IconThemeData(color: Colors.white),
+          backgroundColor: isDark ? Colors.black : Colors.white,
+          iconTheme: IconThemeData(color: isDark ? Colors.white : Colors.black87),
           title: Text(
             _currentTitle,
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
-            style: const TextStyle(color: Colors.white, fontSize: 14.5, fontWeight: FontWeight.bold),
+            style: TextStyle(color: isDark ? Colors.white : Colors.black87, fontSize: 14.5, fontWeight: FontWeight.bold),
           ),
           actions: [
             IconButton(
-              icon: const Icon(Icons.fullscreen_rounded, color: Colors.white),
+              icon: Icon(Icons.fullscreen_rounded, color: isDark ? Colors.white : Colors.black87),
               tooltip: 'ملء الشاشة',
               onPressed: () => _setFullscreen(true),
             ),
@@ -354,7 +360,10 @@ class _CinemanaWatchScreenState extends ConsumerState<CinemanaWatchScreen> {
           if (_streams.length > 1)
             Container(
               height: 38,
-              color: isDark ? const Color(0xFF16161D) : const Color(0xFFF1F1F5),
+              decoration: BoxDecoration(
+                color: isDark ? const Color(0xFF16161D) : Colors.white,
+                border: isDark ? null : Border(bottom: BorderSide(color: AppPalette.of(context).border)),
+              ),
               padding: const EdgeInsets.symmetric(horizontal: 14),
               child: Row(
                 children: [
@@ -524,10 +533,12 @@ class _CinemanaWatchScreenState extends ConsumerState<CinemanaWatchScreen> {
                                 child: Container(
                                   width: 140,
                                   decoration: BoxDecoration(
-                                    color: isDark ? const Color(0xFF1E1E26) : const Color(0xFFF0F0F5),
+                                    color: isDark ? const Color(0xFF1E1E26) : Colors.white,
                                     borderRadius: BorderRadius.circular(10),
                                     border: Border.all(
-                                      color: isCurrent ? AppColors.primary : Colors.transparent,
+                                      color: isCurrent
+                                          ? AppColors.primary
+                                          : (isDark ? Colors.transparent : AppPalette.of(context).border),
                                       width: 2,
                                     ),
                                   ),
@@ -545,9 +556,9 @@ class _CinemanaWatchScreenState extends ConsumerState<CinemanaWatchScreen> {
                                                       ep.imgUrl!,
                                                       fit: BoxFit.cover,
                                                       cacheWidth: 320,
-                                                      errorBuilder: (_, __, ___) => Container(color: Colors.black26),
+                                                      errorBuilder: (_, __, ___) => Container(color: isDark ? Colors.black26 : AppPalette.of(context).skeleton),
                                                     )
-                                                  : Container(color: Colors.black26),
+                                                  : Container(color: isDark ? Colors.black26 : AppPalette.of(context).skeleton),
                                             ),
                                             if (isCurrent)
                                               Container(
