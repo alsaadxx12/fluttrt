@@ -11,7 +11,6 @@ import '../../../cinemana/data/dynamic_franchises.dart';
 import '../../../cinemana/data/models/cinemana_models.dart';
 import '../../../cinemana/presentation/providers/cinemana_provider.dart';
 import '../../../cinemana/presentation/screens/cinemana_detail_screen.dart';
-import '../../../sports/presentation/widgets/glowing_crest.dart';
 
 /// A home row of franchises - the film series (Harry Potter, Spider-Man…),
 /// the TV-series universes, or the anime franchises - each a tall card with
@@ -265,26 +264,17 @@ class _FranchiseCard extends ConsumerWidget {
             },
       child: Container(
         width: width,
+        // The page's own colour, and no edge at all - neither the hairline
+        // the cards carried nor the red ring on the one in hand. Size and
+        // shade already say which card that is.
         decoration: BoxDecoration(
-          color: p.card,
+          color: p.bg,
           borderRadius: BorderRadius.circular(18),
         ),
-        // Only the card in hand is ringed, and in the brand red; the rest
-        // carry no edge at all. The edge is drawn over the content, so
-        // nothing inside can smudge it.
-        foregroundDecoration: isActive
-            ? BoxDecoration(
-                borderRadius: BorderRadius.circular(18),
-                border: Border.all(color: const Color(0xFFFF2A4A).withOpacity(0.85), width: 2),
-              )
-            : null,
         clipBehavior: Clip.antiAlias,
         child: Stack(
           fit: StackFit.expand,
           children: [
-            // A soft tint in the lead poster's own colour behind the posters,
-            // fading into the card.
-            if (films.isNotEmpty) PosterTint(url: films.first.cardImageUrl, card: p.card, isDark: p.isDark),
             Column(
               children: [
                 Expanded(
@@ -345,56 +335,6 @@ class _FranchiseCard extends ConsumerWidget {
   }
 }
 
-/// The card's tint: the poster's dominant colour at the top, fading into
-/// the card colour. Neutral until the colour is known, then eases in.
-class PosterTint extends StatefulWidget {
-  final String url;
-  final Color card;
-  final bool isDark;
-  const PosterTint({super.key, required this.url, required this.card, required this.isDark});
-
-  @override
-  State<PosterTint> createState() => _PosterTintState();
-}
-
-class _PosterTintState extends State<PosterTint> {
-  Color? _color;
-
-  @override
-  void initState() {
-    super.initState();
-    _load();
-  }
-
-  @override
-  void didUpdateWidget(PosterTint old) {
-    super.didUpdateWidget(old);
-    if (old.url != widget.url) _load();
-  }
-
-  Future<void> _load() async {
-    final url = widget.url;
-    final c = await GlowingCrest.dominantColorOf(url);
-    if (mounted && widget.url == url) setState(() => _color = c);
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final top = (_color ?? const Color(0xFF8A94A6)).withOpacity(widget.isDark ? 0.42 : 0.26);
-    return AnimatedContainer(
-      duration: const Duration(milliseconds: 400),
-      decoration: BoxDecoration(
-        gradient: LinearGradient(
-          begin: Alignment.topCenter,
-          end: Alignment.bottomCenter,
-          colors: [top, widget.card],
-          stops: const [0, 0.8],
-        ),
-      ),
-    );
-  }
-}
-
 /// Three posters fanned out: first and last of the series behind, the
 /// middle one in front - big, so the artwork carries the card.
 class PosterFan extends StatelessWidget {
@@ -411,7 +351,7 @@ class PosterFan extends StatelessWidget {
         .where((f) => f.id != latest.id)
         .toList();
     final picks = <CinemanaItem>[latest, ...behind];
-    const w = 104.0, h = 156.0;
+    const w = 134.0, h = 201.0;
     Widget poster(CinemanaItem f, double angle, double dx, double dy, double scale, double shade) =>
         Transform.translate(
           offset: Offset(dx, dy),
@@ -424,7 +364,6 @@ class PosterFan extends StatelessWidget {
                 height: h,
                 decoration: BoxDecoration(
                   borderRadius: BorderRadius.circular(14),
-                  border: Border.all(color: Colors.white.withOpacity(0.25), width: 1.0),
                 ),
                 clipBehavior: Clip.antiAlias,
                 child: Stack(
@@ -435,7 +374,7 @@ class PosterFan extends StatelessWidget {
                       cacheManager: appImageCache,
                       fit: BoxFit.cover,
                       filterQuality: FilterQuality.medium,
-                      memCacheWidth: (w * dpr).clamp(180, 360).round(),
+                      memCacheWidth: (w * dpr).clamp(180, 480).round(),
                       fadeInDuration: Duration.zero,
                       fadeOutDuration: Duration.zero,
                       placeholderFadeInDuration: Duration.zero,
@@ -469,8 +408,8 @@ class PosterFan extends StatelessWidget {
         alignment: Alignment.center,
         clipBehavior: Clip.none,
         children: [
-          if (three) poster(picks[2], 10 * math.pi / 180, 48, 8, 0.88, 0.22),
-          if (picks.length > 1) poster(picks[1], -10 * math.pi / 180, -48, 8, 0.88, 0.22),
+          if (three) poster(picks[2], 10 * math.pi / 180, 56, 8, 0.88, 0.22),
+          if (picks.length > 1) poster(picks[1], -10 * math.pi / 180, -56, 8, 0.88, 0.22),
           poster(picks[0], 0, 0, 0, 1.0, 0),
         ],
       ),
@@ -484,7 +423,7 @@ class PosterFanPlaceholder extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    const w = 104.0, h = 156.0;
+    const w = 134.0, h = 201.0;
     Widget slot(double angle, double dx, double dy, double scale) => Transform.translate(
           offset: Offset(dx, dy),
           child: Transform.rotate(
@@ -495,9 +434,8 @@ class PosterFanPlaceholder extends StatelessWidget {
                 width: w,
                 height: h,
                 decoration: BoxDecoration(
-                  color: const Color(0xFF161E2E),
+                  color: const Color(0xFF12161F),
                   borderRadius: BorderRadius.circular(14),
-                  border: Border.all(color: Colors.white.withOpacity(0.15), width: 1.0),
                 ),
                 child: const Center(
                   child: Icon(Icons.movie_filter_rounded, color: Colors.white24, size: 28),
@@ -513,8 +451,8 @@ class PosterFanPlaceholder extends StatelessWidget {
         alignment: Alignment.center,
         clipBehavior: Clip.none,
         children: [
-          slot(10 * math.pi / 180, 48, 8, 0.88),
-          slot(-10 * math.pi / 180, -48, 8, 0.88),
+          slot(10 * math.pi / 180, 56, 8, 0.88),
+          slot(-10 * math.pi / 180, -56, 8, 0.88),
           slot(0, 0, 0, 1.0),
         ],
       ),

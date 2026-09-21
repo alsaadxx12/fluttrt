@@ -43,7 +43,7 @@ class Asia2TvService {
     return _fetchAndParseList(url, defaultCategory: category.label);
   }
 
-  /// Searches for dramas or movies on Asia2TV
+  /// Searches the Asian drama catalogue
   Future<List<Asia2TvItem>> search(String query, {int page = 1}) async {
     final cleanQuery = query.trim();
     if (cleanQuery.isEmpty) return const [];
@@ -57,6 +57,17 @@ class Asia2TvService {
     return _fetchAndParseList(url);
   }
 
+  /// Whether [item] is worth showing.
+  ///
+  /// A listing page carries entries whose poster never resolved and entries
+  /// with no link to open. Both render as an empty grey card that does
+  /// nothing when tapped, so they are dropped here - at the one point every
+  /// listing passes through - rather than in each row.
+  static bool isPlayable(Asia2TvItem item) =>
+      item.posterUrl.trim().isNotEmpty &&
+      item.url.trim().isNotEmpty &&
+      item.title.trim().isNotEmpty;
+
   /// Internal parser for category / search listing pages
   Future<List<Asia2TvItem>> _fetchAndParseList(String url, {String? defaultCategory}) async {
     try {
@@ -65,14 +76,14 @@ class Asia2TvService {
           .timeout(const Duration(seconds: 15));
 
       if (response.statusCode != 200) {
-        debugPrint('[Asia2TV] HTTP error ${response.statusCode} for $url');
+        debugPrint('[asian-catalogue] HTTP error ${response.statusCode} for $url');
         return const [];
       }
 
       final html = response.body;
       return parseListHtml(html, defaultCategory: defaultCategory);
     } catch (e, st) {
-      debugPrint('[Asia2TV] Error fetching list from $url: $e\n$st');
+      debugPrint('[asian-catalogue] Error fetching list from $url: $e\n$st');
       return const [];
     }
   }
@@ -137,7 +148,8 @@ class Asia2TvService {
       ));
     }
 
-    return items;
+    // Only what can actually be shown and opened leaves the parser.
+    return items.where(isPlayable).toList();
   }
 
   // ===========================================================================
@@ -157,7 +169,7 @@ class Asia2TvService {
 
       return parseDetailsHtml(dramaUrl, response.body);
     } catch (e, st) {
-      debugPrint('[Asia2TV] Error fetching drama details for $dramaUrl: $e\n$st');
+      debugPrint('[asian-catalogue] Error fetching drama details for $dramaUrl: $e\n$st');
       rethrow;
     }
   }
@@ -325,7 +337,7 @@ class Asia2TvService {
             activeServer = 'Vidmoly';
           }
         } catch (e) {
-          debugPrint('[Asia2TV] Vidmoly resolution error: $e');
+          debugPrint('[asian-catalogue] Vidmoly resolution error: $e');
         }
       }
 
@@ -351,7 +363,7 @@ class Asia2TvService {
             }
           }
         } catch (e) {
-          debugPrint('[Asia2TV] Ok.ru resolution error: $e');
+          debugPrint('[asian-catalogue] Ok.ru resolution error: $e');
         }
       }
 
@@ -369,7 +381,7 @@ class Asia2TvService {
         highestResolution: highestRes,
       );
     } catch (e, st) {
-      debugPrint('[Asia2TV] Error resolving playback for $watchUrl: $e\n$st');
+      debugPrint('[asian-catalogue] Error resolving playback for $watchUrl: $e\n$st');
       rethrow;
     }
   }

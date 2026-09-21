@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../../../core/constants/app_colors.dart';
+import '../../../../core/constants/app_palette.dart';
 import '../../data/models/subscription_plan.dart';
 
 class SubscriptionPlanCard extends StatelessWidget {
@@ -22,44 +23,17 @@ class SubscriptionPlanCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final borderColor = isSelected
-        ? AppColors.primary
-        : (isDark
-            ? Colors.white.withOpacity(0.12)
-            : const Color(0xFFE2E8F0));
-
     return Container(
       width: width,
       decoration: BoxDecoration(
-        gradient: LinearGradient(
-          begin: Alignment.topCenter,
-          end: Alignment.bottomCenter,
-          colors: isDark
-              ? [
-                  const Color(0xFF161C2C),
-                  const Color(0xFF0F131E),
-                ]
-              : [
-                  Colors.white,
-                  const Color(0xFFF8FAFC),
-                ],
-        ),
+        // The card is the page, not a panel laid over it: the page's own
+        // colour, no edge and no shadow. It used to sit on a lighter navy
+        // gradient inside a hairline frame, which read as a box pasted on
+        // top. What shows now is the red header, the mark and the price.
+        color: AppPalette.of(context).bg,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(
-          color: borderColor,
-          width: isSelected ? 2.0 : 1.2,
-        ),
-        boxShadow: [
-          BoxShadow(
-            color: isSelected
-                ? AppColors.primary.withOpacity(0.35)
-                : (isDark
-                    ? Colors.black.withOpacity(0.4)
-                    : Colors.black.withOpacity(0.06)),
-            blurRadius: isSelected ? 14 : 8,
-            offset: const Offset(0, 4),
-          ),
-        ],
+        // A chosen plan is still marked - but by the brand ring alone.
+        border: isSelected ? Border.all(color: AppColors.primary, width: 2) : null,
       ),
       child: ClipRRect(
         borderRadius: BorderRadius.circular(15),

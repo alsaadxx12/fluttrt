@@ -24,6 +24,13 @@ class CinemanaItem {
   final String? mDate;
   final String? backdropUrl;
 
+  /// Set when the entry did not come from Cinemana's own catalogue.
+  ///
+  /// A row may hold titles from more than one catalogue. A card must not
+  /// open the Cinemana detail page for one of those - that page looks up an
+  /// id this title does not have - so it checks here first.
+  final String? externalSource;
+
   /// Cinemana's own language id for the title (`language_lighttigerNb`):
   /// '23' Korean, '22' Japanese, '21' Chinese, '25' Turkish, '9' Arabic, and
   /// so on. Empty when the feed did not say. It is the only handle the
@@ -54,6 +61,7 @@ class CinemanaItem {
     this.itemDate,
     this.mDate,
     this.languageId = '',
+    this.externalSource,
   });
 
   CinemanaItem copyWith({
@@ -80,6 +88,7 @@ class CinemanaItem {
     String? itemDate,
     String? mDate,
     String? languageId,
+    String? externalSource,
   }) {
     return CinemanaItem(
       id: id ?? this.id,
@@ -105,6 +114,7 @@ class CinemanaItem {
       itemDate: itemDate ?? this.itemDate,
       mDate: mDate ?? this.mDate,
       languageId: languageId ?? this.languageId,
+      externalSource: externalSource ?? this.externalSource,
     );
   }
 

@@ -8,7 +8,6 @@ enum Asia2TvCategory {
   chinese('دراما صينية', 'category/asian-drama/chinese-taiwanese/'),
   thai('دراما تايلاندية', 'category/asian-drama/thai/'),
   movies('أفلام آسيوية', 'category/asian-movies/'),
-  kshow('برامج ترفيه', 'category/asian-drama/kshow/'),
   completed('دراما مكتملة', 'completed-dramas/');
 
   final String label;
@@ -80,22 +79,50 @@ class Asia2TvItem {
     );
   }
 
-  /// Converts this item to a compatible CinemanaItem if needed for generic cards
+  /// This title as a [CinemanaItem], so it can sit in a row beside the
+  /// app's own catalogue.
+  ///
+  /// [CinemanaItem.externalSource] marks it, because the id below is this
+  /// catalogue's, not Cinemana's: a card must route it to its own page.
+  /// [CinemanaItem.kind] is '1' for a film and '2' for a series - the values
+  /// `isSeries` actually reads.
   CinemanaItem toCinemanaItem() {
+    remember(this);
     return CinemanaItem(
       id: id,
       arTitle: title,
       enTitle: otherNames ?? title,
-      stars: '4.8',
-      year: year ?? '2025',
-      kind: isMovie ? 'movies' : 'series',
+      stars: '',
+      year: year ?? '',
+      kind: isMovie ? '1' : '2',
       arContent: story ?? '',
       enContent: story ?? '',
       imgUrl: posterUrl,
       imgMediumUrl: posterUrl,
       imgThumbUrl: posterUrl,
+      externalSource: externalSourceKey,
     );
   }
+
+  /// The value [CinemanaItem.externalSource] carries for this catalogue.
+  static const String externalSourceKey = 'asian-catalogue';
+
+  /// Every title seen so far, by id.
+  ///
+  /// A merged row hands a generic card a [CinemanaItem], which keeps only
+  /// the id; opening it needs this entry back, so converting one files it
+  /// here. Bounded: a listing page is a few dozen titles and the map is
+  /// trimmed once it grows past a few hundred.
+  static final Map<String, Asia2TvItem> _byId = {};
+
+  static void remember(Asia2TvItem item) {
+    if (_byId.length > 600) _byId.clear();
+    _byId[item.id] = item;
+  }
+
+  /// The entry behind a converted [CinemanaItem], or null if it was never
+  /// seen (a cold start restoring a saved list, say).
+  static Asia2TvItem? byId(String id) => _byId[id];
 
   @override
   bool operator ==(Object other) =>

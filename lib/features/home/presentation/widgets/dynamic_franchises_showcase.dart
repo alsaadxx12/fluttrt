@@ -78,7 +78,7 @@ class _LoadingDeck extends StatelessWidget {
       itemBuilder: (_, __) => Container(
         width: _DynCard.width,
         decoration: BoxDecoration(
-          color: p.card,
+          color: p.bg,
           borderRadius: BorderRadius.circular(18),
         ),
         child: const Column(children: [Expanded(child: PosterFanPlaceholder())]),
@@ -281,7 +281,7 @@ class _LoaderCard extends StatelessWidget {
     final p = AppPalette.of(context);
     return Container(
       decoration: BoxDecoration(
-        color: p.card,
+        color: p.bg,
         borderRadius: BorderRadius.circular(18),
       ),
       child: const Center(
@@ -349,21 +349,18 @@ class _DynCardState extends ConsumerState<_DynCard> {
       },
       child: Container(
         width: _DynCard.width,
+        // The page's own colour, and no edge at all - not the hairline the
+        // cards used to carry, nor the red ring that marked the one in hand.
+        // The deck already says which card that is: it is the big one in the
+        // middle, and its neighbours are shrunk and shaded.
         decoration: BoxDecoration(
-          color: p.card,
+          color: p.bg,
           borderRadius: BorderRadius.circular(18),
         ),
-        foregroundDecoration: widget.isActive
-            ? BoxDecoration(
-                borderRadius: BorderRadius.circular(18),
-                border: Border.all(color: const Color(0xFFFF2A4A).withOpacity(0.85), width: 2),
-              )
-            : null,
         clipBehavior: Clip.antiAlias,
         child: Stack(
           fit: StackFit.expand,
           children: [
-            PosterTint(url: parts.first.cardImageUrl, card: p.card, isDark: p.isDark),
             Column(
               children: [
                 Expanded(child: PosterFan(films: parts)),

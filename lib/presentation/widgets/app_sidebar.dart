@@ -286,10 +286,17 @@ class _AppSidebarState extends ConsumerState<AppSidebar> {
                 ),
                 _buildSidebarItem(
                   icon: Icons.tv_rounded,
-                  title: 'الدراما الآسيوية (Asia2TV)',
+                  title: 'الدراما الآسيوية',
                   isSelected: currentPath == '/asia2tv',
                   isDark: isDark,
                   onTap: () => context.push('/asia2tv'),
+                ),
+                _buildSidebarItem(
+                  icon: Icons.video_library_rounded,
+                  title: 'مسلسلات وأفلام حصرية',
+                  isSelected: currentPath == '/exclusive',
+                  isDark: isDark,
+                  onTap: () => context.push('/exclusive'),
                 ),
                 _buildSidebarItem(
                   icon: Icons.sports_soccer_rounded,

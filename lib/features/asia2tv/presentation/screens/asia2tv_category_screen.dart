@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../../core/constants/app_colors.dart';
 import '../../../../core/constants/app_palette.dart';
+import '../../../../presentation/widgets/app_search_field.dart';
 import '../../data/models/asia2tv_models.dart';
 import '../providers/asia2tv_providers.dart';
 import '../widgets/asia2tv_card.dart';
@@ -30,8 +31,6 @@ class _Asia2TvCategoryScreenState extends ConsumerState<Asia2TvCategoryScreen>
     Asia2TvCategory.japanese,
     Asia2TvCategory.chinese,
     Asia2TvCategory.thai,
-    Asia2TvCategory.movies,
-    Asia2TvCategory.kshow,
     Asia2TvCategory.completed,
   ];
 
@@ -63,64 +62,29 @@ class _Asia2TvCategoryScreenState extends ConsumerState<Asia2TvCategoryScreen>
       appBar: AppBar(
         backgroundColor: palette.bg,
         elevation: 0,
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back_rounded, color: Colors.white),
-          onPressed: () => Navigator.of(context).pop(),
-        ),
-        title: const Row(
-          children: [
-            Icon(Icons.tv_rounded, color: AppColors.primary, size: 22),
-            SizedBox(width: 8),
-            Text(
-              'الدراما الآسيوية • Asia2TV',
-              style: TextStyle(
-                color: Colors.white,
-                fontSize: 16.5,
-                fontWeight: FontWeight.w900,
-              ),
-            ),
-          ],
-        ),
+        toolbarHeight: 0,
+        automaticallyImplyLeading: false,
         bottom: PreferredSize(
-          preferredSize: Size.fromHeight(isSearching ? 60 : 108),
+          preferredSize: Size.fromHeight(isSearching ? 56 : 102),
           child: Column(
             children: [
-              // Search Input Box
+              // Search box
               Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
-                child: TextField(
+                padding: const EdgeInsets.fromLTRB(16, 8, 16, 4),
+                child: AppSearchField(
                   controller: _searchController,
+                  hints: const [
+                    'ابحث عن مسلسل',
+                    'ابحث عن دراما كورية',
+                    'ابحث عن دراما يابانية',
+                    'ابحث عن دراما صينية',
+                  ],
                   onChanged: (val) => setState(() => _searchQuery = val.trim()),
-                  style: const TextStyle(color: Colors.white, fontSize: 13.5),
-                  decoration: InputDecoration(
-                    hintText: 'بحث في مسلسلات وأفلام Asia2TV...',
-                    hintStyle: const TextStyle(color: Colors.white38, fontSize: 13),
-                    prefixIcon: const Icon(Icons.search_rounded, color: Colors.white54, size: 20),
-                    suffixIcon: _searchQuery.isNotEmpty
-                        ? IconButton(
-                            icon: const Icon(Icons.close_rounded, color: Colors.white54, size: 18),
-                            onPressed: () {
-                              _searchController.clear();
-                              setState(() => _searchQuery = '');
-                            },
-                          )
-                        : null,
-                    filled: true,
-                    fillColor: const Color(0xFF0E131F),
-                    contentPadding: const EdgeInsets.symmetric(vertical: 0, horizontal: 16),
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(10),
-                      borderSide: const BorderSide(color: Colors.white12, width: 0.8),
-                    ),
-                    enabledBorder: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(10),
-                      borderSide: const BorderSide(color: Colors.white12, width: 0.8),
-                    ),
-                    focusedBorder: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(10),
-                      borderSide: const BorderSide(color: AppColors.primary, width: 1.2),
-                    ),
-                  ),
+                  showClear: _searchQuery.isNotEmpty,
+                  onClear: () {
+                    _searchController.clear();
+                    setState(() => _searchQuery = '');
+                  },
                 ),
               ),
 

@@ -2,7 +2,6 @@ import 'dart:ui' show ImageFilter;
 import 'dart:async';
 import 'dart:io';
 import 'package:cached_network_image/cached_network_image.dart';
-import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart' show listEquals;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -10,7 +9,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:window_manager/window_manager.dart';
 import '../../../../presentation/widgets/window_caption_buttons.dart';
-import 'package:youtube_downloader/presentation/widgets/app_search_field.dart';
+import 'package:youtube_downloader/features/search/presentation/screens/search_screen.dart';
 import 'package:youtube_downloader/features/cinemana/data/models/cinemana_models.dart';
 import 'package:youtube_downloader/features/cinemana/presentation/providers/cinemana_provider.dart';
 import 'package:youtube_downloader/features/cinemana/presentation/screens/cinemana_catalog_screen.dart';
@@ -24,7 +23,6 @@ import 'package:youtube_downloader/features/viu/data/viu_models.dart';
 import 'package:youtube_downloader/features/viu/presentation/viu_widgets.dart';
 import 'package:youtube_downloader/features/viu/presentation/other_films.dart';
 import 'package:youtube_downloader/core/constants/app_palette.dart';
-import 'package:youtube_downloader/core/constants/app_colors.dart';
 import 'package:youtube_downloader/core/network/http_cache.dart';
 import 'package:youtube_downloader/core/network/image_cache.dart';
 import '../widgets/subscription_plans_showcase.dart';
@@ -41,10 +39,10 @@ import '../../../trailers/presentation/trailers_showcase.dart';
 import 'package:youtube_downloader/core/scroll/app_scroll_physics.dart';
 import 'package:youtube_downloader/features/update/presentation/update_controller.dart';
 import 'package:youtube_downloader/features/subscription/presentation/providers/subscription_provider.dart';
-import 'package:youtube_downloader/features/asia2tv/data/models/asia2tv_models.dart';
 import 'package:youtube_downloader/features/asia2tv/presentation/providers/asia2tv_providers.dart';
-import 'package:youtube_downloader/features/asia2tv/presentation/screens/asia2tv_category_screen.dart';
-import 'package:youtube_downloader/features/asia2tv/presentation/widgets/asia2tv_card.dart';
+import 'package:youtube_downloader/features/asia2tv/presentation/open_catalogue_item.dart';
+import 'package:youtube_downloader/features/exclusive_media/presentation/providers/exclusive_media_providers.dart';
+import 'package:youtube_downloader/features/exclusive_media/data/models/exclusive_media_models.dart';
 
 class HomeScreen extends ConsumerStatefulWidget {
   const HomeScreen({super.key});
@@ -55,8 +53,6 @@ class HomeScreen extends ConsumerStatefulWidget {
 
 class _HomeScreenState extends ConsumerState<HomeScreen> {
   late final PageController _heroPageController;
-  late final TextEditingController _searchController;
-  final FocusNode _searchFocusNode = FocusNode();
   // The slide on screen. A notifier rather than setState: only the dots and
   // the details listen, so a slide change never rebuilds the whole page.
   final ValueNotifier<int> _heroPage = ValueNotifier<int>(0);
@@ -70,20 +66,11 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
 
   Timer? _heroAutoSlideTimer;
   bool _isAutoSlidePaused = false;
-  bool _isSearchExpanded = false;
-
-  // In-place search state with posters
-  List<CinemanaItem> _searchResults = [];
-  bool _isSearchLoading = false;
-  String? _searchErrorMessage;
-  Timer? _searchDebounceTimer;
-  CancelToken? _searchCancelToken;
 
   @override
   void initState() {
     super.initState();
     _heroPageController = PageController();
-    _searchController = TextEditingController();
 
     _startAutoSlideTimer();
     _prefetchTimer = Timer(const Duration(milliseconds: 900), _prefetchRows);
@@ -107,10 +94,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
       franchiseFilmsProvider('james-bond'),
       homeLatestSeriesProvider,
       homeAsianSeriesProvider,
-      asia2tvLatestEpisodesProvider,
-      asia2tvKoreanDramasProvider,
-      asia2tvChineseDramasProvider,
-      asia2tvMoviesProvider,
+      asianSeriesMergedProvider,
       homeAnimeProvider,
       homeMostViewedProvider,
       homeArabicMoviesProvider,
@@ -193,109 +177,9 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     _heroAutoSlideTimer?.cancel();
     _heroPrecacheTimer?.cancel();
     _prefetchTimer?.cancel();
-    _searchDebounceTimer?.cancel();
-    _searchCancelToken?.cancel('disposed');
     _heroPageController.dispose();
     _heroPage.dispose();
-    _searchController.dispose();
-    _searchFocusNode.dispose();
     super.dispose();
-  }
-
-  void _toggleSearch(bool expand) {
-    if (!expand) {
-      _searchFocusNode.unfocus();
-      _searchController.clear();
-      _searchCancelToken?.cancel('closed');
-    }
-    setState(() {
-      _isSearchExpanded = expand;
-      if (!expand) {
-        _searchResults.clear();
-        _isSearchLoading = false;
-        _searchErrorMessage = null;
-      }
-    });
-    if (expand) {
-      Future.delayed(const Duration(milliseconds: 200), () {
-        if (mounted && _isSearchExpanded && _searchFocusNode.canRequestFocus) {
-          _searchFocusNode.requestFocus();
-        }
-      });
-    }
-  }
-
-  // Live in-place search with posters, 400ms debounce, CancelToken and network safety
-  void _onSearchQueryChanged(String query) {
-    _searchDebounceTimer?.cancel();
-    _searchCancelToken?.cancel('new query');
-    final q = query.trim();
-    if (q.isEmpty) {
-      setState(() {
-        _searchResults.clear();
-        _isSearchLoading = false;
-        _searchErrorMessage = null;
-      });
-      return;
-    }
-    setState(() {
-      _isSearchLoading = true;
-      _searchErrorMessage = null;
-    });
-
-    _searchCancelToken = CancelToken();
-    _searchDebounceTimer = Timer(const Duration(milliseconds: 400), () async {
-      if (!mounted) return;
-      try {
-        final service = ref.read(cinemanaServiceProvider);
-        final results = await service.search(q, cancelToken: _searchCancelToken);
-        if (mounted) {
-          setState(() {
-            _searchResults = results;
-            _isSearchLoading = false;
-            _searchErrorMessage = null;
-          });
-        }
-      } catch (e) {
-        if (mounted && !(e is DioException && CancelToken.isCancel(e))) {
-          setState(() {
-            _isSearchLoading = false;
-            _searchErrorMessage = 'تعذر الاتصال بالخادم، يُرجى التأكد من اتصال الإنترنت والمحاولة ثانيةً.';
-          });
-        }
-      }
-    });
-  }
-
-  void _performSearchNow(String query) async {
-    _searchDebounceTimer?.cancel();
-    _searchCancelToken?.cancel('instant search');
-    final q = query.trim();
-    if (q.isEmpty) return;
-    setState(() {
-      _isSearchLoading = true;
-      _searchErrorMessage = null;
-    });
-
-    _searchCancelToken = CancelToken();
-    try {
-      final service = ref.read(cinemanaServiceProvider);
-      final results = await service.search(q, cancelToken: _searchCancelToken);
-      if (mounted) {
-        setState(() {
-          _searchResults = results;
-          _isSearchLoading = false;
-          _searchErrorMessage = null;
-        });
-      }
-    } catch (e) {
-      if (mounted && !(e is DioException && CancelToken.isCancel(e))) {
-        setState(() {
-          _isSearchLoading = false;
-          _searchErrorMessage = 'تعذر الاتصال بالخادم، يُرجى التأكد من اتصال الإنترنت والمحاولة ثانيةً.';
-        });
-      }
-    }
   }
 
   /// Pull-to-refresh: every request bypasses the fresh window once, then all
@@ -312,10 +196,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
       quiet(ref.refresh(homeLatestMoviesProvider.future)),
       quiet(ref.refresh(homeLatestSeriesProvider.future)),
       quiet(ref.refresh(homeAsianSeriesProvider.future)),
-      quiet(ref.refresh(asia2tvLatestEpisodesProvider.future)),
-      quiet(ref.refresh(asia2tvKoreanDramasProvider.future)),
-      quiet(ref.refresh(asia2tvChineseDramasProvider.future)),
-      quiet(ref.refresh(asia2tvMoviesProvider.future)),
+      quiet(ref.refresh(asianSeriesMergedProvider.future)),
       quiet(ref.refresh(homeAnimeProvider.future)),
       quiet(ref.refresh(sportsChannelsProvider.future)),
       quiet(ref.refresh(homeMostViewedProvider.future)),
@@ -488,30 +369,6 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     );
   }
 
-  /// One horizontal Asia2TV row fed by [provider]; opens category or details.
-  Widget _asia2tvRowSection({
-    required ProviderListenable<AsyncValue<List<Asia2TvItem>>> provider,
-    required String title,
-    required Asia2TvCategory category,
-  }) {
-    return RepaintBoundary(
-      child: Consumer(
-        builder: (context, ref, _) => ref.watch(provider).when(
-              data: (items) {
-                if (items.isEmpty) return const SizedBox.shrink();
-                return _buildAsia2TvHorizontalSection(
-                  title: title,
-                  items: items,
-                  category: category,
-                );
-              },
-              loading: () => const SizedBox.shrink(),
-              error: (_, __) => const SizedBox.shrink(),
-            ),
-      ),
-    );
-  }
-
   /// Everything under the hero, in order, each entry built only once it
   /// scrolls near. Built once for the life of the page: no entry closes over
   /// anything from [build], so a rebuild never has to make this list again.
@@ -593,6 +450,25 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
 
     (_) => const SizedBox(height: 24),
 
+    // أحدث المسلسلات الحصرية (إصدارات جديدة 2024-2026)
+    (_) => _wideSeriesRowSection(
+          provider: exclusiveLatestSeriesProvider,
+          title: 'أحدث المسلسلات الحصرية',
+          badge: 'حصري',
+          onViewAll: () => context.push('/exclusive', extra: ExclusiveCategory.series),
+        ),
+
+    (_) => const SizedBox(height: 24),
+
+    // أحدث الأفلام الحصرية (إصدارات جديدة 2024-2026)
+    (_) => _posterRowSection(
+          provider: exclusiveLatestMoviesProvider,
+          title: 'أحدث الأفلام الحصرية',
+          onViewAll: () => context.push('/exclusive', extra: ExclusiveCategory.movies),
+        ),
+
+    (_) => const SizedBox(height: 24),
+
     // The big film series, each complete and in order.
     // Live, endless film franchises (seeded with the curated ones).
     (_) => const RepaintBoundary(child: DynamicFranchisesShowcase(section: FranchiseSection.films)),
@@ -600,36 +476,9 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
 
     // أحدث المسلسلات الآسيوية (كورية، يابانية، صينية…)
     (_) => _wideSeriesRowSection(
-          provider: homeAsianSeriesProvider,
+          provider: asianSeriesMergedProvider,
           title: 'أحدث المسلسلات الآسيوية',
           badge: 'آسيوي',
-        ),
-
-    (_) => const SizedBox(height: 24),
-
-    // أحدث حلقات Asia2TV
-    (_) => _asia2tvRowSection(
-          provider: asia2tvLatestEpisodesProvider,
-          title: 'أحدث حلقات Asia2TV',
-          category: Asia2TvCategory.newEpisodes,
-        ),
-
-    (_) => const SizedBox(height: 24),
-
-    // الدراما الكورية (Asia2TV)
-    (_) => _asia2tvRowSection(
-          provider: asia2tvKoreanDramasProvider,
-          title: 'الدراما الكورية (Asia2TV)',
-          category: Asia2TvCategory.korean,
-        ),
-
-    (_) => const SizedBox(height: 24),
-
-    // الدراما الصينية واليابانية (Asia2TV)
-    (_) => _asia2tvRowSection(
-          provider: asia2tvChineseDramasProvider,
-          title: 'الدراما الصينية واليابانية (Asia2TV)',
-          category: Asia2TvCategory.chinese,
         ),
 
     (_) => const SizedBox(height: 24),
@@ -685,15 +534,6 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
           provider: homeArabicMoviesProvider,
           title: 'الأفلام العربية',
           onViewAll: () => _openCatalog(kind: 'movies', categoryId: 130),
-        ),
-
-    (_) => const SizedBox(height: 24),
-
-    // الأفلام الآسيوية (Asia2TV)
-    (_) => _asia2tvRowSection(
-          provider: asia2tvMoviesProvider,
-          title: 'الأفلام الآسيوية (Asia2TV)',
-          category: Asia2TvCategory.movies,
         ),
 
     (_) => const SizedBox(height: 24),
@@ -843,18 +683,10 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
             ),
           ),
 
-          // In-Place Search Results Overlay (Showing live results WITH POSTERS)
-          if (_isSearchExpanded &&
-              (_isSearchLoading || _searchResults.isNotEmpty || _searchController.text.trim().isNotEmpty))
-            Positioned.fill(
-              top: MediaQuery.of(context).padding.top + 46,
-              child: _buildSearchResultsView(),
-            ),
-
           // The newest films wait on the rail rather than interrupting the
           // page. This is the one side surface: the old card that slid in by
           // itself on start-up is gone.
-          if (!_isSearchExpanded) const FilmDeck(),
+          const FilmDeck(),
         ],
       ),
       ),
@@ -1159,10 +991,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
 
     final isDesktop = Platform.isWindows || Platform.isLinux || Platform.isMacOS;
 
-    // One plain row, no animation: the sidebar button, a search field that
-    // is always there (typing searches in place; ✕ clears and brings the page
-    // back), the desktop window buttons, and the logo mark — no app name,
-    // no theme toggle.
+    // One plain row: the account button with search and cast beside it, and
+    // the app's name at the far end.
     final topBarContent = SizedBox(
       height: 48,
       child: Row(
@@ -1173,45 +1003,47 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
             icon: Icons.person_rounded,
             onTap: () => mainScaffoldKey.currentState?.openDrawer(),
           ),
-          const SizedBox(width: 12),
+          const SizedBox(width: 8),
 
-          // The search field: taller and softer here than on inner pages.
-          Expanded(
-            child: AppSearchField(
-              controller: _searchController,
-              focusNode: _searchFocusNode,
-              height: 48,
-              soft: true,
-              hints: const ['ابحث عن فيلم، مسلسل، أو أنمي', 'ابحث عن ممثل', 'ابحث عن مباراة'],
-              onTap: () {
-                if (!_isSearchExpanded) setState(() => _isSearchExpanded = true);
-              },
-              onChanged: (q) {
-                if (!_isSearchExpanded) setState(() => _isSearchExpanded = true);
-                _onSearchQueryChanged(q);
-              },
-              onSubmitted: _performSearchNow,
-              isLoading: _isSearchLoading,
-              showClear: _isSearchExpanded || _searchController.text.isNotEmpty,
-              onClear: () => _toggleSearch(false),
+          _buildTranslucentIconButton(
+            icon: Icons.search_rounded,
+            onTap: () => Navigator.of(context, rootNavigator: true).push(
+              MaterialPageRoute(builder: (_) => const SearchScreen()),
             ),
           ),
+          const SizedBox(width: 8),
+
+          // Cast to a screen. The picker is not built yet, so it says so
+          // rather than doing nothing when pressed.
+          _buildTranslucentIconButton(
+            icon: Icons.cast_rounded,
+            onTap: () {
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(
+                  content: Text('المشاركة عبر الشاشة قيد التطوير', style: TextStyle(fontSize: 12.5)),
+                  duration: Duration(seconds: 2),
+                  behavior: SnackBarBehavior.floating,
+                  backgroundColor: Color(0xFF1B2232),
+                ),
+              );
+            },
+          ),
+
+          const Spacer(),
 
           // On desktop: integrated window controls (frameless, seamless)
           if (isDesktop) ...[
-            const SizedBox(width: 6),
+            const WindowCaptionButtons(),
             Container(
               height: 18,
               width: 1,
               margin: const EdgeInsets.symmetric(horizontal: 3),
               color: isDark ? Colors.white12 : _p.border,
             ),
-            const WindowCaptionButtons(),
+            const SizedBox(width: 6),
           ],
 
-          const SizedBox(width: 12),
-          // Logo mark only
-          _buildCineballLogo(),
+          _buildAppNameMark(),
         ],
       ),
     );
@@ -1262,27 +1094,24 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     );
   }
 
-  // Compact, Professional CINEBALL Logo (Clean & Borderless)
-  Widget _buildCineballLogo() {
-    return Row(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        ClipRRect(
-          borderRadius: BorderRadius.circular(10),
-          child: Image.asset(
-            'assets/images/app_logo.png',
-            width: 36,
-            height: 36,
-            fit: BoxFit.contain,
-            errorBuilder: (_, __, ___) => Container(
-              width: 36,
-              height: 36,
-              color: const Color(0xFFE50914),
-              child: const Icon(Icons.movie_rounded, color: Colors.white, size: 16),
-            ),
-          ),
-        ),
-      ],
+  /// The app's name, in place of its icon mark.
+  ///
+  /// "BALL" carries the brand red so the word is read as two halves at a
+  /// glance, the way the logo did.
+  Widget _buildAppNameMark() {
+    return Text.rich(
+      TextSpan(
+        children: [
+          TextSpan(text: 'CINE', style: TextStyle(color: _p.text)),
+          const TextSpan(text: 'BALL', style: TextStyle(color: Color(0xFFE50914))),
+        ],
+      ),
+      style: const TextStyle(
+        fontSize: 21,
+        fontWeight: FontWeight.w900,
+        letterSpacing: 0.4,
+        height: 1,
+      ),
     );
   }
 
@@ -1485,243 +1314,6 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
       ),
     );
   }
-
-  // ==========================================
-  // IN-PLACE SEARCH RESULTS VIEW (Showing Posters & Details)
-  // ==========================================
-  Widget _buildSearchResultsView() {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    final overlayBg = isDark ? const Color(0xFF07090E).withOpacity(0.98) : Colors.white.withOpacity(0.98);
-    final titleColor = isDark ? Colors.white : const Color(0xFF0F172A);
-
-    return Container(
-      color: overlayBg,
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-            child: Row(
-              children: [
-                Text(
-                  'نتائج البحث (${_searchResults.length})',
-                  style: TextStyle(
-                    color: titleColor,
-                    fontSize: 15,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-                const Spacer(),
-                TextButton(
-                  onPressed: () => _toggleSearch(false),
-                  child: const Text(
-                    'إغلاق',
-                    style: TextStyle(color: Color(0xFFE50914), fontWeight: FontWeight.bold),
-                  ),
-                ),
-              ],
-            ),
-          ),
-          Expanded(
-            child: _isSearchLoading
-                ? const Center(
-                    child: CircularProgressIndicator(color: Color(0xFFE50914)),
-                  )
-                : _searchErrorMessage != null
-                    ? Center(
-                        child: Padding(
-                          padding: const EdgeInsets.all(20.0),
-                          child: Column(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              const Icon(Icons.error_outline_rounded, color: Color(0xFFE50914), size: 40),
-                              const SizedBox(height: 10),
-                              Text(
-                                _searchErrorMessage!,
-                                textAlign: TextAlign.center,
-                                style: TextStyle(
-                                  color: isDark ? Colors.white70 : const Color(0xFF64748B),
-                                  fontSize: 13,
-                                ),
-                              ),
-                              const SizedBox(height: 14),
-                              ElevatedButton.icon(
-                                onPressed: () => _performSearchNow(_searchController.text),
-                                icon: const Icon(Icons.refresh_rounded, size: 16),
-                                label: const Text('إعادة المحاولة'),
-                                style: ElevatedButton.styleFrom(
-                                  backgroundColor: const Color(0xFFE50914),
-                                  foregroundColor: Colors.white,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      )
-                    : _searchResults.isEmpty
-                        ? Center(
-                            child: Text(
-                              'لم يتم العثور على نتائج لـ "${_searchController.text.trim()}"',
-                              style: TextStyle(
-                                color: isDark ? Colors.white54 : const Color(0xFF64748B),
-                                fontSize: 13,
-                              ),
-                            ),
-                          )
-                        : ListView.separated(
-                            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                            itemCount: _searchResults.length,
-                            separatorBuilder: (_, __) => const SizedBox(height: 12),
-                            itemBuilder: (context, index) {
-                              final item = _searchResults[index];
-                              return _buildSearchResultItem(item);
-                            },
-                          ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildSearchResultItem(CinemanaItem item) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    final poster = item.bestPosterUrl.isNotEmpty ? item.bestPosterUrl : (item.imgUrl ?? item.imgThumbUrl);
-    final cardBg = isDark ? const Color(0xFF121724) : Colors.white;
-    final cardBorder = isDark ? Colors.white.withOpacity(0.08) : const Color(0xFFE2E8F0);
-    final titleColor = isDark ? Colors.white : const Color(0xFF0F172A);
-    final metaColor = isDark ? Colors.white.withOpacity(0.65) : const Color(0xFF64748B);
-
-    return GestureDetector(
-      onTap: () {
-        _toggleSearch(false);
-        Navigator.of(context, rootNavigator: true).push(
-          MaterialPageRoute(
-            builder: (_) => CinemanaDetailScreen(item: item),
-          ),
-        );
-      },
-      child: Container(
-        height: 85,
-        decoration: BoxDecoration(
-          color: cardBg,
-          borderRadius: BorderRadius.circular(14),
-          border: Border.all(color: cardBorder),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withOpacity(isDark ? 0.25 : 0.05),
-              blurRadius: 6,
-              offset: const Offset(0, 2),
-            ),
-          ],
-        ),
-        padding: const EdgeInsets.all(8),
-        child: Row(
-          children: [
-            // Poster Image
-            ClipRRect(
-              borderRadius: BorderRadius.circular(10),
-              child: (poster != null && poster.isNotEmpty)
-                  ? CachedNetworkImage(
-                      imageUrl: poster,
-                      cacheManager: appImageCache,
-                      width: 55,
-                      height: 70,
-                      memCacheWidth: _decodeWidthFor(55),
-                      fit: BoxFit.cover,
-                      filterQuality: FilterQuality.high,
-                      fadeInDuration: Duration.zero,
-                      fadeOutDuration: Duration.zero,
-                      placeholderFadeInDuration: Duration.zero,
-                      useOldImageOnUrlChange: true,
-                      errorWidget: (_, __, ___) => Container(
-                        width: 55,
-                        height: 70,
-                        color: isDark ? const Color(0xFF1A2234) : _p.skeleton,
-                        child: Icon(
-                          Icons.movie_outlined,
-                          color: isDark ? Colors.white24 : Colors.black26,
-                        ),
-                      ),
-                    )
-                  : Container(
-                      width: 55,
-                      height: 70,
-                      color: isDark ? const Color(0xFF1A2234) : _p.skeleton,
-                      child: Icon(
-                        Icons.movie_outlined,
-                        color: isDark ? Colors.white24 : Colors.black26,
-                      ),
-                    ),
-            ),
-            const SizedBox(width: 12),
-
-            // Title & Info
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Text(
-                    item.displayTitle,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: TextStyle(
-                      color: titleColor,
-                      fontSize: 14,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                  const SizedBox(height: 4),
-                  Row(
-                    children: [
-                      const Icon(Icons.star_rounded, color: Color(0xFFFFB800), size: 14),
-                      const SizedBox(width: 3),
-                      Text(
-                        item.stars.isNotEmpty ? item.stars : '8.0',
-                        style: TextStyle(
-                          color: titleColor,
-                          fontSize: 11.5,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                      if (item.year.isNotEmpty) ...[
-                        Text(' • ', style: TextStyle(color: metaColor.withOpacity(0.5))),
-                        Text(
-                          item.year,
-                          style: TextStyle(color: metaColor, fontSize: 11),
-                        ),
-                      ],
-                      if (item.categories.isNotEmpty) ...[
-                        Text(' • ', style: TextStyle(color: metaColor.withOpacity(0.5))),
-                        Flexible(
-                          child: Text(
-                            item.categories.first,
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            style: TextStyle(color: metaColor, fontSize: 11),
-                          ),
-                        ),
-                      ],
-                    ],
-                  ),
-                ],
-              ),
-            ),
-
-            // Play Icon
-            const Icon(Icons.play_circle_fill_rounded, color: Colors.white, size: 28),
-          ],
-        ),
-      ),
-    );
-  }
-
-  // ==========================================
-  // 2. REAL MATCHES SECTION (Dynamic Title, Increased Height, Clean Time/Date)
-  // ==========================================
-  // ==========================================
-  // LIVE TV & SPORTS CHANNELS SECTION
-
 
   Widget _buildSportsSection({
     required String title,
@@ -2110,111 +1702,6 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     }
   }
 
-  Widget _buildAsia2TvHorizontalSection({
-    required String title,
-    required List<Asia2TvItem> items,
-    required Asia2TvCategory category,
-  }) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 16),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Row(
-                children: [
-                  Container(
-                    width: 3.5,
-                    height: 18,
-                    margin: const EdgeInsetsDirectional.only(end: 9),
-                    decoration: BoxDecoration(
-                      color: AppColors.primary,
-                      borderRadius: BorderRadius.circular(2),
-                    ),
-                  ),
-                  Text(
-                    title,
-                    style: TextStyle(
-                      fontSize: 16.5,
-                      fontWeight: FontWeight.w900,
-                      color: isDark ? Colors.white : const Color(0xFF111827),
-                    ),
-                  ),
-                  const SizedBox(width: 8),
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                    decoration: BoxDecoration(
-                      color: AppColors.primary.withOpacity(0.14),
-                      borderRadius: BorderRadius.circular(5),
-                      border: Border.all(color: AppColors.primary.withOpacity(0.4), width: 0.8),
-                    ),
-                    child: const Text(
-                      'Asia2TV',
-                      style: TextStyle(
-                        color: AppColors.primary,
-                        fontSize: 10,
-                        fontWeight: FontWeight.w900,
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-              TextButton(
-                onPressed: () {
-                  Navigator.of(context).push(
-                    MaterialPageRoute(
-                      builder: (_) => Asia2TvCategoryScreen(initialCategory: category),
-                    ),
-                  );
-                },
-                style: TextButton.styleFrom(
-                  foregroundColor: isDark ? Colors.white70 : Colors.black87,
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                  visualDensity: VisualDensity.compact,
-                ),
-                child: const Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Text(
-                      'عرض الكل',
-                      style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.bold),
-                    ),
-                    SizedBox(width: 2),
-                    Icon(Icons.arrow_forward_ios_rounded, size: 11),
-                  ],
-                ),
-              ),
-            ],
-          ),
-        ),
-        const SizedBox(height: 12),
-        SizedBox(
-          height: 250,
-          child: ListView.separated(
-            padding: const EdgeInsets.symmetric(horizontal: 16),
-            scrollDirection: Axis.horizontal,
-            itemCount: items.length,
-            separatorBuilder: (_, __) => const SizedBox(width: 12),
-            itemBuilder: (context, index) {
-              return Asia2TvCard(
-                item: items[index],
-                width: 135,
-                height: 195,
-              );
-            },
-          ),
-        ),
-      ],
-    );
-  }
-
-  // ==========================================
-  // CATEGORY SECTION TEMPLATE (With onViewAll and High Quality Posters)
-  // ==========================================
   Widget _buildHorizontalCategorySection({
     required String title,
     required List<CinemanaItem> items,
@@ -2382,11 +1869,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     return RepaintBoundary(
       child: PressScale(
       onTap: () {
-        Navigator.of(context, rootNavigator: true).push(
-          MaterialPageRoute(
-            builder: (_) => CinemanaDetailScreen(item: movie),
-          ),
-        );
+        openCatalogueItem(context, movie);
       },
       child: SizedBox(
         width: 130,
@@ -2627,13 +2110,9 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
 
     return RepaintBoundary(
       child: GestureDetector(
-      onTap: () {
-        Navigator.of(context, rootNavigator: true).push(
-          MaterialPageRoute(
-            builder: (_) => CinemanaDetailScreen(item: series),
-          ),
-        );
-      },
+      // The row holds titles from more than one catalogue; this opens each
+      // on the page that can actually play it.
+      onTap: () => openCatalogueItem(context, series),
       child: Container(
         width: cardW,
         height: cardH,
