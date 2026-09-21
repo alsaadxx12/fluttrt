@@ -41,9 +41,18 @@ class _UpdateGateState extends ConsumerState<UpdateGate> with WidgetsBindingObse
     super.dispose();
   }
 
+  DateTime? _lastResumeCheck;
+
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
-    if (state == AppLifecycleState.resumed) ref.read(updateControllerProvider.notifier).onResumed();
+    if (state == AppLifecycleState.resumed) {
+      ref.read(updateControllerProvider.notifier).onResumed();
+      final now = DateTime.now();
+      if (_lastResumeCheck == null || now.difference(_lastResumeCheck!).inSeconds > 30) {
+        _lastResumeCheck = now;
+        ref.read(updateControllerProvider.notifier).checkForUpdate();
+      }
+    }
   }
 
   @override

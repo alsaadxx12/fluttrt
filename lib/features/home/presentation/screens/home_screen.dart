@@ -38,6 +38,7 @@ import '../widgets/film_deck.dart';
 import '../../../../core/video/desktop_video.dart';
 import '../../../trailers/presentation/trailers_showcase.dart';
 import 'package:youtube_downloader/core/scroll/app_scroll_physics.dart';
+import 'package:youtube_downloader/features/update/presentation/update_controller.dart';
 import 'package:youtube_downloader/features/subscription/presentation/providers/subscription_provider.dart';
 
 class HomeScreen extends ConsumerStatefulWidget {
@@ -284,6 +285,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
       quiet(ref.refresh(homeArabicMoviesProvider.future)),
       quiet(ref.refresh(homeArabicSeriesProvider.future)),
       quiet(ref.read(sportsNotifierProvider('today').notifier).refresh()),
+      quiet(ref.read(updateControllerProvider.notifier).checkForUpdate()),
     ]);
   }
 

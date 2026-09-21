@@ -8,6 +8,7 @@ import 'package:youtube_downloader/features/downloads/presentation/providers/dow
 import 'package:youtube_downloader/features/settings/presentation/providers/settings_provider.dart';
 import 'package:youtube_downloader/features/update/data/update_service.dart';
 import 'package:youtube_downloader/features/update/presentation/update_controller.dart';
+import 'package:youtube_downloader/features/update/presentation/update_feedback.dart';
 import 'package:youtube_downloader/features/subscription/presentation/providers/subscription_provider.dart';
 import 'package:youtube_downloader/features/auth/presentation/providers/auth_provider.dart';
 
@@ -349,6 +350,14 @@ class _AppSidebarState extends ConsumerState<AppSidebar> {
                   onTap: () => context.go('/settings'),
                 ),
                 _buildSidebarItem(
+                  icon: Icons.system_update_rounded,
+                  title: 'التحقق من وجود تحديث',
+                  badgeText: update.hasUpdate ? 'تحديث متوفر' : null,
+                  isSelected: false,
+                  isDark: isDark,
+                  onTap: () => checkUpdateWithFeedback(context, ref),
+                ),
+                _buildSidebarItem(
                   icon: Icons.info_outline_rounded,
                   title: 'حول التطبيق',
                   badgeText: update.hasUpdate ? 'تحديث' : null,
@@ -477,6 +486,41 @@ class _AppSidebarState extends ConsumerState<AppSidebar> {
                             fontWeight: FontWeight.w800,
                             height: 1.2,
                           ),
+                        ),
+                      ),
+                    ),
+                  ),
+                ] else ...[
+                  const SizedBox(width: 8),
+                  Material(
+                    color: Colors.transparent,
+                    child: InkWell(
+                      borderRadius: BorderRadius.circular(8),
+                      onTap: () => checkUpdateWithFeedback(context, ref),
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2.5),
+                        decoration: BoxDecoration(
+                          color: isDark ? Colors.white.withOpacity(0.08) : const Color(0xFFF1F5F9),
+                          borderRadius: BorderRadius.circular(6),
+                          border: Border.all(
+                            color: isDark ? Colors.white.withOpacity(0.12) : const Color(0xFFCBD5E1),
+                            width: 0.8,
+                          ),
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(Icons.refresh_rounded, size: 11, color: palette.textMuted),
+                            const SizedBox(width: 3),
+                            Text(
+                              'تحقق',
+                              style: TextStyle(
+                                fontSize: 10,
+                                fontWeight: FontWeight.w700,
+                                color: palette.textMuted,
+                              ),
+                            ),
+                          ],
                         ),
                       ),
                     ),

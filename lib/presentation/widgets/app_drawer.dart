@@ -7,6 +7,7 @@ import 'package:youtube_downloader/features/cinemana/presentation/providers/cine
 import 'package:youtube_downloader/features/downloads/presentation/providers/downloads_provider.dart';
 import 'package:youtube_downloader/features/settings/presentation/providers/settings_provider.dart';
 import 'package:youtube_downloader/features/update/presentation/update_controller.dart';
+import 'package:youtube_downloader/features/update/presentation/update_feedback.dart';
 import 'package:youtube_downloader/features/subscription/presentation/providers/subscription_provider.dart';
 import 'package:youtube_downloader/features/auth/presentation/providers/auth_provider.dart';
 
@@ -402,6 +403,16 @@ class _AppDrawerState extends ConsumerState<AppDrawer> {
                     },
                   ),
                   _DrawerItem(
+                    icon: Icons.system_update_rounded,
+                    title: 'التحقق من وجود تحديث',
+                    badgeText: update.hasUpdate ? 'تحديث متوفر' : null,
+                    isSelected: false,
+                    onTap: () {
+                      Navigator.pop(context);
+                      checkUpdateWithFeedback(context, ref);
+                    },
+                  ),
+                  _DrawerItem(
                     icon: Icons.info_outline_rounded,
                     title: 'حول التطبيق',
                     badgeText: update.hasUpdate ? 'تحديث' : null,
@@ -497,6 +508,53 @@ class _AppDrawerState extends ConsumerState<AppDrawer> {
                               .showPrompt();
                         },
                         child: const _Pill(text: 'تحديث متاح'),
+                      ),
+                    ),
+                  ] else ...[
+                    const SizedBox(width: 8),
+                    Material(
+                      color: Colors.transparent,
+                      child: InkWell(
+                        borderRadius: BorderRadius.circular(8),
+                        onTap: () {
+                          Navigator.pop(context);
+                          checkUpdateWithFeedback(context, ref);
+                        },
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 8, vertical: 4),
+                          decoration: BoxDecoration(
+                            color: isDark
+                                ? Colors.white.withOpacity(0.08)
+                                : const Color(0xFFF1F5F9),
+                            borderRadius: BorderRadius.circular(6),
+                            border: Border.all(
+                              color: isDark
+                                  ? Colors.white.withOpacity(0.12)
+                                  : const Color(0xFFCBD5E1),
+                              width: 0.8,
+                            ),
+                          ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(
+                                Icons.refresh_rounded,
+                                size: 12,
+                                color: palette.textMuted,
+                              ),
+                              const SizedBox(width: 4),
+                              Text(
+                                'تحقق',
+                                style: TextStyle(
+                                  fontSize: 10.5,
+                                  fontWeight: FontWeight.w700,
+                                  color: palette.textMuted,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
                       ),
                     ),
                   ],

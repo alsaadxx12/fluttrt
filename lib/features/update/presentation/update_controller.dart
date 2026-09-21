@@ -106,11 +106,12 @@ class UpdateController extends StateNotifier<UpdateState> {
       return;
     }
     state = state.copyWith(status: UpdateStatus.loading, clearFailure: true);
+    InstalledVersion? current;
     try {
-      final current = await _service.getCurrentVersion();
+      current = await _service.getCurrentVersion();
       final info = await _service.checkForUpdate(currentVersionCode: current.versionCode);
       if (info == null) {
-        state = state.copyWith(status: UpdateStatus.noUpdate, current: current);
+        state = state.copyWith(status: UpdateStatus.noUpdate, current: current, info: null);
         return;
       }
       // An APK already downloaded and verified for this build: straight to install.
@@ -121,14 +122,22 @@ class UpdateController extends StateNotifier<UpdateState> {
         info: info,
         apk: apk,
         progress: apk != null ? 1 : 0,
+        dismissed: false,
       );
     } on UpdateException catch (e) {
       debugPrint('[UPDATE] check failed: $e');
       // No manifest: the app carries on as it is.
-      state = state.copyWith(status: UpdateStatus.noUpdate, failure: e.failure);
+      state = state.copyWith(
+        status: UpdateStatus.noUpdate,
+        failure: e.failure,
+        current: current ?? state.current,
+      );
     } catch (e) {
       debugPrint('[UPDATE] check failed: $e');
-      state = state.copyWith(status: UpdateStatus.noUpdate);
+      state = state.copyWith(
+        status: UpdateStatus.noUpdate,
+        current: current ?? state.current,
+      );
     }
   }
 
@@ -142,10 +151,11 @@ class UpdateController extends StateNotifier<UpdateState> {
   void showPrompt() => state = state.copyWith(dismissed: false);
 
   /// A check the user asked for: re-read the manifest, then show whatever
-  /// it found.
-  Future<void> checkNow() async {
+  /// it found. Returns true if an update was found.
+  Future<bool> checkNow() async {
     await checkForUpdate();
     showPrompt();
+    return state.hasUpdate;
   }
 
 

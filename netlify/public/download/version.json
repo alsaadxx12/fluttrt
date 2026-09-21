@@ -1,15 +1,15 @@
 {
   "updateEnabled": true,
-  "versionCode": 80,
-  "versionName": "1.0.78",
-  "apkUrl": "https://cineball.netlify.app/download/app.apk?v=80",
-  "apkUrlArm64": "https://cineball.netlify.app/download/app-arm64-v8a-release.apk?v=80",
-  "apkUrlArm32": "https://cineball.netlify.app/download/app-armeabi-v7a-release.apk?v=80",
-  "sha256": "c71655d4489dcbf7bf656bd74da8d7978eb3050542a0419eb71ff6037dbbce1b",
-  "sha256Arm64": "c71655d4489dcbf7bf656bd74da8d7978eb3050542a0419eb71ff6037dbbce1b",
-  "sha256Arm32": "01dee78b36440ee011e36c86c130ebc0b5fbdb8561415bd2e98763199c84b983",
-  "sizeBytes": 19295735,
+  "versionCode": 81,
+  "versionName": "1.0.79",
+  "apkUrl": "https://cineball.netlify.app/download/app.apk?v=81",
+  "apkUrlArm64": "https://cineball.netlify.app/download/app-arm64-v8a-release.apk?v=81",
+  "apkUrlArm32": "https://cineball.netlify.app/download/app-armeabi-v7a-release.apk?v=81",
+  "sha256": "6fdb3c2b201726e400d62b0b64cef88fb817cb0a08d7861c14dc174c5a104315",
+  "sha256Arm64": "6fdb3c2b201726e400d62b0b64cef88fb817cb0a08d7861c14dc174c5a104315",
+  "sha256Arm32": "f7ba937250638f71b7c88c31962943427f04cc3e76842cabaaec17820aa7489e",
+  "sizeBytes": 19292677,
   "forceUpdate": false,
   "minSupportedVersion": 1,
-  "notes": "حل مشكلة التقطيع والتعرقل وسلاسة التصفح بالكامل، وتحسين سرعة الاستجابة وانسيابية الحركة"
+  "notes": "إضافة زر التحقق من وجود تحديث بالقائمة الجانبية، مع إظهار نافذة التحديث فوراً وتحديثات شاملة لسرعة التصفح وانسيابية الحركة"
 }

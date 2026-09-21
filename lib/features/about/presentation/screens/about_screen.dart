@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 import 'package:youtube_downloader/core/constants/app_palette.dart';
 import 'package:youtube_downloader/features/settings/presentation/providers/settings_provider.dart';
 import 'package:youtube_downloader/features/update/presentation/update_controller.dart';
+import 'package:youtube_downloader/features/update/presentation/update_feedback.dart';
 
 class AboutScreen extends ConsumerWidget {
   const AboutScreen({super.key});
@@ -270,7 +271,7 @@ class _UpdateStatusCard extends ConsumerWidget {
                     label: Text(strings.updateNow, style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 13.5)),
                   )
                 : OutlinedButton.icon(
-                    onPressed: checking ? null : ref.read(updateControllerProvider.notifier).checkNow,
+                    onPressed: checking ? null : () => checkUpdateWithFeedback(context, ref),
                     style: OutlinedButton.styleFrom(
                       foregroundColor: p.text,
                       side: BorderSide(color: p.border),
