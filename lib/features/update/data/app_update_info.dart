@@ -89,10 +89,22 @@ class AppUpdateInfo {
   }
 
   /// A newer build than [currentCode] that the server wants shown.
-  bool isNewerThan(int currentCode) => updateEnabled && versionCode > currentCode;
+  /// Handles Gradle ABI-split offsets (1000 for arm32, 2000 for arm64, 3000 for x86_64).
+  bool isNewerThan(int currentCode) {
+    if (!updateEnabled) return false;
+    final cur = currentCode >= 1000 ? (currentCode % 1000) : currentCode;
+    final srv = versionCode >= 1000 ? (versionCode % 1000) : versionCode;
+    return srv > cur || versionCode > currentCode;
+  }
 
   /// The user may not go on with [currentCode] installed.
-  bool mustUpdate(int currentCode) => forceUpdate || currentCode < minSupportedVersion;
+  bool mustUpdate(int currentCode) {
+    if (forceUpdate) return true;
+    if (minSupportedVersion <= 0) return false;
+    final cur = currentCode >= 1000 ? (currentCode % 1000) : currentCode;
+    final minVer = minSupportedVersion >= 1000 ? (minSupportedVersion % 1000) : minSupportedVersion;
+    return cur < minVer || currentCode < minSupportedVersion;
+  }
 
   /// The APK link is https and on one of [allowedHosts].
   bool apkUrlAllowed(List<String> allowedHosts) =>
