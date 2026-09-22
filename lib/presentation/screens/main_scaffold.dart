@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:youtube_downloader/core/constants/app_palette.dart';
 import '../widgets/app_bottom_bar.dart';
+import 'package:youtube_downloader/features/casting/widgets/cast_mini_controller.dart';
 import '../widgets/app_drawer.dart';
 import '../widgets/app_header.dart';
 import '../widgets/app_sidebar.dart';
@@ -101,7 +102,17 @@ class MainScaffold extends ConsumerWidget {
               ),
         // The phone's bottom bar on every page of the shell but the YouTube
         // watch page, which — like YouTube's — has none; black over the reels.
-        bottomNavigationBar: (isWatch || isLandscape) ? null : AppBottomBar(location: location, dark: isReels),
+        // Above it, while something plays on another screen, the strip that
+        // says what and where — it takes no room when nothing is casting.
+        bottomNavigationBar: (isWatch || isLandscape)
+            ? null
+            : Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const CastMiniController(),
+                  AppBottomBar(location: location, dark: isReels),
+                ],
+              ),
       );
     }
 

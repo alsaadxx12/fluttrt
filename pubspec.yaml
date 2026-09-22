@@ -16,7 +16,7 @@ publish_to: 'none' # Remove this line if you wish to publish to pub.dev
 # https://developer.apple.com/library/archive/documentation/General/Reference/InfoPlistKeyReference/Articles/CoreFoundationKeys.html
 # In Windows, build-name is used as the major, minor, and patch parts
 # of the product and file versions while build-number is used as the build suffix.
-version: 1.0.104+110
+version: 1.0.132+138
 environment:
   sdk: ^3.5.0
 
@@ -74,6 +74,14 @@ dependencies:
   # Decodes that thumbnail (pure Dart) so its black bands can be measured.
   image: ^4.2.0
   supabase_flutter: ^2.15.4
+  mobile_scanner: 5.2.3
+  # Pinned, not a range: 1.0.3 and up call Color.withValues and
+  # toARGB32, which arrived in Flutter 3.27 — this project builds on
+  # 3.24 and the compile fails outright. 1.0.2 is the last version
+  # without them, and it carries no widgets, so no GetX either.
+  flutter_chrome_cast: 1.0.2
+  permission_handler: ^12.0.3
+  lottie: ^3.2.0
 
 dev_dependencies:
   flutter_test:
@@ -104,6 +112,7 @@ flutter:
   assets:
     - assets/images/
     - assets/config/
+    - assets/animations/
     # The bundled font's licence, shown on the app's own licences page. Named
     # file by file: listing the folder would bundle the .ttf files a second
     # time, once as assets and again as fonts.

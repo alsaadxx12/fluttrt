@@ -101,7 +101,12 @@ class _CinemanaCatalogScreenState extends ConsumerState<CinemanaCatalogScreen> {
 
   /// The order the section starts with (anime opens on most-watched), so the
   /// filter button only lights up when the user changed something.
-  String get _defaultOrder => widget.kind == 'anime' ? 'views' : 'desc';
+  /// Newest released, everywhere.
+  ///
+  /// It used to open on «المضاف حديثًا» — the order things were added to
+  /// the catalogue, which is not what anyone means by newest: a film added
+  /// yesterday and released in 2019 came above one released last month.
+  String get _defaultOrder => 'release';
 
   bool _hasActiveFilter(CinemanaSectionState s) =>
       s.selectedOrder != _defaultOrder ||
@@ -117,12 +122,12 @@ class _CinemanaCatalogScreenState extends ConsumerState<CinemanaCatalogScreen> {
   ) {
     final palette = AppPalette.of(context);
     final sortOptions = [
+      {'label': 'الأحدث', 'order': 'release', 'icon': Icons.new_releases_outlined},
       {'label': 'المضاف حديثًا', 'order': 'desc', 'icon': Icons.schedule_rounded},
-      {'label': 'الأحدث إصدارًا', 'order': 'release', 'icon': Icons.new_releases_outlined},
       {'label': 'الأكثر مشاهدة', 'order': 'views', 'icon': Icons.visibility_rounded},
       {'label': 'الرائج', 'order': 'trending', 'icon': Icons.trending_up_rounded},
       {'label': 'الأعلى تقييماً', 'order': 'stars', 'icon': Icons.star_rounded},
-      {'label': 'الاسم أبجديًا', 'order': 'name', 'icon': Icons.sort_by_alpha_rounded},
+      {'label': 'أبجديًا', 'order': 'name', 'icon': Icons.sort_by_alpha_rounded},
     ];
 
     final years = ['الكل', '2026', '2025', '2024', '2023', '2022', '2021', '2020'];
@@ -136,7 +141,7 @@ class _CinemanaCatalogScreenState extends ConsumerState<CinemanaCatalogScreen> {
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
-      backgroundColor: isDark ? const Color(0xFF141724) : Colors.white,
+      backgroundColor: isDark ? Colors.black : Colors.white,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
       ),
@@ -164,41 +169,32 @@ class _CinemanaCatalogScreenState extends ConsumerState<CinemanaCatalogScreen> {
                         ),
                       ),
                     ),
-                    const SizedBox(height: 14),
+                    const SizedBox(height: 10),
 
-                    // Header Row: Title & Reset Button
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        Row(
-                          children: [
-                            Icon(Icons.tune_rounded, color: _accentColor, size: 22),
-                            const SizedBox(width: 8),
-                            Text(
-                              'فلاتر المحتوى',
-                              style: TextStyle(
-                                fontSize: 18,
-                                fontWeight: FontWeight.w900,
-                                color: isDark ? Colors.white : const Color(0xFF0F172A),
-                              ),
-                            ),
-                          ],
-                        ),
-                        TextButton.icon(
+                    // No title: a sheet that opened from the filter button
+                    // does not need to say it holds filters. Reset appears
+                    // only when there is something to undo.
+                    if (_hasActiveFilter(sectionState))
+                      Align(
+                        alignment: AlignmentDirectional.centerEnd,
+                        child: TextButton(
                           onPressed: () {
                             sectionNotifier.resetFilters();
                             Navigator.pop(ctx);
                           },
-                          icon: const Icon(Icons.restart_alt_rounded, size: 18),
-                          label: const Text('إعادة ضبط الكل'),
                           style: TextButton.styleFrom(
                             foregroundColor: const Color(0xFFE50914),
-                            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                            padding: const EdgeInsets.symmetric(horizontal: 8),
+                            minimumSize: const Size(0, 30),
+                            tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                          ),
+                          child: const Text(
+                            'إعادة ضبط',
+                            style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.w800),
                           ),
                         ),
-                      ],
-                    ),
-                    const Divider(height: 20),
+                      ),
+                    const SizedBox(height: 4),
 
                     // Scrollable Options
                     Expanded(
@@ -209,7 +205,7 @@ class _CinemanaCatalogScreenState extends ConsumerState<CinemanaCatalogScreen> {
                           children: [
                             // 1. Sort Order
                             Text(
-                              'ترتيب النتائج',
+                              'الترتيب',
                               style: TextStyle(
                                 fontSize: 14,
                                 fontWeight: FontWeight.bold,
@@ -237,7 +233,7 @@ class _CinemanaCatalogScreenState extends ConsumerState<CinemanaCatalogScreen> {
                                   ),
                                   selected: isSelected,
                                   selectedColor: _accentColor,
-                                  backgroundColor: isDark ? const Color(0xFF1E2538) : palette.card,
+                                  backgroundColor: isDark ? const Color(0xFF14161B) : palette.card,
                                   side: isDark ? null : BorderSide(color: isSelected ? _accentColor : palette.border),
                                   labelStyle: TextStyle(
                                     color: isSelected ? Colors.white : (isDark ? Colors.white70 : Colors.black87),
@@ -255,7 +251,7 @@ class _CinemanaCatalogScreenState extends ConsumerState<CinemanaCatalogScreen> {
 
                             // 2. Year Filter
                             Text(
-                              'سنة الإنتاج',
+                              'السنة',
                               style: TextStyle(
                                 fontSize: 14,
                                 fontWeight: FontWeight.bold,
@@ -275,7 +271,7 @@ class _CinemanaCatalogScreenState extends ConsumerState<CinemanaCatalogScreen> {
                                       label: Text(y),
                                       selected: isSelected,
                                       selectedColor: _accentColor,
-                                      backgroundColor: isDark ? const Color(0xFF1E2538) : palette.card,
+                                      backgroundColor: isDark ? const Color(0xFF14161B) : palette.card,
                                       side: isDark ? null : BorderSide(color: isSelected ? _accentColor : palette.border),
                                       labelStyle: TextStyle(
                                         color: isSelected ? Colors.white : (isDark ? Colors.white70 : Colors.black87),
@@ -298,7 +294,7 @@ class _CinemanaCatalogScreenState extends ConsumerState<CinemanaCatalogScreen> {
 
                             // 3. Min Rating Filter
                             Text(
-                              'التقييم الأدنى',
+                              'التقييم',
                               style: TextStyle(
                                 fontSize: 14,
                                 fontWeight: FontWeight.bold,
@@ -317,7 +313,7 @@ class _CinemanaCatalogScreenState extends ConsumerState<CinemanaCatalogScreen> {
                                   label: Text(r['label'] as String),
                                   selected: isSelected,
                                   selectedColor: _accentColor,
-                                  backgroundColor: isDark ? const Color(0xFF1E2538) : palette.card,
+                                  backgroundColor: isDark ? const Color(0xFF14161B) : palette.card,
                                   side: isDark ? null : BorderSide(color: isSelected ? _accentColor : palette.border),
                                   labelStyle: TextStyle(
                                     color: isSelected ? Colors.white : (isDark ? Colors.white70 : Colors.black87),
@@ -358,7 +354,7 @@ class _CinemanaCatalogScreenState extends ConsumerState<CinemanaCatalogScreen> {
                                   label: Text(title),
                                   selected: isSelected,
                                   selectedColor: _accentColor,
-                                  backgroundColor: isDark ? const Color(0xFF1E2538) : palette.card,
+                                  backgroundColor: isDark ? const Color(0xFF14161B) : palette.card,
                                   side: isDark ? null : BorderSide(color: isSelected ? _accentColor : palette.border),
                                   labelStyle: TextStyle(
                                     color: isSelected ? Colors.white : (isDark ? Colors.white70 : Colors.black87),
@@ -430,7 +426,7 @@ class _CinemanaCatalogScreenState extends ConsumerState<CinemanaCatalogScreen> {
     return Scaffold(
       // Pure white page. There is no app bar: the strip below is the whole
       // top of the page, and leaving it is the system back gesture.
-      backgroundColor: isDark ? const Color(0xFF0F0F13) : palette.bg,
+      backgroundColor: isDark ? Colors.black : palette.bg,
       body: SafeArea(
         bottom: false,
         child: Column(

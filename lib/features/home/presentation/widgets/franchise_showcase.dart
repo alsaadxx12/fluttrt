@@ -291,13 +291,6 @@ class _FranchiseCard extends ConsumerWidget {
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             Text(
-                              franchise.name,
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                              style: TextStyle(color: p.text, fontSize: 16.5, fontWeight: FontWeight.w900),
-                            ),
-                            const SizedBox(height: 3),
-                            Text(
                               partsCountLabel,
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,
@@ -562,7 +555,6 @@ class _FranchiseFilmTileState extends State<FranchiseFilmTile> {
     final film = widget.film;
     final number = widget.number;
     final dpr = MediaQuery.of(context).devicePixelRatio;
-    final title = film.arTitle.trim().isNotEmpty ? film.arTitle.trim() : film.enTitle.trim();
     // High-resolution image: bestPosterUrl or imgUrl
     final posterUrl = film.bestPosterUrl.isNotEmpty ? film.bestPosterUrl : film.cardImageUrl;
 
@@ -707,7 +699,8 @@ class _FranchiseFilmTileState extends State<FranchiseFilmTile> {
                   ),
                 ),
 
-              // 4. Content INSIDE the card (Name, Year, Rating)
+              // 4. Content INSIDE the card (Year, Rating — the poster
+              //    carries the name)
               Positioned(
                 left: 9,
                 right: 9,
@@ -716,25 +709,6 @@ class _FranchiseFilmTileState extends State<FranchiseFilmTile> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    Text(
-                      title,
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(
-                        color: Colors.white,
-                        fontSize: 12,
-                        fontWeight: FontWeight.w900,
-                        height: 1.25,
-                        shadows: [
-                          Shadow(
-                            color: Colors.black,
-                            blurRadius: 4,
-                            offset: Offset(0, 1),
-                          ),
-                        ],
-                      ),
-                    ),
-                    const SizedBox(height: 3),
                     Row(
                       children: [
                         if (film.year.trim().isNotEmpty)

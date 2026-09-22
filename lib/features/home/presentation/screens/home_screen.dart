@@ -32,6 +32,7 @@ import 'package:youtube_downloader/features/home/presentation/widgets/franchise_
 import '../widgets/dynamic_franchises_showcase.dart';
 import 'package:youtube_downloader/features/cinemana/data/cinemana_franchises.dart';
 import 'package:youtube_downloader/features/sports/presentation/widgets/glowing_crest.dart';
+import '../../../../presentation/widgets/card_motion.dart';
 import '../../../../presentation/widgets/reveal.dart';
 import '../../../sports/data/match_merge.dart';
 import '../../../sports/data/match_order.dart';
@@ -1126,28 +1127,6 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
       mainAxisSize: MainAxisSize.min,
       crossAxisAlignment: CrossAxisAlignment.center,
       children: [
-        // Movie Title
-        Text(
-          movie.displayTitle,
-          textAlign: TextAlign.center,
-          maxLines: 1,
-          overflow: TextOverflow.ellipsis,
-          style: const TextStyle(
-            color: Colors.white,
-            fontSize: 20,
-            fontWeight: FontWeight.w900,
-            letterSpacing: -0.2,
-            // Two stacked shadows instead of dimming the picture: a tight dark
-            // core for edge contrast and a wide soft one to lift the glyphs off
-            // whatever part of the artwork sits behind them.
-            shadows: [
-              Shadow(color: Colors.black, blurRadius: 4, offset: Offset(0, 1.5)),
-              Shadow(color: Colors.black87, blurRadius: 14),
-            ],
-          ),
-        ),
-        const SizedBox(height: 2),
-
         // Metadata: ⭐ Stars • Genre • Year
         Row(
           mainAxisAlignment: MainAxisAlignment.center,
@@ -1788,7 +1767,19 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
               physics: const ClampingScrollPhysics(),
               itemCount: items.length,
               separatorBuilder: (_, __) => const SizedBox(width: 12),
-              itemBuilder: (context, index) => _buildRealMoviePosterCard(items[index]),
+              // 130 wide plus the 12 of the separator: the motion needs to
+              // know where a card sits without measuring it.
+              itemBuilder: (context, index) => CardEntrance(
+                group: 'row-$title',
+                index: index,
+                child: CarouselFocus(
+                  controller: controller,
+                  index: index,
+                  extent: 142,
+                  width: 130,
+                  child: _buildRealMoviePosterCard(items[index]),
+                ),
+              ),
             ),
             ),
           )
@@ -1923,26 +1914,6 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                 ),
               ),
 
-              // Real Movie Title at Bottom (Clean single shadow - NO blur halo)
-              Positioned(
-                left: 8,
-                right: 8,
-                bottom: 10,
-                child: Text(
-                  movie.displayTitle,
-                  textAlign: TextAlign.center,
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontSize: 13,
-                    fontWeight: FontWeight.w900,
-                    shadows: [
-                      Shadow(color: Colors.black87, blurRadius: 3, offset: Offset(0, 1)),
-                    ],
-                  ),
-                ),
-              ),
             ],
           ),
         ),
@@ -2179,19 +2150,6 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                       ],
                     ),
                     const SizedBox(height: 8),
-                    // The title, big, with what it is right under it.
-                    Text(
-                      series.displayTitle,
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
-                      style: TextStyle(
-                        color: _p.text,
-                        fontSize: 15.5,
-                        fontWeight: FontWeight.w900,
-                        height: 1.2,
-                      ),
-                    ),
-                    const SizedBox(height: 4),
                     Text(
                       '$genreText • $yearText',
                       maxLines: 1,

@@ -39,7 +39,7 @@
   }
 
   .qr {
-    width: 208px; height: 208px; margin: 0 auto 22px; background: #fff;
+    width: 264px; height: 264px; margin: 0 auto 22px; background: #fff;
     border-radius: 16px; padding: 12px; display: grid; place-items: center;
   }
   .qr canvas, .qr img { width: 100%; height: 100%; display: block; }
@@ -68,7 +68,33 @@
   /* ----------------------------------------------------------- player */
   #stage { position: fixed; inset: 0; background: #000; display: none; }
   #stage.on { display: block; }
+
+  /* Stays up until the screen is filled, because the viewer is on a sofa
+     and may look over some seconds after the picture starts. */
+  #fs-hint {
+    position: fixed; top: 22px; inset-inline-start: 50%;
+    transform: translateX(50%);
+    background: rgba(13,18,29,.92); border: 1px solid var(--line);
+    color: var(--text); font: inherit; font-size: 15px; font-weight: 800;
+    padding: 12px 24px; border-radius: 999px;
+    display: none; align-items: center; gap: 9px; cursor: pointer;
+    z-index: 10;
+  }
+  #stage.on ~ #fs-hint { display: inline-flex; }
+  html:fullscreen #fs-hint { display: none !important; }
   video { width: 100%; height: 100%; object-fit: contain; background: #000; }
+
+  /* The subtitle, at a size meant for a sofa rather than a desk. A plain
+     shadow rather than a box: a box over a dark scene is a grey slab, and
+     over a bright one it is worse. */
+  video::cue {
+    font-family: 'Noto Sans Arabic', system-ui, sans-serif;
+    font-size: 2.4vh;
+    line-height: 1.4;
+    background: transparent;
+    color: #FFFFFF;
+    text-shadow: 0 2px 6px rgba(0,0,0,.95), 0 0 3px rgba(0,0,0,.9);
+  }
 
   #bar {
     position: absolute; inset-inline: 0; bottom: 0; padding: 40px 28px 22px;
@@ -79,7 +105,6 @@
   #stage.show-ui { cursor: default; }
   #stage { cursor: none; }
 
-  #title { font-size: 19px; font-weight: 900; margin-bottom: 10px; }
   .row { display: flex; align-items: center; gap: 12px; direction: ltr; }
   .time { color: var(--muted); font-size: 12.5px; font-variant-numeric: tabular-nums; min-width: 52px; }
   .track { flex: 1; height: 4px; background: rgba(255,255,255,.22); border-radius: 3px; overflow: hidden; }
@@ -117,7 +142,6 @@
 <div id="stage">
   <video id="v" playsinline></video>
   <div id="bar">
-    <div id="title"></div>
     <div class="row">
       <span class="time" id="t-now">0:00</span>
       <div class="track"><div class="fill" id="fill"></div></div>
@@ -127,11 +151,19 @@
   </div>
 </div>
 
+<button id="fs-hint" type="button">
+  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#E50914"
+       stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+    <path d="M8 3H5a2 2 0 0 0-2 2v3M16 3h3a2 2 0 0 1 2 2v3M8 21H5a2 2 0 0 1-2-2v-3M16 21h3a2 2 0 0 0 2-2v-3"/>
+  </svg>
+  <span>ملء الشاشة</span>
+</button>
+
 <div id="toast"><span id="toast-text"></span></div>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/hls.js@1.5.17/dist/hls.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.4/build/qrcode.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/qrcodejs@1.0.0/qrcode.min.js"></script>
 <script>
 (function () {
   'use strict';
@@ -190,32 +222,21 @@
     return app + ' — ' + os;
   }
 
-  function sixDigits() {
-    var n = new Uint32Array(1);
-    crypto.getRandomValues(n);
-    return String(100000 + (n[0] % 900000));
-  }
-
   // ------------------------------------------------------- opening a session
-  function openSession(attempt) {
-    attempt = attempt || 0;
+  function openSession() {
     say('جارٍ فتح جلسة…');
-    var code = sixDigits();
-    db.from('cast_sessions')
-      .insert({ pairing_code: code, device_name: describeBrowser(), device_kind: 'web' })
-      .select()
-      .single()
+    db.rpc('open_cast_session', { name_of_device: describeBrowser() })
       .then(function (res) {
-        if (res.error) {
-          // The unique index rejects a code already waiting: pick another.
-          if (attempt < 5 && res.error.code === '23505') return openSession(attempt + 1);
-          throw res.error;
-        }
-        session = res.data;
-        showCode(session.pairing_code);
+        if (res.error) throw res.error;
+        var row = Array.isArray(res.data) ? res.data[0] : res.data;
+        if (!row || !row.id) throw new Error('empty session');
+        session = { id: row.id, pairing_code: row.pairing_code, status: 'waiting' };
         listen();
         heartbeat();
         say('في انتظار الاتصال…');
+        // Drawn last: the session is live either way, and a QR that will not
+        // render must not look like a failure to open one.
+        showCode(session.pairing_code);
       })
       .catch(function (e) {
         say('تعذّر فتح جلسة البث — تحقّق من اتصالك بالإنترنت', true);
@@ -225,15 +246,32 @@
 
   function showCode(code) {
     el('code').textContent = code.split('').join(' ');
-    // The QR carries the pairing handles only: the session id and its code.
-    // No stream URL, no token, nothing that plays anything on its own.
-    var payload = JSON.stringify({ v: 1, s: session.id, c: code });
-    window.QRCode.toCanvas(payload, { width: 184, margin: 0 }, function (err, canvas) {
-      if (err) { console.error('[cast] qr', err); return; }
-      var box = el('qr');
-      box.innerHTML = '';
-      box.appendChild(canvas);
-    });
+    // Six digits and nothing else. It used to carry a json object with the
+    // session uuid inside, sixty-odd characters, and the resulting grid was
+    // too fine for a phone to resolve off a lit screen. The uuid was never
+    // needed here: the app pairs with the code and the claim hands the
+    // session back. Fewer characters, bigger modules, reads from a sofa.
+    //
+    // Nothing else belongs in it either — no stream url, no token, nothing
+    // that plays anything on its own.
+    var box = el('qr');
+    box.innerHTML = '';
+    try {
+      new window.QRCode(box, {
+        text: code,
+        width: 240,
+        height: 240,
+        // The highest correction level: a quarter of the square can be lost
+        // to glare or a bad angle and it still reads.
+        correctLevel: window.QRCode.CorrectLevel.H,
+      });
+    } catch (e) {
+      // The code below the square is enough to pair with; a QR that will
+      // not draw must not take the session down with it.
+      console.error('[cast] qr', e);
+      box.innerHTML = '<div style="color:#64748B;font-size:12px;padding:8px">'
+        + 'أدخل الرمز يدوياً</div>';
+    }
   }
 
   // ------------------------------------------------------------- realtime
@@ -241,23 +279,18 @@
     channel = db.channel('cast:' + session.id, { config: { broadcast: { self: false } } });
 
     channel.on('broadcast', { event: 'command' }, function (msg) {
-      handle(msg.payload || {});
+      handle((msg && msg.payload) || {});
     });
 
-    // The phone claims the session by code, which changes the row; that is
-    // how this page learns it has been paired.
-    channel.on('postgres_changes',
-      { event: 'UPDATE', schema: 'public', table: 'cast_sessions', filter: 'id=eq.' + session.id },
-      function (msg) {
-        var row = msg.new;
-        if (!row) return;
-        if (row.status === 'disconnected') return teardown('انتهى البث');
-        if (session.status === 'waiting' && row.status !== 'waiting') {
-          session = row;
-          say('تم الاتصال');
-          toast('تم ربط الهاتف');
-        }
-      });
+    // The phone says so itself once its claim goes through: the session row
+    // is closed to this page, so there is nothing to watch for.
+    channel.on('broadcast', { event: 'paired' }, function (msg) {
+      if (session.status !== 'waiting') return;
+      session.status = 'paired';
+      var name = (msg.payload && msg.payload.phone) || '';
+      say('تم الاتصال');
+      toast(name ? 'تم الربط بـ ' + name : 'تم ربط الهاتف');
+    });
 
     channel.subscribe(function (state) {
       if (state === 'CHANNEL_ERROR' || state === 'TIMED_OUT') {
@@ -326,6 +359,130 @@
     if (hls && hls.audioTracks && hls.audioTracks.length > index) hls.audioTrack = index;
   }
 
+  // ------------------------------------------------------------ subtitles
+  // The catalogue serves SubRip, and a <track> element reads WebVTT and
+  // nothing else — an .srt attached directly is fetched, parsed, found
+  // wanting and dropped without a word, which is exactly how this looked
+  // from the sofa. So it is fetched here and rewritten before the browser
+  // ever sees it.
+  //
+  // The two formats differ in three details: the header line, a comma
+  // before the milliseconds, and SubRip's habit of counting from 0 where
+  // WebVTT wants two digits of hours.
+  function srtToVtt(text) {
+    var body = text
+      .replace(/\r\n|\r/g, '\n')
+      .replace(/^﻿/, '')
+      // SubStation override tags — {\an8} and its relatives — say where a
+      // line belongs and how it should look. WebVTT has its own way of
+      // saying both and no idea what these are, so it prints them as words
+      // in the middle of the sentence. Out they go.
+      .replace(/\{\\[^}]*\}/g, '')
+      .replace(
+        /(\d{1,2}):(\d{2}):(\d{2})[,.](\d{1,3})/g,
+        function (_, h, m, sec, ms) {
+          return (h.length < 2 ? '0' + h : h) + ':' + m + ':' + sec +
+                 '.' + (ms + '00').slice(0, 3);
+        }
+      );
+    return 'WEBVTT\n\n' + body;
+  }
+
+  function attachSubtitle(url, label) {
+    // Fetched rather than linked: the file has to be rewritten on the way
+    // through, and the catalogue's CDN allows the read (it answers with
+    // Access-Control-Allow-Origin).
+    fetch(url, { credentials: 'omit' })
+      .then(function (r) { return r.ok ? r.text() : Promise.reject(r.status); })
+      .then(function (text) {
+        var vtt = /^\s*WEBVTT/.test(text) ? text : srtToVtt(text);
+        var blob = new Blob([vtt], { type: 'text/vtt' });
+        var track = document.createElement('track');
+        track.kind = 'subtitles';
+        track.label = label || 'الترجمة';
+        track.srclang = 'ar';
+        track.src = URL.createObjectURL(blob);
+        track.addEventListener('load', function () {
+          // `default` only marks a preference, and browsers honour it
+          // unevenly; saying `showing` outright is what puts the words on
+          // the screen every time.
+          if (!track.track) return;
+          track.track.mode = 'showing';
+          // Two lines clear of the bottom, so the words are not sitting on
+          // the edge of the screen or behind the progress bar. Line is a
+          // property of the cue; no stylesheet can reach it.
+          var cues = track.track.cues || [];
+          for (var i = 0; i < cues.length; i++) cues[i].line = -3;
+        });
+        video.appendChild(track);
+        if (video.textTracks && video.textTracks.length) {
+          video.textTracks[video.textTracks.length - 1].mode = 'showing';
+        }
+      })
+      .catch(function (e) {
+        // A missing subtitle must never take the picture down with it.
+        console.warn('[cast] subtitle', e);
+      });
+  }
+
+  // ----------------------------------------------------------- full screen
+  // The picture is meant to be the whole screen, not a rectangle inside a
+  // browser window with an address bar over it. Going full screen is what
+  // removes the window, the tab strip and the address of this page along
+  // with them.
+  //
+  // A browser only grants it off the back of a click, so the attempt is
+  // made anyway and, when it is refused, the next click anywhere does it.
+  function goFullscreen() {
+    var root = document.documentElement;
+    var request = root.requestFullscreen || root.webkitRequestFullscreen ||
+                  root.mozRequestFullScreen || root.msRequestFullscreen;
+    if (!request || document.fullscreenElement) return Promise.resolve();
+    try {
+      var result = request.call(root);
+      return result && result.catch ? result : Promise.resolve();
+    } catch (e) {
+      return Promise.reject(e);
+    }
+  }
+
+  function enterFullscreen() {
+    // Refused without a click, every time — the button below is what
+    // actually gets there. Asking anyway costs nothing and works on the
+    // rare browser that allows it.
+    goFullscreen().catch(function () {});
+  }
+
+  // A click on a button is the strongest user activation a browser
+  // recognises; a handler on the document was not enough here.
+  var fsHint = el('fs-hint');
+  if (fsHint) {
+    fsHint.addEventListener('click', function (e) {
+      e.preventDefault();
+      e.stopPropagation();
+      goFullscreen().catch(function (err) {
+        // Reported rather than swallowed: if a browser refuses even this,
+        // the reason should be somewhere a person can read it.
+        console.warn('[cast] fullscreen refused', err);
+        // Some browsers will only hand the screen to the video itself.
+        var v = video;
+        var alt = v.requestFullscreen || v.webkitRequestFullscreen ||
+                  v.webkitEnterFullscreen;
+        if (alt) { try { alt.call(v); } catch (e2) { toast('المتصفح رفض ملء الشاشة'); } }
+        else toast('المتصفح رفض ملء الشاشة');
+      });
+    });
+  }
+
+  // Double-clicking the picture is what people try first on any player.
+  video.addEventListener('dblclick', function () {
+    if (document.fullscreenElement) {
+      if (document.exitFullscreen) document.exitFullscreen();
+    } else {
+      goFullscreen().catch(function () {});
+    }
+  });
+
   // ------------------------------------------------------------- playback
   function load(cmd) {
     if (!cmd.url) return;
@@ -338,7 +495,6 @@
 
     pairing.style.display = 'none';
     stage.classList.add('on');
-    el('title').textContent = media.title;
     el('live').hidden = !media.isLive;
 
     if (hls) { hls.destroy(); hls = null; }
@@ -362,14 +518,7 @@
       video.src = cmd.url;
     }
 
-    if (cmd.subtitleUrl) {
-      var track = document.createElement('track');
-      track.kind = 'subtitles';
-      track.label = cmd.subtitleLabel || 'الترجمة';
-      track.src = cmd.subtitleUrl;
-      track.default = true;
-      video.appendChild(track);
-    }
+    if (cmd.subtitleUrl) attachSubtitle(cmd.subtitleUrl, cmd.subtitleLabel);
 
     video.play().then(function () {
       if (typeof cmd.position === 'number' && cmd.position > 0 && !media.isLive) {
@@ -381,14 +530,16 @@
       video.play().catch(function () { fail('المتصفح منع التشغيل التلقائي — انقر الصفحة'); });
     });
 
-    db.from('cast_sessions').update({
-      status: 'playing',
-      media_title: media.title,
-      media_poster: media.poster,
-      media_id: media.mediaId,
-      is_live: media.isLive,
-    }).eq('id', session.id).then(function () {}, function () {});
+    db.rpc('report_cast_session', {
+      session_id: session.id,
+      new_status: 'playing',
+      title: media.title,
+      poster: media.poster,
+      media: media.mediaId,
+      live: media.isLive,
+    }).then(function () {}, function () {});
 
+    enterFullscreen();
     flashUi();
     report();
   }
@@ -407,7 +558,7 @@
     pairing.style.display = '';
     say(text || 'انتهى البث');
     if (session) {
-      db.from('cast_sessions').update({ status: 'paired' }).eq('id', session.id)
+      db.rpc('report_cast_session', { session_id: session.id, new_status: 'paired' })
         .then(function () {}, function () {});
     }
   }
@@ -443,7 +594,7 @@
 
   window.addEventListener('beforeunload', function () {
     if (!session) return;
-    db.from('cast_sessions').update({ status: 'disconnected' }).eq('id', session.id);
+    db.rpc('end_cast_session', { session_id: session.id });
   });
 
   openSession();

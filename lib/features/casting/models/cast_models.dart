@@ -7,6 +7,10 @@ enum CastTransport {
 
   /// A Chromecast, Google TV or Android TV found by the Cast SDK.
   googleCast,
+
+  /// A smart television found over UPnP. Samsung and LG sets speak this
+  /// and not Google Cast, so a Chromecast search never sees one.
+  dlna,
 }
 
 /// Something that can play what the phone sends it.

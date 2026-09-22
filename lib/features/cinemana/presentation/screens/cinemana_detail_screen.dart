@@ -5,6 +5,10 @@ import 'package:youtube_downloader/core/constants/app_colors.dart';
 import 'package:youtube_downloader/core/constants/app_palette.dart';
 import '../../data/models/cinemana_models.dart';
 import '../providers/cinemana_provider.dart';
+import 'package:youtube_downloader/features/casting/controllers/cast_controller.dart';
+import 'package:youtube_downloader/features/casting/controllers/cast_quality.dart';
+import 'package:youtube_downloader/features/casting/services/cast_media_source.dart';
+import 'package:youtube_downloader/features/casting/widgets/cast_remote_page.dart';
 import 'cinemana_watch_screen.dart';
 import '../../../trailers/presentation/detail_trailer.dart';
 import 'package:youtube_downloader/presentation/widgets/favorite_toast.dart';
@@ -85,18 +89,66 @@ class _CinemanaDetailScreenState extends ConsumerState<CinemanaDetailScreen> {
     final currentSeasonEps = (_selectedSeason != null && _seasons.containsKey(_selectedSeason))
         ? _seasons[_selectedSeason]!
         : _allEpisodes;
+    final chosen = episode ?? (currentSeasonEps.isNotEmpty ? currentSeasonEps.first : null);
+
+    // A screen is connected: the title goes there and the phone stays where
+    // it is, free to keep browsing.
+    if (ref.read(castControllerProvider).isConnected) {
+      _castItem(item, chosen);
+      return;
+    }
 
     Navigator.of(context, rootNavigator: true).push(
       MaterialPageRoute(
         builder: (_) => CinemanaWatchScreen(
           item: item,
           episodes: _allEpisodes,
-          initialEpisode: episode ?? (currentSeasonEps.isNotEmpty ? currentSeasonEps.first : null),
+          initialEpisode: chosen,
           initialSeason: _selectedSeason,
         ),
       ),
     );
   }
+
+  /// Resolves the stream and hands it to the connected screen.
+  ///
+  /// The url is fetched here and travels only in the command that carries
+  /// it — the app never keeps it, so nothing outside this session can replay
+  /// it (see [CastMediaSource]).
+  Future<void> _castItem(CinemanaItem item, CinemanaEpisode? episode) async {
+    if (_casting) return;
+    setState(() => _casting = true);
+    try {
+      final media = await CastMediaSource(ref.read(cinemanaServiceProvider))
+          .forItem(
+        item,
+        episode: episode,
+        maxHeight: ref.read(castMaxHeightProvider),
+      );
+      if (!mounted) return;
+      if (media == null) {
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+          content: Text('لا تتوفر روابط تشغيل مباشرة لهذا المحتوى حالياً'),
+          behavior: SnackBarBehavior.floating,
+        ));
+        return;
+      }
+      await ref.read(castControllerProvider.notifier).cast(media);
+      if (mounted) await CastRemotePage.open(context);
+    } catch (_) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+          content: Text('تعذّر إرسال المحتوى إلى الجهاز'),
+          behavior: SnackBarBehavior.floating,
+        ));
+      }
+    } finally {
+      if (mounted) setState(() => _casting = false);
+    }
+  }
+
+  /// True while a stream is being resolved for the connected screen.
+  bool _casting = false;
 
   @override
   Widget build(BuildContext context) {
@@ -214,6 +266,7 @@ class _CinemanaDetailScreenState extends ConsumerState<CinemanaDetailScreen> {
                     child: Center(
                       child: _RoundPlayButton(
                         onTap: _watchItem,
+                        busy: _casting,
                         tooltip: item.isSeries ? 'مشاهدة المسلسل' : 'شاهد الآن',
                       ),
                     ),
@@ -731,10 +784,13 @@ class _PosterNotchClipper extends CustomClipper<Path> {
 
 /// The round play button that sits in the artwork's curve.
 class _RoundPlayButton extends StatelessWidget {
-  const _RoundPlayButton({required this.onTap, required this.tooltip});
+  const _RoundPlayButton({required this.onTap, required this.tooltip, this.busy = false});
 
   final VoidCallback onTap;
   final String tooltip;
+
+  /// A stream is being resolved for a connected screen.
+  final bool busy;
 
   static const double diameter = 64;
 
@@ -748,10 +804,15 @@ class _RoundPlayButton extends StatelessWidget {
         clipBehavior: Clip.antiAlias,
         child: InkWell(
           onTap: onTap,
-          child: const SizedBox(
+          child: SizedBox(
             width: diameter,
             height: diameter,
-            child: Icon(Icons.play_arrow_rounded, color: Colors.white, size: 38),
+            child: busy
+                ? const Padding(
+                    padding: EdgeInsets.all(20),
+                    child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2.5),
+                  )
+                : const Icon(Icons.play_arrow_rounded, color: Colors.white, size: 38),
           ),
         ),
       ),

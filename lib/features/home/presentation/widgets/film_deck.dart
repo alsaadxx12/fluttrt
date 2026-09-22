@@ -204,7 +204,6 @@ class _FilmCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final p = AppPalette.of(context);
     final dpr = MediaQuery.of(context).devicePixelRatio;
-    final title = film.arTitle.trim().isNotEmpty ? film.arTitle.trim() : film.enTitle.trim();
     // Use highest resolution image available: bestPosterUrl or imgUrl
     final posterUrl = film.bestPosterUrl.isNotEmpty ? film.bestPosterUrl : film.cardImageUrl;
 
@@ -261,13 +260,6 @@ class _FilmCard extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  Text(
-                    title,
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(color: Colors.white, fontSize: 14, fontWeight: FontWeight.w900, height: 1.25),
-                  ),
-                  const SizedBox(height: 6),
                   Row(
                     children: [
                       if (film.year.trim().isNotEmpty)

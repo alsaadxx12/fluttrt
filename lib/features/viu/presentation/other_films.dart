@@ -110,17 +110,6 @@ class OtherFilmCard extends StatelessWidget {
                     ),
                   ),
                 ),
-                PositionedDirectional(
-                  start: 8,
-                  end: 8,
-                  bottom: 8,
-                  child: Text(
-                    film.title,
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.w800, height: 1.25),
-                  ),
-                ),
               ],
             ),
           ),

@@ -69,9 +69,10 @@ def bump(args):
     return name, new_code
 
 
-def run(cmd, why):
+def run(cmd, why, cwd=None):
+    where = cwd or ROOT
     print(f'\n== {why}\n$ {" ".join(cmd)}')
-    if subprocess.call(cmd, cwd=ROOT, shell=(os.name == 'nt')) != 0:
+    if subprocess.call(cmd, cwd=where, shell=(os.name == 'nt')) != 0:
         raise SystemExit(f'failed: {why}')
 
 
@@ -161,16 +162,21 @@ def main():
         raise SystemExit('this APK is signed with the DEBUG key. Set up android/key.properties, '
                          'or users cannot install it over their copy.')
 
-    manifest_args = [sys.executable, os.path.join(ROOT, 'tool', 'release_manifest.py')]
+    # Run release_manifest in-process so UTF-8 characters in --notes are preserved
+    import sys
+    sys.path.insert(0, os.path.join(ROOT, 'tool'))
+    import release_manifest
+    sys.argv = ['release_manifest.py']
     if args.notes is not None:
-        manifest_args += ['--notes', args.notes]
+        sys.argv += ['--notes', args.notes]
     if args.force:
-        manifest_args += ['--force']
+        sys.argv += ['--force']
     if args.min is not None:
-        manifest_args += ['--min', str(args.min)]
+        sys.argv += ['--min', str(args.min)]
     if args.disable:
-        manifest_args += ['--disable']
-    run(manifest_args, 'copy the APK and write version.json')
+        sys.argv += ['--disable']
+    print('\n== copy the APK and write version.json')
+    release_manifest.main()
 
     host = update_url_inside(os.path.join(DL, 'app.apk'))
     if host:
@@ -180,7 +186,9 @@ def main():
               'Check lib/features/update/update_config.dart before publishing.')
 
     if args.deploy and shutil.which('netlify'):
-        run(['netlify', 'deploy', '--prod', '--dir', os.path.join('netlify', 'public')], 'publish to Netlify')
+        run(['netlify', 'deploy', '--prod', '--dir=netlify/public'],
+            'publish to Netlify',
+            cwd=ROOT)
         print(f'\nDone. Users on older builds will see {name} ({code}) within seconds of opening the app.')
     else:
         if args.deploy:
@@ -188,7 +196,7 @@ def main():
         print(f"""
 Ready to publish {name} ({code}).
 Last step: upload the folder  netlify/public  to Netlify
-(Deploys tab -> drag the folder in, or: netlify deploy --prod --dir=netlify/public)
+(Deploys tab -> drag the folder in, or: cd netlify && netlify deploy --prod --dir=public)
 
 Users on an older build get the prompt within seconds of opening the app.""")
 

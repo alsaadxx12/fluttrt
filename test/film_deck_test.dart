@@ -51,7 +51,10 @@ void main() {
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 400));
 
-    expect(find.text('فيلم أول'), findsOneWidget);
+    // The card carries no name: the poster is the name. What it does carry
+    // is what a picture cannot say for itself.
+    expect(find.text('فيلم أول'), findsNothing,
+        reason: 'the home page shows no titles on its cards');
     expect(find.text('2026'), findsWidgets, reason: 'the year is on the card');
 
     // The veil covers the screen; a tap in a corner away from the cards
@@ -59,7 +62,7 @@ void main() {
     await tester.tapAt(const Offset(8, 8));
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 400));
-    expect(find.text('فيلم أول'), findsNothing);
+    expect(find.text('2026'), findsNothing, reason: 'the hand is away');
     expect(find.byIcon(Icons.movie_rounded), findsOneWidget, reason: 'the tab is back on the rail');
   });
 

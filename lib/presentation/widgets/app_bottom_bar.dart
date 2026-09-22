@@ -63,6 +63,7 @@ class AppBottomBar extends StatelessWidget {
                   Expanded(
                     child: _BarItem(
                       icon: Icons.home_rounded,
+                      idleIcon: Icons.home_outlined,
                       label: 'الرئيسية',
                       active: homeActive,
                       inactiveColor: inactive,
@@ -79,6 +80,7 @@ class AppBottomBar extends StatelessWidget {
                   Expanded(
                     child: _BarItem(
                       icon: Icons.bookmark_rounded,
+                      idleIcon: Icons.bookmark_border_rounded,
                       label: 'قائمتي',
                       active: listActive,
                       inactiveColor: inactive,
@@ -214,52 +216,132 @@ class _RenderExtendedHitTest extends RenderProxyBox {
 }
 
 /// Label style shared by the three items: 11 px, heavy, one line.
-TextStyle _labelStyle(Color color) => TextStyle(
-      color: color,
-      fontSize: 11,
-      fontWeight: FontWeight.w700,
-      height: 1.2,
-    );
+/// How long an icon takes to settle after the page changes.
+const Duration _switchDuration = Duration(milliseconds: 380);
 
-/// An icon over its label; pure white filled icon with distinct active label.
-class _BarItem extends StatelessWidget {
+/// One destination, with no word under it.
+///
+/// Everything that used to be the label's job is the icon's now: it fills
+/// in, rises, grows a little and puts a dot beneath itself. Those four read
+/// together as «this is where you are» without a syllable of text — and the
+/// text is still there for anyone listening rather than looking.
+class _BarItem extends StatefulWidget {
   const _BarItem({
     required this.icon,
+    required this.idleIcon,
     required this.label,
     required this.active,
     required this.inactiveColor,
     required this.onTap,
   });
 
+  /// Solid, for the page you are on.
   final IconData icon;
+
+  /// Outlined, for the pages you are not.
+  final IconData idleIcon;
+
+  /// Never drawn; spoken.
   final String label;
+
   final bool active;
   final Color inactiveColor;
   final VoidCallback onTap;
 
   @override
+  State<_BarItem> createState() => _BarItemState();
+}
+
+class _BarItemState extends State<_BarItem> with SingleTickerProviderStateMixin {
+  late final AnimationController _c = AnimationController(
+    vsync: this,
+    duration: _switchDuration,
+    value: widget.active ? 1 : 0,
+  );
+
+  /// The rise and the growth overshoot and come back, so the icon arrives
+  /// rather than simply being in a new place.
+  ///
+  /// Leaving uses the opposite curve. An ease-out on the way back down keeps
+  /// the icon hovering for most of the animation and then drops it at the
+  /// last moment, which looks like a fault; easing in lets it leave at once
+  /// and settle.
+  late final Animation<double> _settle =
+      CurvedAnimation(parent: _c, curve: Curves.easeOutBack, reverseCurve: Curves.easeInCubic);
+
+  /// Colour and the dot resolve straight, with no overshoot: a colour that
+  /// overshoots goes somewhere that is not in the palette.
+  late final Animation<double> _tint =
+      CurvedAnimation(parent: _c, curve: Curves.easeOut);
+
+  @override
+  void didUpdateWidget(covariant _BarItem old) {
+    super.didUpdateWidget(old);
+    if (widget.active == old.active) return;
+    if (MediaQuery.maybeOf(context)?.disableAnimations ?? false) {
+      _c.value = widget.active ? 1 : 0;
+      return;
+    }
+    widget.active ? _c.forward() : _c.reverse();
+  }
+
+  @override
+  void dispose() {
+    _c.dispose();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
     return Semantics(
       button: true,
-      selected: active,
-      label: label,
+      selected: widget.active,
+      label: widget.label,
       child: _Tap(
-        onTap: onTap,
+        onTap: widget.onTap,
         child: SizedBox(
           height: AppBottomBar.barHeight,
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Icon(icon, size: 26, color: Colors.white),
-              const SizedBox(height: 3),
-              Text(
-                label,
-                maxLines: 1,
-                style: _labelStyle(
-                  active ? AppColors.primary : const Color(0xFF94A3B8),
-                ),
-              ),
-            ],
+          child: AnimatedBuilder(
+            animation: _c,
+            builder: (context, _) {
+              final settle = _settle.value.clamp(0.0, 1.2);
+              final tint = _tint.value.clamp(0.0, 1.0);
+              final color = Color.lerp(widget.inactiveColor, Colors.white, tint)!;
+
+              return Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Transform.translate(
+                    offset: Offset(0, -4 * settle),
+                    child: Transform.scale(
+                      scale: 1 + 0.16 * settle,
+                      child: Icon(
+                        // Swapped at the halfway point so the fill appears
+                        // while the icon is still on its way up, not after
+                        // it has stopped.
+                        tint > 0.5 ? widget.icon : widget.idleIcon,
+                        size: 26,
+                        color: color,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 6),
+                  // The marker underneath. It grows out of nothing rather
+                  // than fading, which reads as arriving at a place.
+                  Transform.scale(
+                    scale: tint,
+                    child: Container(
+                      width: 5,
+                      height: 5,
+                      decoration: const BoxDecoration(
+                        color: AppColors.primary,
+                        shape: BoxShape.circle,
+                      ),
+                    ),
+                  ),
+                ],
+              );
+            },
           ),
         ),
       ),
@@ -267,9 +349,11 @@ class _BarItem extends StatelessWidget {
   }
 }
 
-/// The centre item: a 52 px play button nestled inside the upward curved arch
-/// with «مشاهد» underneath it matching the exact baseline of the side items.
-class _ReelsItem extends StatelessWidget {
+/// The centre item: a 52 px play button nestled inside the upward curved
+/// arch. It has no word under it either; being the only raised, red, round
+/// thing on the bar is label enough, and when it is the page you are on it
+/// swells and its glow comes up.
+class _ReelsItem extends StatefulWidget {
   const _ReelsItem({
     required this.active,
     required this.inactiveColor,
@@ -283,14 +367,46 @@ class _ReelsItem extends StatelessWidget {
   static const double _disc = 52;
 
   @override
+  State<_ReelsItem> createState() => _ReelsItemState();
+}
+
+class _ReelsItemState extends State<_ReelsItem>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _c = AnimationController(
+    vsync: this,
+    duration: _switchDuration,
+    value: widget.active ? 1 : 0,
+  );
+
+  late final Animation<double> _t =
+      CurvedAnimation(parent: _c, curve: Curves.easeOutBack, reverseCurve: Curves.easeInCubic);
+
+  @override
+  void didUpdateWidget(covariant _ReelsItem old) {
+    super.didUpdateWidget(old);
+    if (widget.active == old.active) return;
+    if (MediaQuery.maybeOf(context)?.disableAnimations ?? false) {
+      _c.value = widget.active ? 1 : 0;
+      return;
+    }
+    widget.active ? _c.forward() : _c.reverse();
+  }
+
+  @override
+  void dispose() {
+    _c.dispose();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
-    final labelColor = active ? AppColors.primary : inactiveColor;
+    final active = widget.active;
     return Semantics(
       button: true,
       selected: active,
       label: 'مشاهد',
       child: _Tap(
-        onTap: onTap,
+        onTap: widget.onTap,
         child: SizedBox(
           height: AppBottomBar.barHeight,
           child: Stack(
@@ -300,7 +416,13 @@ class _ReelsItem extends StatelessWidget {
               // Raised play button inside the arch
               Positioned(
                 top: -14,
-                child: DecoratedBox(
+                child: AnimatedBuilder(
+                  animation: _c,
+                  builder: (context, child) => Transform.scale(
+                    scale: 1 + 0.10 * _t.value.clamp(0.0, 1.2),
+                    child: child,
+                  ),
+                  child: DecoratedBox(
                   decoration: BoxDecoration(
                     gradient: const LinearGradient(
                       colors: [
@@ -325,8 +447,8 @@ class _ReelsItem extends StatelessWidget {
                     ],
                   ),
                   child: const SizedBox(
-                    width: _disc,
-                    height: _disc,
+                    width: _ReelsItem._disc,
+                    height: _ReelsItem._disc,
                     child: Center(
                       child: Icon(
                         Icons.play_arrow_rounded,
@@ -335,12 +457,8 @@ class _ReelsItem extends StatelessWidget {
                       ),
                     ),
                   ),
+                  ),
                 ),
-              ),
-              // Label aligned precisely with the side labels
-              Positioned(
-                bottom: 11,
-                child: Text('مشاهد', maxLines: 1, style: _labelStyle(labelColor)),
               ),
             ],
           ),

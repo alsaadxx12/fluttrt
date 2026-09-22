@@ -1,9 +1,12 @@
 import 'dart:async';
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../models/cast_models.dart';
 import '../services/cast_service.dart';
+import '../services/dlna_cast_service.dart';
+import '../services/google_cast_service.dart';
 import '../services/web_cast_service.dart';
 
 /// Everything the app knows about casting, in one place.
@@ -12,15 +15,107 @@ import '../services/web_cast_service.dart';
 /// never touch a service directly, so a Chromecast and a browser look the
 /// same from a widget's side.
 class CastController extends StateNotifier<CastState> {
-  CastController(this._web) : super(const CastState()) {
-    _events = _web.events.listen(_onEvent);
+  CastController(this._web, this._tv, this._dlna) : super(const CastState()) {
+    _webEvents = _web.events.listen(_onEvent);
+    _tvEvents = _tv.events.listen(_onEvent);
+    _dlnaEvents = _dlna.events.listen(_onEvent);
   }
 
   final WebCastService _web;
-  late final StreamSubscription<CastPlaybackEvent> _events;
+  final GoogleCastService _tv;
+  final DlnaCastService _dlna;
+  late final StreamSubscription<CastPlaybackEvent> _webEvents;
+  late final StreamSubscription<CastPlaybackEvent> _tvEvents;
+  late final StreamSubscription<CastPlaybackEvent> _dlnaEvents;
 
   /// The service driving the connected device.
-  CastService? get _active => state.device == null ? null : _web;
+  ///
+  /// Which one it is follows from the device itself, so nothing above this
+  /// line — not the sheet, not the remote, not the mini controller — has to
+  /// know whether the picture is on a television or in a browser.
+  CastService? get _active => switch (state.device?.transport) {
+        CastTransport.web => _web,
+        CastTransport.googleCast => _tv,
+        CastTransport.dlna => _dlna,
+        null => null,
+      };
+
+  /// Every screen on the network, whichever protocol it happens to speak.
+  ///
+  /// Two searches run at once and their results are merged, because a house
+  /// can hold both a Chromecast and a Samsung and the viewer should not
+  /// have to know which is which. Cast devices arrive on a stream as the
+  /// SDK finds them; a UPnP search is a question with an answer, so it is
+  /// asked again every few seconds and folded into the same list.
+  Stream<List<CastDevice>> get televisions {
+    final cast = _tv.deviceStream;
+    final controller = StreamController<List<CastDevice>>();
+
+    var fromCast = <CastDevice>[];
+    var fromDlna = <CastDevice>[];
+    void emit() {
+      if (!controller.isClosed) controller.add([...fromCast, ...fromDlna]);
+    }
+
+    final castSub = cast.listen((devices) {
+      fromCast = devices;
+      emit();
+    });
+
+    var searching = false;
+    Future<void> sweep() async {
+      if (searching) return;
+      searching = true;
+      try {
+        fromDlna = await _dlna.discoverDevices();
+        emit();
+      } catch (e) {
+        debugPrint('[cast] dlna sweep: $e');
+      } finally {
+        searching = false;
+      }
+    }
+
+    unawaited(sweep());
+    final repeat = Timer.periodic(const Duration(seconds: 8), (_) => sweep());
+
+    controller.onCancel = () {
+      repeat.cancel();
+      castSub.cancel();
+    };
+    return controller.stream;
+  }
+
+  Future<void> startDiscovery() => _tv.startDiscovery();
+  Future<void> stopDiscovery() => _tv.stopDiscovery();
+
+  /// Connects to a television the viewer picked out of the list.
+  ///
+  /// A browser is reached by [pairWithCode] instead — it cannot be found on
+  /// the network, which is the whole reason it shows a code.
+  Future<void> connectTo(CastDevice device) async {
+    state = state.copyWith(status: CastStatus.connecting, clearError: true);
+    final service =
+        device.transport == CastTransport.dlna ? _dlna : _tv;
+    try {
+      await service.connect(device);
+      state = state.copyWith(
+        status: CastStatus.connected,
+        device: device,
+        clearError: true,
+      );
+      final media = state.media;
+      if (media != null) await service.loadMedia(media);
+    } on CastException catch (e) {
+      state = state.copyWith(status: CastStatus.error, error: e.message);
+      rethrow;
+    } catch (e) {
+      debugPrint('[cast] connect failed: $e');
+      const message = 'تعذّر الاتصال بالتلفاز';
+      state = state.copyWith(status: CastStatus.error, error: message);
+      throw const CastException(message);
+    }
+  }
 
   // ------------------------------------------------------------ connecting
   /// Pairs with a browser showing [code] and connects to it.
@@ -49,7 +144,7 @@ class CastController extends StateNotifier<CastState> {
   }
 
   Future<void> disconnect() async {
-    await _web.disconnect();
+    await _active?.disconnect();
     state = const CastState();
   }
 
@@ -68,10 +163,15 @@ class CastController extends StateNotifier<CastState> {
       isPlaying: true,
       clearError: true,
     );
-    if (swapping) {
-      await _web.changeMedia(media);
+    final service = _active;
+    if (service == null) return;
+    // Only the browser receiver distinguishes the two: swapping lets it keep
+    // its player and trade the source, where a fresh load would blink the
+    // screen black. A Chromecast simply loads again.
+    if (swapping && service is WebCastService) {
+      await service.changeMedia(media);
     } else {
-      await _web.loadMedia(media);
+      await service.loadMedia(media);
     }
   }
 
@@ -134,15 +234,31 @@ class CastController extends StateNotifier<CastState> {
 
   @override
   void dispose() {
-    _events.cancel();
+    _webEvents.cancel();
+    _tvEvents.cancel();
+    _dlnaEvents.cancel();
     _web.dispose();
+    _tv.dispose();
+    _dlna.dispose();
     super.dispose();
   }
 }
 
 final castControllerProvider = StateNotifierProvider<CastController, CastState>(
-  (ref) => CastController(WebCastService()),
+  (ref) => CastController(WebCastService(), GoogleCastService(), DlnaCastService()),
 );
+
+/// Televisions currently answering on the network.
+///
+/// Discovery runs only while something is watching this — the sheet, in
+/// practice — because a Cast scan is a steady trickle of multicast traffic
+/// and there is no reason to keep it up behind a closed sheet.
+final castTelevisionsProvider = StreamProvider.autoDispose<List<CastDevice>>((ref) {
+  final controller = ref.watch(castControllerProvider.notifier);
+  controller.startDiscovery();
+  ref.onDispose(controller.stopDiscovery);
+  return controller.televisions;
+});
 
 /// True while a device is connected — the button and the mini controller
 /// watch this alone, so neither rebuilds on every tick of the clock.

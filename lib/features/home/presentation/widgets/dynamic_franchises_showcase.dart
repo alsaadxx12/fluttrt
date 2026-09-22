@@ -373,13 +373,6 @@ class _DynCardState extends ConsumerState<_DynCard> {
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             Text(
-                              f.name,
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                              style: TextStyle(color: p.text, fontSize: 16.5, fontWeight: FontWeight.w900),
-                            ),
-                            const SizedBox(height: 3),
-                            Text(
                               label,
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,

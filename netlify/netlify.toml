@@ -3,6 +3,17 @@
 # or drag-and-drop the `public` folder in the Netlify UI.
 [build]
   publish = "public"
+  edge_functions = "edge-functions"
+
+# Both edge functions declare their own path in the file; these entries are
+# what makes Netlify look for them at all.
+[[edge_functions]]
+  function = "relay"
+  path = "/relay"
+
+[[edge_functions]]
+  function = "subtitle"
+  path = "/subtitle"
 
 # version.json must never be cached: the app reads it on every start and a
 # stale copy would hide a new release. The APK may be cached normally (its

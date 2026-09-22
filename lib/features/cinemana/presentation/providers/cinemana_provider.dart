@@ -84,7 +84,7 @@ class CinemanaSectionState {
     this.rawSearchResults = const [],
     this.searchQuery = '',
     this.selectedCategoryId,
-    this.selectedOrder = 'desc',
+    this.selectedOrder = 'release',
     this.selectedYear,
     this.selectedRating,
     this.selectedStatus,
@@ -158,7 +158,7 @@ class CinemanaSectionNotifier extends StateNotifier<CinemanaSectionState> {
           // Anime defaults to most-watched: ordering by newest upload buried
           // popular series (e.g. Demon Slayer sat ~600 items deep), so they
           // looked missing. Most-watched surfaces them near the top.
-          selectedOrder: _kind == 'anime' ? 'views' : 'desc',
+          selectedOrder: 'release',
         )) {
     loadInitial();
   }

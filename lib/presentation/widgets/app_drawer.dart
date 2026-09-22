@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:lottie/lottie.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:youtube_downloader/core/constants/app_colors.dart';
@@ -187,22 +188,21 @@ class _AppDrawerState extends ConsumerState<AppDrawer> {
                   if (isSportsUnlocked) ...[
                     Row(
                       children: [
-                        const Icon(
-                          Icons.verified_rounded,
-                          size: 16,
-                          color: AppColors.success,
-                        ),
-                        const SizedBox(width: 6),
-                        const Expanded(
-                          child: Text(
-                            'اشتراك المباريات: مفعّل',
-                            style: TextStyle(
-                              color: AppColors.success,
-                              fontSize: 12,
-                              fontWeight: FontWeight.w800,
-                            ),
+                        // The animation carries the «active» half of what
+                        // two lines of text used to say, so the words are
+                        // down to the one thing it cannot show: how long is
+                        // left.
+                        const _SubscriptionMark(),
+                        const SizedBox(width: 8),
+                        const Text(
+                          'المباريات',
+                          style: TextStyle(
+                            color: AppColors.success,
+                            fontSize: 12.5,
+                            fontWeight: FontWeight.w800,
                           ),
                         ),
+                        const Spacer(),
                         Container(
                           padding: const EdgeInsets.symmetric(
                               horizontal: 8, vertical: 3),
@@ -211,7 +211,7 @@ class _AppDrawerState extends ConsumerState<AppDrawer> {
                             borderRadius: BorderRadius.circular(8),
                           ),
                           child: Text(
-                            'متبقي ${sportsSub?.remainingDays ?? 0} يوم',
+                            '${sportsSub?.remainingDays ?? 0} يوم',
                             style: const TextStyle(
                               color: AppColors.success,
                               fontSize: 11,
@@ -232,7 +232,7 @@ class _AppDrawerState extends ConsumerState<AppDrawer> {
                         const SizedBox(width: 6),
                         Expanded(
                           child: Text(
-                            'اشتراك المباريات: غير مفعّل',
+                            'المباريات غير مفعّلة',
                             style: TextStyle(
                               fontSize: 11.5,
                               fontWeight: FontWeight.w700,
@@ -619,6 +619,40 @@ class _Pill extends StatelessWidget {
           fontSize: 10.5,
           fontWeight: FontWeight.w800,
           height: 1.2,
+        ),
+      ),
+    );
+  }
+}
+
+/// The mark beside «المباريات» when the subscription is live.
+///
+/// An animation rather than a tick because it is saying something a static
+/// icon cannot: that the thing is running right now. It loops quietly and
+/// is small enough to sit on a line of text.
+class _SubscriptionMark extends StatelessWidget {
+  const _SubscriptionMark();
+
+  @override
+  Widget build(BuildContext context) {
+    // Anyone who has asked the system for less motion gets the plain tick.
+    if (MediaQuery.maybeOf(context)?.disableAnimations ?? false) {
+      return const Icon(Icons.verified_rounded, size: 26, color: AppColors.success);
+    }
+
+    return SizedBox(
+      width: 34,
+      height: 34,
+      child: Lottie.asset(
+        'assets/animations/screencast.json',
+        repeat: true,
+        fit: BoxFit.contain,
+        // A drawer that cannot load one asset is not a drawer worth
+        // failing: the tick says the same thing.
+        errorBuilder: (_, __, ___) => const Icon(
+          Icons.verified_rounded,
+          size: 18,
+          color: AppColors.success,
         ),
       ),
     );

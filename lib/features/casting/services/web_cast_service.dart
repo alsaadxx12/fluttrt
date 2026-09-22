@@ -49,25 +49,41 @@ class WebCastService implements CastService {
       throw const CastException('الرمز يجب أن يكون ستة أرقام');
     }
     try {
-      final row = await _db.rpc<Map<String, dynamic>>(
+      final result = await _db.rpc<dynamic>(
         'claim_cast_session',
         params: {'code': digits, 'claimed_device_name': phoneName},
       );
+      // The function returns a set, so PostgREST hands back a list of one.
+      final row = result is List
+          ? (result.isEmpty ? null : result.first as Map<String, dynamic>)
+          : result as Map<String, dynamic>?;
+      if (row == null || row['id'] == null) {
+        throw const CastException('الرمز غير صحيح أو انتهت صلاحيته');
+      }
       return CastDevice(
         id: '${row['id']}',
         name: '${row['device_name'] ?? 'الكمبيوتر'}',
         subtitle: 'CineBall Web',
         transport: CastTransport.web,
       );
+    } on CastException {
+      // Already a message meant for the viewer; the catch-all below would
+      // otherwise swallow it and report a connection problem instead.
+      rethrow;
     } on PostgrestException catch (e) {
-      // The function raises no_data_found when the code is wrong, already
-      // claimed, or past its ten minutes.
-      if (e.code == 'P0002' || (e.message).contains('not found')) {
+      // The function raises no_data_found when the code belongs to nobody,
+      // to somebody else, or is past its ten minutes.
+      if (e.code == 'P0002' || e.message.contains('not found')) {
         throw const CastException('الرمز غير صحيح أو انتهت صلاحيته');
       }
+      debugPrint('[cast] claim failed: ${e.code} ${e.message}');
       throw CastException('تعذّر الربط: ${e.message}');
-    } catch (_) {
-      throw const CastException('تعذّر الاتصال بالخادم');
+    } catch (e) {
+      // Anything else is a fault on our side, not the viewer's network —
+      // saying «تعذّر الاتصال بالخادم» for it sent the last search for a bug
+      // in the wrong direction entirely.
+      debugPrint('[cast] claim failed unexpectedly: $e');
+      throw const CastException('تعذّر الربط — حاول مرة أخرى');
     }
   }
 
@@ -82,8 +98,25 @@ class WebCastService implements CastService {
     );
 
     channel.onBroadcast(event: 'state', callback: _onState);
-    channel.subscribe();
+    channel.subscribe((status, error) {
+      if (error != null) debugPrint('[cast] channel ${device.id}: $error');
+    });
     _channel = channel;
+
+    // The session row is closed to the receiver, so it cannot see that the
+    // claim went through. Telling it here is what turns its screen from
+    // «في انتظار الاتصال» to «تم الاتصال».
+    //
+    // Sent a moment after subscribing: a broadcast published before the
+    // socket has joined the topic goes nowhere.
+    unawaited(Future<void>.delayed(const Duration(milliseconds: 700), () async {
+      try {
+        await channel.sendBroadcastMessage(
+          event: 'paired',
+          payload: _envelope({'phone': 'CineBall'}),
+        );
+      } catch (_) {}
+    }));
 
     // Keeps the session from expiring while it is in use; the receiver does
     // the same from its end.
@@ -91,8 +124,12 @@ class WebCastService implements CastService {
     await _touch();
   }
 
-  void _onState(Map<String, dynamic> payload) {
+  void _onState(Map<String, dynamic> message) {
     if (_events.isClosed) return;
+    // onBroadcast hands over the whole envelope, not its payload — read past
+    // it, or every field below is null and the remote sits at 0:00 forever.
+    final inner = message['payload'];
+    final payload = inner is Map ? Map<String, dynamic>.from(inner) : message;
     final type = '${payload['type'] ?? 'STATE'}';
 
     if (type == 'ERROR') {
@@ -124,10 +161,31 @@ class WebCastService implements CastService {
     }
   }
 
+  /// Wraps a message the way the wire format expects.
+  ///
+  /// [RealtimeChannel.sendBroadcastMessage] does not build the envelope: it
+  /// writes `type: 'broadcast'` and `event:` into *the very map it is handed*
+  /// and sends that, flat. So passing a command straight in both loses its
+  /// own `type` — overwritten with the literal string `broadcast` — and puts
+  /// its fields where a browser reading `msg.payload` will never find them.
+  /// Casting a film reached the receiver as `{type:'broadcast'}` and nothing
+  /// else, and so played nothing at all.
+  ///
+  /// Handing it a wrapper instead means the keys it adds land on the wrapper,
+  /// and what goes out is the envelope every other Realtime client speaks:
+  /// `{type:'broadcast', event:'command', payload:{…}}`.
+  static Map<String, dynamic> _envelope(Map<String, dynamic> body) =>
+      <String, dynamic>{'payload': body};
+
   Future<void> _send(Map<String, dynamic> command) async {
     final channel = _channel;
     if (channel == null) throw const CastException('لا يوجد جهاز متصل');
-    await channel.sendBroadcastMessage(event: 'command', payload: command);
+    // A broadcast on a channel that is not joined is dropped without a word,
+    // which is a very quiet way for casting to do nothing at all.
+    await channel.sendBroadcastMessage(
+      event: 'command',
+      payload: _envelope(command),
+    );
   }
 
   @override
@@ -182,7 +240,7 @@ class WebCastService implements CastService {
     }
     if (id != null) {
       try {
-        await _db.from('cast_sessions').update({'status': 'disconnected'}).eq('id', id);
+        await _db.rpc<void>('end_cast_session', params: {'session_id': id});
       } catch (_) {}
     }
   }

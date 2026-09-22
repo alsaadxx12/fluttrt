@@ -6,6 +6,18 @@
     <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE"/>
     <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" android:maxSdkVersion="32"/>
 
+    <!-- Casting: the Cast SDK runs its media notification as a foreground
+         service, which Android 14 requires a matching permission for. -->
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MEDIA_PLAYBACK"/>
+
+    <!-- Finding a Chromecast means mDNS over the local wifi, and from
+         Android 13 that is gated behind this. Without it discovery runs,
+         reports no error, and simply never sees a television.
+         neverForLocation: the app is looking for a screen, not for where
+         the phone is, and saying so keeps it out of the location prompt. -->
+    <uses-permission android:name="android.permission.NEARBY_WIFI_DEVICES"
+        android:usesPermissionFlags="neverForLocation"/>
+
     <!-- Television support. Both features must be declared NOT required, or
          the app is treated as phone-only and a TV refuses to install it:
          a set-top box has no touchscreen, and a phone has no leanback. -->
@@ -57,6 +69,22 @@
         <meta-data
             android:name="flutterEmbedding"
             android:value="2" />
+
+        <!-- Casting to Chromecast, Google TV and Android TV.
+             The SDK reads this class name out of the manifest before any
+             Dart has run, and asks it for the receiver app id. The class is
+             the plugin's; the id it hands back is set from Dart at startup. -->
+        <meta-data
+            android:name="com.google.android.gms.cast.framework.OPTIONS_PROVIDER_CLASS_NAME"
+            android:value="com.felnanuke.google_cast.GoogleCastOptionsProvider"/>
+
+        <!-- The lock-screen and notification controls for whatever is
+             playing on the television. -->
+        <service
+            android:name="com.google.android.gms.cast.framework.media.MediaNotificationService"
+            android:exported="false"
+            android:foregroundServiceType="mediaPlayback"/>
+
     </application>
     <!-- Required to query activities that can process text, see:
          https://developer.android.com/training/package-visibility and

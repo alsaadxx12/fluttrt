@@ -1,15 +1,15 @@
 {
   "updateEnabled": true,
-  "versionCode": 2109,
-  "versionName": "1.0.103",
-  "apkUrl": "https://cineball.netlify.app/download/app.apk?v=109",
-  "apkUrlArm64": "https://cineball.netlify.app/download/app-arm64-v8a-release.apk?v=109",
-  "apkUrlArm32": "https://cineball.netlify.app/download/app-armeabi-v7a-release.apk?v=109",
-  "sha256": "8987325a034bbfc75c56adab7f031236e2f0483f90851f289742ff6f341d9474",
-  "sha256Arm64": "8987325a034bbfc75c56adab7f031236e2f0483f90851f289742ff6f341d9474",
-  "sha256Arm32": "9104bd2e68fde496d9e6fbff8cd78c08bfc4ff034d20db1e7a9baa3d87badd39",
-  "sizeBytes": 20165227,
+  "versionCode": 2138,
+  "versionName": "1.0.132",
+  "apkUrl": "https://cineball.netlify.app/download/app.apk?v=138",
+  "apkUrlArm64": "https://cineball.netlify.app/download/app-arm64-v8a-release.apk?v=138",
+  "apkUrlArm32": "https://cineball.netlify.app/download/app-armeabi-v7a-release.apk?v=138",
+  "sha256": "3a6e0817a4df965f83ab07add12adec788abf76d393b0b4496d5f6eb2259d641",
+  "sha256Arm64": "3a6e0817a4df965f83ab07add12adec788abf76d393b0b4496d5f6eb2259d641",
+  "sha256Arm32": "81af37e43cbdb538136d41b221f8c651b4994724177ee3855f8dd59fc971b51c",
+  "sizeBytes": 25275601,
   "forceUpdate": false,
   "minSupportedVersion": 1,
-  "notes": "انحناء وميلان شريط التنقل السفلي مع زر مشاهد وتحسينات عامة"
+  "notes": "تحديث نافذة البحث عن الأجهزة وإضافة أيقونة Apple TV بدقة وحجم أكبر، ودعم البث المباشر للشاشات والتلفاز"
 }

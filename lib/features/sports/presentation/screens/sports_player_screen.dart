@@ -15,6 +15,10 @@ import '../../data/models/sports_models.dart';
 import '../providers/sports_provider.dart';
 import '../lineup_layout.dart';
 import '../../../../core/constants/app_palette.dart';
+import '../../../casting/controllers/cast_controller.dart';
+import '../../../casting/services/cast_media_source.dart';
+import '../../../casting/services/cast_service.dart';
+import '../../../casting/widgets/cast_device_sheet.dart';
 
 class PlayerChannelItem {
   final String id;
@@ -1220,6 +1224,65 @@ class _SportsPlayerScreenState extends ConsumerState<SportsPlayerScreen> with Wi
     }
   }
 
+  /// The channel playing right now, or an empty placeholder before one is
+  /// chosen. The player area works this out inline; the controls need the
+  /// same answer, so it lives here too.
+  PlayerChannelItem get _activeChannel => _channels.firstWhere(
+        (c) => c.id == _activeChannelId,
+        orElse: () =>
+            _channels.firstOrNull ?? const PlayerChannelItem(id: '', name: ''),
+      );
+
+  /// «الأهلي × الزمالك», or the channel's own name when the teams are not
+  /// known — it is what the other screen and the remote will show.
+  String get _castTitle {
+    final home = widget.match.home.name.trim();
+    final away = widget.match.away.name.trim();
+    if (home.isNotEmpty && away.isNotEmpty) return '$home × $away';
+    return _activeChannel.name;
+  }
+
+  /// Sends the match to whatever screen the viewer has paired.
+  ///
+  /// Only a direct HLS channel can go: a web stream is a page played in a
+  /// WebView and has no address another screen could open, so the button is
+  /// not offered for those at all rather than failing once pressed.
+  Future<void> _castChannel(PlayerChannelItem channel) async {
+    final cast = ref.read(castControllerProvider);
+    if (!cast.isConnected) {
+      await showCastDeviceSheet(context);
+      if (!mounted || !ref.read(castControllerProvider).isConnected) return;
+    }
+
+    final url = channel.streamUrl;
+    if (url == null || url.isEmpty || channel.isWebStream) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('هذا المصدر لا يدعم البث إلى شاشة أخرى')),
+        );
+      }
+      return;
+    }
+
+    try {
+      await ref.read(castControllerProvider.notifier).cast(
+            CastMediaSource.forLive(
+              id: channel.id,
+              title: _castTitle,
+              streamUrl: url,
+            ),
+          );
+      // The phone's own player would go on pulling the same stream for
+      // nothing, and on a live channel that is a second full download.
+      if (_isPlaying) await _togglePlayPause();
+    } on CastException catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context)
+            .showSnackBar(SnackBar(content: Text(e.message)));
+      }
+    }
+  }
+
   Future<void> _switchChannel(PlayerChannelItem channel) async {
     if (_activeChannelId == channel.id && !_isLoadingStream && _streamErrorMessage == null) {
       return;
@@ -1603,6 +1666,23 @@ class _SportsPlayerScreenState extends ConsumerState<SportsPlayerScreen> with Wi
                         ),
                       ],
                       const Spacer(),
+                      // Casting, offered only where there is an address to
+                      // send: a web stream has none.
+                      if (!_activeChannel.isWebStream &&
+                          (_activeChannel.streamUrl?.isNotEmpty ?? false))
+                        Consumer(
+                          builder: (context, ref, _) => IconButton(
+                            onPressed: () => _castChannel(_activeChannel),
+                            icon: Icon(
+                              ref.watch(isCastingProvider)
+                                  ? Icons.cast_connected_rounded
+                                  : Icons.cast_rounded,
+                              color: Colors.white,
+                              size: 22,
+                            ),
+                            tooltip: 'البث إلى شاشة',
+                          ),
+                        ),
                       // Video Fit Toggle Button (ملء العرض / تكبير / أبعاد أصلية)
                       IconButton(
                         onPressed: _cycleVideoFit,

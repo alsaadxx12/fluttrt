@@ -1,5 +1,7 @@
 import 'dart:io';
 import 'package:flutter/foundation.dart' show LicenseEntryWithLineBreaks, LicenseRegistry;
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
@@ -17,6 +19,7 @@ import 'package:youtube_downloader/core/config/supabase_config.dart';
 import 'package:youtube_downloader/router/app_router.dart';
 import 'features/update/presentation/update_gate.dart';
 import 'core/tv/tv_mode.dart';
+import 'package:youtube_downloader/features/casting/services/google_cast_service.dart';
 import 'package:youtube_downloader/features/trailers/tmdb_config.dart';
 import 'package:video_player_media_kit/video_player_media_kit.dart';
 
@@ -33,6 +36,23 @@ void main() async {
   } catch (e) {
     debugPrint('Supabase init error: $e');
   }
+
+  // Start the Cast framework here rather than when the sheet opens: Android
+  // asks the options provider for the receiver id on its own schedule — when
+  // it restores a session, or raises the media notification — and the id
+  // comes from Dart, so it has to be in place before any of that.
+  //
+  // Not awaited, and on a leash: this is a platform channel into the Cast
+  // SDK, and a handset where that SDK is unhappy can leave the call hanging
+  // for good. Waiting for it here would hold up runApp and leave the viewer
+  // looking at a white screen with no way out — a dead cast button is a far
+  // smaller price.
+  unawaited(
+    GoogleCastService.ensureStarted().timeout(
+      const Duration(seconds: 5),
+      onTimeout: () => debugPrint('[cast] google cast did not start in time'),
+    ),
+  );
 
   // Load the bundled TMDB token if the build did not compile one in, so the
   // trailers section works whether or not --dart-define was passed.
