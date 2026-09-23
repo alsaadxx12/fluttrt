@@ -46,8 +46,6 @@ import 'package:youtube_downloader/features/update/presentation/update_controlle
 import 'package:youtube_downloader/features/subscription/presentation/providers/subscription_provider.dart';
 import 'package:youtube_downloader/features/asia2tv/presentation/providers/asia2tv_providers.dart';
 import 'package:youtube_downloader/features/asia2tv/presentation/open_catalogue_item.dart';
-import 'package:youtube_downloader/features/exclusive_media/presentation/providers/exclusive_media_providers.dart';
-import 'package:youtube_downloader/features/exclusive_media/data/models/exclusive_media_models.dart';
 import 'package:youtube_downloader/presentation/widgets/house_notice.dart';
 
 class HomeScreen extends ConsumerStatefulWidget {
@@ -477,16 +475,6 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
           title: 'أحدث المسلسلات',
           badge: 'جديد',
           onViewAll: () => _openCatalog(kind: 'series', order: 'release'),
-        ),
-
-    (_) => const SizedBox(height: 24),
-
-    // أحدث الأفلام الحصرية (إصدارات جديدة 2024-2026)
-    (_) => _posterRowSection(
-          provider: exclusiveLatestMoviesProvider,
-          title: 'أحدث الأفلام الحصرية',
-          onViewAll: () =>
-              context.push('/exclusive', extra: ExclusiveCategory.movies),
         ),
 
     (_) => const SizedBox(height: 24),

@@ -12,7 +12,7 @@ import '../../../sports/data/services/alkass_service.dart';
 import '../../../sports/presentation/providers/alkass_provider.dart';
 
 /// Alkass's free channels on the home page: one page-black tile per channel
-/// with its mark and its name, and a tap opens the channel full-screen at
+/// with its mark filling it, and a tap opens the channel full-screen at
 /// once, the other channels a tap away over the picture.
 class AlkassChannelsRow extends ConsumerWidget {
   const AlkassChannelsRow({super.key});
@@ -139,41 +139,27 @@ class _Tile extends StatelessWidget {
           child: ClipRRect(
             borderRadius: BorderRadius.circular(6),
             clipBehavior: Clip.antiAliasWithSaveLayer,
-            // The page's own black under the mark, a hairline edge to show
-            // the card, and the channel's name beneath.
-            child: Container(
-              decoration: BoxDecoration(
-                color: AppPalette.of(context).bg,
-                border: Border.all(color: Colors.white.withOpacity(0.12), width: 0.6),
-                borderRadius: BorderRadius.circular(6),
-              ),
-              padding: const EdgeInsets.fromLTRB(20, 14, 20, 10),
-              child: Column(
-                children: [
-                  Expanded(
-                    child: channel.logo.isEmpty
-                        ? const Icon(Icons.live_tv_rounded, color: Colors.white54)
-                        : CachedNetworkImage(
-                            imageUrl: channel.logo,
-                            cacheManager: appImageCache,
-                            fit: BoxFit.contain,
-                            filterQuality: FilterQuality.high,
-                            memCacheWidth: 400,
-                            fadeInDuration: Duration.zero,
-                            fadeOutDuration: Duration.zero,
-                            placeholderFadeInDuration: Duration.zero,
-                            placeholder: (_, __) => const SizedBox.shrink(),
-                            errorWidget: (_, __, ___) => const Icon(Icons.live_tv_rounded, color: Colors.white54),
-                          ),
-                  ),
-                  const SizedBox(height: 8),
-                  Text(
-                    channel.arabicTitle,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w800, fontSize: 12.5),
-                  ),
-                ],
+            // The page's own black under the mark, and the mark as big as
+            // the card allows: no edge, no name.
+            child: ColoredBox(
+              color: AppPalette.of(context).bg,
+              child: Padding(
+                padding: const EdgeInsets.all(6),
+                child: channel.logo.isEmpty
+                    ? const Icon(Icons.live_tv_rounded, color: Colors.white54, size: 40)
+                    : CachedNetworkImage(
+                        imageUrl: channel.logo,
+                        cacheManager: appImageCache,
+                        fit: BoxFit.contain,
+                        filterQuality: FilterQuality.high,
+                        memCacheWidth: 480,
+                        fadeInDuration: Duration.zero,
+                        fadeOutDuration: Duration.zero,
+                        placeholderFadeInDuration: Duration.zero,
+                        placeholder: (_, __) => const SizedBox.shrink(),
+                        errorWidget: (_, __, ___) =>
+                            const Icon(Icons.live_tv_rounded, color: Colors.white54, size: 40),
+                      ),
               ),
             ),
           ),
