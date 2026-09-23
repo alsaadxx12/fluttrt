@@ -2092,7 +2092,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
         // Horizontal List of Wide Cards (224w x 138h)
         if (items.isNotEmpty)
           SizedBox(
-            height: 138,
+            height: 148,
             // The same entrance and the same focus as every other row.
             child: WheelScroll(
               builder: (controller) => ListView.separated(
@@ -2103,16 +2103,16 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                 scrollDirection: Axis.horizontal,
                 physics: const ClampingScrollPhysics(),
                 itemCount: items.length,
-                separatorBuilder: (_, __) => const SizedBox(width: 14),
-                // 224 wide plus the 14 of the separator.
+                separatorBuilder: (_, __) => const SizedBox(width: 12),
+                // 264 wide plus the 12 of the separator.
                 itemBuilder: (context, index) => CardEntrance(
                   group: 'wide-$title',
                   index: index,
                   child: CarouselFocus(
                     controller: controller,
                     index: index,
-                    extent: 238,
-                    width: 224,
+                    extent: 276,
+                    width: 264,
                     child: _buildWideSeriesCard(items[index]),
                   ),
                 ),
@@ -2121,7 +2121,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
           )
         else if (isLoading)
           SizedBox(
-            height: 138,
+            height: 148,
             child: ListView.separated(
               padding: const EdgeInsets.symmetric(horizontal: 16),
               scrollDirection: Axis.horizontal,
@@ -2130,7 +2130,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
               separatorBuilder: (_, __) => const SizedBox(width: 14),
               // A flat block the size of the card: reads as "already there".
               itemBuilder: (_, __) => Container(
-                width: 224,
+                width: 264,
                 decoration: BoxDecoration(
                   color: _p.skeleton,
                   borderRadius: BorderRadius.circular(10),
@@ -2159,141 +2159,49 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
   }
 
   // Large Wide Card for TV Series ("بطاقة كبيرة عريضة")
+  /// A wide, clean picture: the series' backdrop edge to edge, nothing
+  /// written on it. What it is, the page that opens says.
   Widget _buildWideSeriesCard(CinemanaItem series) {
-    // A wide card: the poster takes 45% of the width, whole and uncropped
-    // enough at 2:3, and the other 55% is the story — a big title with its
-    // genre and year right under it, and one clear play button at the foot.
-    const double cardW = 224;
-    const double cardH = 138;
-    const double posterW = cardW * 0.45;
-    final poster = series.cardImageUrl;
-    final seasonNum = int.tryParse(series.season) ?? 0;
-    final seasonText = seasonNum > 0 ? 'الموسم $seasonNum' : 'مسلسل';
-    final genreText =
-        series.categories.isNotEmpty ? series.categories.first : 'دراما';
-    final yearText = series.year.isNotEmpty ? series.year : '2026';
-    final rating = series.stars.isNotEmpty ? series.stars : '0.0';
+    const double cardW = 264;
+    const double cardH = 148;
+    final image = series.bestBackdropUrl;
 
     return RepaintBoundary(
-      child: GestureDetector(
+      child: PressScale(
         // The row holds titles from more than one catalogue; this opens each
         // on the page that can actually play it.
         onTap: () => openCatalogueItem(context, series),
-        child: Container(
+        child: SizedBox(
           width: cardW,
           height: cardH,
-          decoration: BoxDecoration(
-            color: _p.card,
+          child: ClipRRect(
             borderRadius: BorderRadius.circular(10),
-          ),
-          clipBehavior: Clip.antiAlias,
-          child: Row(
-            children: [
-              // Poster: 45% of the card.
-              SizedBox(
-                width: posterW,
-                height: cardH,
-                child: poster.isNotEmpty
-                    ? CachedNetworkImage(
-                        imageUrl: series.imageForWidth(
-                            _decodeWidthFor(posterW).toDouble(),
-                            hiRes: preferFullArtwork),
-                        cacheManager: appImageCache,
-                        fit: BoxFit.cover,
-                        filterQuality: FilterQuality.high,
-                        memCacheWidth: _hiResDecodeWidth(posterW),
-                        fadeInDuration: Duration.zero,
-                        fadeOutDuration: Duration.zero,
-                        placeholderFadeInDuration: Duration.zero,
-                        useOldImageOnUrlChange: true,
-                        placeholder: (_, __) => _buildPosterPlaceholder(),
-                        errorWidget: (_, __, ___) => _buildPosterPlaceholder(),
-                      )
-                    : _buildPosterPlaceholder(),
-              ),
-              // Story: 55% of the card.
-              Expanded(
-                child: Padding(
-                  padding: const EdgeInsets.fromLTRB(12, 10, 12, 10),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Row(
-                        children: [
-                          Container(
-                            padding: const EdgeInsets.symmetric(
-                                horizontal: 7, vertical: 2),
-                            decoration: BoxDecoration(
-                              color: const Color(0xFFE50914),
-                              borderRadius: BorderRadius.circular(6),
-                            ),
-                            child: Text(
-                              seasonText,
-                              style: const TextStyle(
-                                color: Colors.white,
-                                fontSize: 9.5,
-                                fontWeight: FontWeight.w800,
-                              ),
-                            ),
-                          ),
-                          const Spacer(),
-                          const Icon(Icons.star_rounded,
-                              color: Color(0xFFFFB800), size: 14),
-                          const SizedBox(width: 2),
-                          Text(
-                            rating,
-                            style: TextStyle(
-                              color: _p.text,
-                              fontSize: 11.5,
-                              fontWeight: FontWeight.w800,
-                            ),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 8),
-                      Text(
-                        '$genreText • $yearText',
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: TextStyle(
-                          color: _p.textMuted,
-                          fontSize: 11.5,
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                      const Spacer(),
-                      // One clear, full-width play button.
-                      Container(
-                        height: 34,
-                        decoration: BoxDecoration(
-                          color: const Color(0xFFE50914),
-                          borderRadius: BorderRadius.circular(17),
-                        ),
-                        child: const Row(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            Icon(Icons.play_arrow_rounded,
-                                color: Colors.white, size: 20),
-                            SizedBox(width: 4),
-                            Text(
-                              'شاهد الآن',
-                              style: TextStyle(
-                                color: Colors.white,
-                                fontSize: 12.5,
-                                fontWeight: FontWeight.w800,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-            ],
+            child: Stack(
+              fit: StackFit.expand,
+              children: [
+                ColoredBox(color: _p.bg),
+                if (image.isNotEmpty)
+                  CachedNetworkImage(
+                    imageUrl: image,
+                    cacheManager: appImageCache,
+                    fit: BoxFit.cover,
+                    filterQuality: FilterQuality.high,
+                    memCacheWidth: _hiResDecodeWidth(cardW),
+                    fadeInDuration: Duration.zero,
+                    fadeOutDuration: Duration.zero,
+                    placeholderFadeInDuration: Duration.zero,
+                    useOldImageOnUrlChange: true,
+                    placeholder: (_, __) => ColoredBox(color: _p.skeleton),
+                    errorWidget: (_, __, ___) => _buildPosterPlaceholder(),
+                  )
+                else
+                  _buildPosterPlaceholder(),
+              ],
+            ),
           ),
         ),
       ),
     );
   }
+
 }
