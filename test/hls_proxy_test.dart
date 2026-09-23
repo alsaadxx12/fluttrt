@@ -56,6 +56,15 @@ void main() {
       expect(list.pieces[1].at, DateTime.utc(2026, 9, 23, 14, 0, 10));
     });
 
+    test('pieces under a signed path keep the percent-encoding of the path', () {
+      const base = 'https://cdn/live/ch/hdntl=exp=9~acl=%2flive%2f*~hmac=y/chunks.m3u8';
+      final list = LocalStreamServer.parsePlaylist('#EXTM3U\n#EXTINF:6,\npiece.ts\n', base);
+      expect(list.pieces.single.url, 'https://cdn/live/ch/hdntl=exp=9~acl=%2flive%2f*~hmac=y/piece.ts');
+      expect(LocalStreamServer.resolveAgainst(base, '/root.ts'), 'https://cdn/root.ts');
+      expect(LocalStreamServer.resolveAgainst(base, 'https://x/y.ts'), 'https://x/y.ts');
+      expect(LocalStreamServer.resolveAgainst('https://cdn/a/b/c.m3u8', '../d.ts'), 'https://cdn/a/d.ts');
+    });
+
     test('a stream is a playlist by its type or its name', () {
       expect(LocalStreamServer.isPlaylist('application/x-mpegURL', 'https://a/b'), isTrue);
       expect(LocalStreamServer.isPlaylist(null, 'https://a/live.m3u8?token=1'), isTrue);

@@ -18,6 +18,11 @@ void main() {
     );
   });
 
+  test('the percent-encoding of the token is left exactly as written', () {
+    const text = '#EXTM3U\n#EXT-X-STREAM-INF:BANDWIDTH=1\nsrc/hdntl=exp=9~acl=%2fksa%2f*~hmac=y/chunks.m3u8\n';
+    expect(AloulaService.pickSharpest(text, master), endsWith('src/hdntl=exp=9~acl=%2fksa%2f*~hmac=y/chunks.m3u8'));
+  });
+
   test('a rendition without a token of its own is not handed over alone', () {
     const bare = '#EXTM3U\n#EXT-X-STREAM-INF:BANDWIDTH=1\nhd/chunks.m3u8\n';
     expect(AloulaService.pickSharpest(bare, master), isNull);

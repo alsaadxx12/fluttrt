@@ -302,6 +302,10 @@ class LocalStreamServer {
   }
 
   /// How many times a request to the CDN is tried before it is given up on.
+  /// What every upstream request says it is.
+  static const String browserUserAgent =
+      'Mozilla/5.0 (Linux; Android 14) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Mobile Safari/537.36';
+
   static const int _attempts = 3;
 
   /// The wait before a second try; doubled and tripled for the ones after.
@@ -385,6 +389,9 @@ class LocalStreamServer {
         );
         request.followRedirects = true;
         request.maxRedirects = 5;
+        // A browser's name unless the source gave one: some CDNs (Akamai
+        // in front of KSA Sports, for one) answer anything else with 403.
+        request.headers.set(HttpHeaders.userAgentHeader, browserUserAgent);
         source.headers.forEach(request.headers.set);
         if (range != null) request.headers.set(HttpHeaders.rangeHeader, range);
         final response = await request.close().timeout(const Duration(seconds: 20));
@@ -857,9 +864,8 @@ class LocalStreamServer {
   /// by.
   @visibleForTesting
   static LivePlaylist parsePlaylist(String text, String base, [String Function(String absolute)? route]) {
-    final root = Uri.parse(base);
     String resolve(String ref) {
-      final absolute = root.resolve(ref.trim()).toString();
+      final absolute = resolveAgainst(base, ref.trim());
       return route == null ? absolute : route(absolute);
     }
 
@@ -926,6 +932,28 @@ class LocalStreamServer {
       init: init,
       variant: variant,
     );
+  }
+
+  /// [ref] made absolute against [base], with [base] left exactly as it
+  /// was written.
+  ///
+  /// Not `Uri.resolve`: that rewrites percent-encoding on its way through
+  /// («%2f» becomes «%2F»), and an Akamai token in the path signs the
+  /// exact text - one changed letter and every piece answers 403. The
+  /// dotted forms (`../x`) still go through Uri, since they need its
+  /// path arithmetic.
+  static String resolveAgainst(String base, String ref) {
+    if (ref.contains('://')) return ref;
+    if (ref.startsWith('../') || ref.contains('/../')) return Uri.parse(base).resolve(ref).toString();
+    final query = base.indexOf('?');
+    final path = query < 0 ? base : base.substring(0, query);
+    if (ref.startsWith('/')) {
+      final scheme = path.indexOf('://');
+      final host = path.indexOf('/', scheme + 3);
+      return (host < 0 ? path : path.substring(0, host)) + ref;
+    }
+    final slash = path.lastIndexOf('/');
+    return path.substring(0, slash + 1) + ref;
   }
 
   /// Serves [live] as one continuous stream, for as long as the set keeps

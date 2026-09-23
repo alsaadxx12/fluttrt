@@ -1,6 +1,9 @@
+import 'dart:async';
+
 import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart' show debugPrint;
 
+import '../../../casting/services/local_stream_server.dart';
 import 'alkass_service.dart';
 
 /// KSA Sports 1 («الرياضية 1»), from the Saudi Broadcasting Authority's
@@ -76,10 +79,36 @@ class AloulaService {
         debugPrint('[aloula] no hls address for channel $channel');
         return null;
       }
-      return await sharpest(hls) ?? hls;
+      final chosen = await sharpest(hls) ?? hls;
+      debugPrint('[aloula] channel $channel -> ${chosen.split("?").first}');
+      // Said in the log, so a set or a phone that cannot play it can be
+      // told apart from an address that never answered.
+      unawaited(_check(chosen));
+      return chosen;
     } catch (e) {
       debugPrint('[aloula] stream: $e');
       return null;
+    }
+  }
+
+  /// Fetches [url] once and logs how it answered.
+  Future<void> _check(String url) async {
+    try {
+      final res = await _dio.get<String>(
+        url,
+        options: Options(
+          responseType: ResponseType.plain,
+          receiveTimeout: const Duration(seconds: 12),
+          headers: _headers,
+          validateStatus: (_) => true,
+        ),
+      );
+      final body = res.data ?? '';
+      final first = body.startsWith('#EXTM3U') ? 'a playlist' : body.replaceAll(RegExp('<[^>]*>'), ' ').trim();
+      debugPrint('[aloula] check: ${res.statusCode}, ${body.length} chars, '
+          '${first.length > 80 ? first.substring(0, 80) : first}');
+    } catch (e) {
+      debugPrint('[aloula] check: $e');
     }
   }
 
@@ -94,7 +123,9 @@ class AloulaService {
         options:
             Options(responseType: ResponseType.plain, receiveTimeout: const Duration(seconds: 12), headers: _headers),
       );
-      return pickSharpest(res.data ?? '', master);
+      final picked = pickSharpest(res.data ?? '', master);
+      if (picked == null) debugPrint('[aloula] master lists no tokenised rendition; the master goes as it is');
+      return picked;
     } catch (e) {
       debugPrint('[aloula] master: $e');
       return null;
@@ -123,7 +154,9 @@ class AloulaService {
       }
     }
     if (best == null) return null;
-    final absolute = Uri.parse(master).resolve(best).toString();
+    // Resolved by hand: Uri.resolve would rewrite the token's «%2f» as
+    // «%2F», and Akamai, which signed the exact text, answers 403.
+    final absolute = LocalStreamServer.resolveAgainst(master, best);
     // Without a token of its own the rendition needs the master's, which
     // is about to run out; the master is the safer address then.
     if (!absolute.contains('hdntl=') && !absolute.contains('hdnts=')) return null;
