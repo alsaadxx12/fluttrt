@@ -10,6 +10,8 @@ import '../data/viu_models.dart';
 import 'viu_providers.dart';
 import 'viu_widgets.dart';
 import '../../../core/constants/app_palette.dart';
+import '../../../presentation/widgets/card_motion.dart';
+import '../../../presentation/widgets/reveal.dart';
 
 /// A film in "أفلام أخرى": one of Viu's free films or a Cinemana film.
 class OtherFilm {
@@ -84,7 +86,7 @@ class OtherFilmCard extends StatelessWidget {
                 // The card's own colour goes under the poster, inside the clip -
                 // painted under the clip instead it bled through the rounded
                 // edge as a grey outline.
-                ColoredBox(color: AppPalette.of(context).card),
+                ColoredBox(color: AppPalette.of(context).bg),
                 if (poster != null && poster.isNotEmpty)
                   CachedNetworkImage(
                     imageUrl: poster,
@@ -174,21 +176,36 @@ class OtherFilmsSection extends ConsumerWidget {
           const SizedBox(height: 12),
           SizedBox(
             height: 156,
-            child: ListView.separated(
-              padding: const EdgeInsets.symmetric(horizontal: 16),
-              scrollDirection: Axis.horizontal,
-              physics: films.isEmpty ? const NeverScrollableScrollPhysics() : const ClampingScrollPhysics(),
-              itemCount: films.isEmpty ? 4 : films.length,
-              separatorBuilder: (_, __) => const SizedBox(width: 12),
-              itemBuilder: (_, i) => films.isEmpty
-                  ? Container(
-                      width: 104,
-                      decoration: BoxDecoration(
-                        color: AppPalette.of(context).skeleton,
-                        borderRadius: BorderRadius.circular(10),
+            // The same entrance and the same focus as every other row.
+            child: WheelScroll(
+              builder: (controller) => ListView.separated(
+                key: const PageStorageKey('row-other-films'),
+                controller: controller,
+                padding: const EdgeInsets.symmetric(horizontal: 16),
+                scrollDirection: Axis.horizontal,
+                physics: films.isEmpty ? const NeverScrollableScrollPhysics() : const ClampingScrollPhysics(),
+                itemCount: films.isEmpty ? 4 : films.length,
+                separatorBuilder: (_, __) => const SizedBox(width: 12),
+                itemBuilder: (_, i) => films.isEmpty
+                    ? Container(
+                        width: 104,
+                        decoration: BoxDecoration(
+                          color: AppPalette.of(context).skeleton,
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                      )
+                    : CardEntrance(
+                        group: 'row-other-films',
+                        index: i,
+                        child: CarouselFocus(
+                          controller: controller,
+                          index: i,
+                          extent: 116,
+                          width: 104,
+                          child: OtherFilmCard(film: films[i]),
+                        ),
                       ),
-                    )
-                  : OtherFilmCard(film: films[i]),
+              ),
             ),
           ),
         ],

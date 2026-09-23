@@ -8,6 +8,8 @@ import 'viu_category_screen.dart';
 import 'viu_providers.dart';
 import 'viu_watch_screen.dart';
 import '../../../core/constants/app_palette.dart';
+import '../../../presentation/widgets/card_motion.dart';
+import '../../../presentation/widgets/reveal.dart';
 
 void openViuShow(BuildContext context, ViuShow show) {
   Navigator.of(context, rootNavigator: true).push(
@@ -37,8 +39,9 @@ class ViuPosterCard extends StatelessWidget {
             child: Stack(
               fit: StackFit.expand,
               children: [
-                // Under the poster, not under the clip: see the note above.
-                ColoredBox(color: AppPalette.of(context).card),
+                // The page's own colour under the poster, so nothing shows
+                // at an edge the picture leaves a hair short of.
+                ColoredBox(color: AppPalette.of(context).bg),
                 if (poster != null)
                   CachedNetworkImage(
                     imageUrl: poster,
@@ -136,21 +139,36 @@ class ViuHomeSection extends ConsumerWidget {
           const SizedBox(height: 12),
           SizedBox(
             height: 156,
-            child: ListView.separated(
-              padding: const EdgeInsets.symmetric(horizontal: 16),
-              scrollDirection: Axis.horizontal,
-              physics: shows.isEmpty ? const NeverScrollableScrollPhysics() : const ClampingScrollPhysics(),
-              itemCount: shows.isEmpty ? 4 : shows.length,
-              separatorBuilder: (_, __) => const SizedBox(width: 12),
-              itemBuilder: (_, i) => shows.isEmpty
-                  ? Container(
-                      width: 104,
-                      decoration: BoxDecoration(
-                        color: AppPalette.of(context).skeleton,
-                        borderRadius: BorderRadius.circular(10),
+            // The same entrance and the same focus as every other row.
+            child: WheelScroll(
+              builder: (controller) => ListView.separated(
+                key: PageStorageKey('viu-${category.title}'),
+                controller: controller,
+                padding: const EdgeInsets.symmetric(horizontal: 16),
+                scrollDirection: Axis.horizontal,
+                physics: shows.isEmpty ? const NeverScrollableScrollPhysics() : const ClampingScrollPhysics(),
+                itemCount: shows.isEmpty ? 4 : shows.length,
+                separatorBuilder: (_, __) => const SizedBox(width: 12),
+                itemBuilder: (_, i) => shows.isEmpty
+                    ? Container(
+                        width: 104,
+                        decoration: BoxDecoration(
+                          color: AppPalette.of(context).skeleton,
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                      )
+                    : CardEntrance(
+                        group: 'viu-${category.title}',
+                        index: i,
+                        child: CarouselFocus(
+                          controller: controller,
+                          index: i,
+                          extent: 116,
+                          width: 104,
+                          child: ViuPosterCard(show: shows[i]),
+                        ),
                       ),
-                    )
-                  : ViuPosterCard(show: shows[i]),
+              ),
             ),
           ),
         ],

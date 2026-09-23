@@ -165,9 +165,12 @@ class CarouselFocus extends StatelessWidget {
   /// The row's leading padding.
   final double leading;
 
-  /// Size and lift at the edge of the row, relative to the middle of it.
+  /// Size at the edge of the row, relative to the middle of it.
+  ///
+  /// Scaled from the top edge and never moved down: a card that dropped
+  /// ten points sat below the row's clip, and came back with a flat,
+  /// cut-off bottom and a hairline of the page showing under it.
   static const double _minScale = 0.93;
-  static const double _maxDrop = 10;
 
   @override
   Widget build(BuildContext context) {
@@ -193,11 +196,11 @@ class CarouselFocus extends StatelessWidget {
         // breathing while it moves.
         final falloff = magnitude * magnitude;
         final scale = 1 - (1 - _minScale) * falloff;
-        final drop = _maxDrop * falloff;
 
-        return Transform.translate(
-          offset: Offset(0, drop),
-          child: Transform.scale(scale: scale, child: child),
+        return Transform.scale(
+          scale: scale,
+          alignment: Alignment.topCenter,
+          child: child,
         );
       },
     );

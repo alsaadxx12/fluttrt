@@ -1957,7 +1957,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
         child: SizedBox(
           width: 104,
           child: ClipRRect(
-            borderRadius: BorderRadius.circular(14),
+            borderRadius: BorderRadius.circular(10),
             child: Stack(
               fit: StackFit.expand,
               children: [
@@ -2111,18 +2111,30 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
         if (items.isNotEmpty)
           SizedBox(
             height: 138,
-            child: ListView.separated(
-              // Keeps the row's offset while the section is recycled.
-              key: PageStorageKey('wide-$title'),
-              padding: const EdgeInsets.symmetric(horizontal: 16),
-              scrollDirection: Axis.horizontal,
-              physics: const ClampingScrollPhysics(),
-              itemCount: items.length,
-              separatorBuilder: (_, __) => const SizedBox(width: 14),
-              itemBuilder: (context, index) {
-                final series = items[index];
-                return _buildWideSeriesCard(series);
-              },
+            // The same entrance and the same focus as every other row.
+            child: WheelScroll(
+              builder: (controller) => ListView.separated(
+                // Keeps the row's offset while the section is recycled.
+                key: PageStorageKey('wide-$title'),
+                controller: controller,
+                padding: const EdgeInsets.symmetric(horizontal: 16),
+                scrollDirection: Axis.horizontal,
+                physics: const ClampingScrollPhysics(),
+                itemCount: items.length,
+                separatorBuilder: (_, __) => const SizedBox(width: 14),
+                // 224 wide plus the 14 of the separator.
+                itemBuilder: (context, index) => CardEntrance(
+                  group: 'wide-$title',
+                  index: index,
+                  child: CarouselFocus(
+                    controller: controller,
+                    index: index,
+                    extent: 238,
+                    width: 224,
+                    child: _buildWideSeriesCard(items[index]),
+                  ),
+                ),
+              ),
             ),
           )
         else if (isLoading)
