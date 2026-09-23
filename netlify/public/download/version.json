@@ -1,15 +1,15 @@
 {
   "updateEnabled": true,
-  "versionCode": 2207,
-  "versionName": "1.0.201",
-  "apkUrl": "https://cineball.netlify.app/download/app.apk?v=207",
-  "apkUrlArm64": "https://cineball.netlify.app/download/app-arm64-v8a-release.apk?v=207",
-  "apkUrlArm32": "https://cineball.netlify.app/download/app-armeabi-v7a-release.apk?v=207",
-  "sha256": "758e1b23654244d52e87ea3795b535e90563f7285bf1fac5237bd0edad0d7b90",
-  "sha256Arm64": "758e1b23654244d52e87ea3795b535e90563f7285bf1fac5237bd0edad0d7b90",
-  "sha256Arm32": "3aa094169d62737a99f05369ec23cd52d61b99520f7c5f70076d36001c72aa0e",
-  "sizeBytes": 25531813,
+  "versionCode": 2208,
+  "versionName": "1.0.202",
+  "apkUrl": "https://cineball.netlify.app/download/app.apk?v=208",
+  "apkUrlArm64": "https://cineball.netlify.app/download/app-arm64-v8a-release.apk?v=208",
+  "apkUrlArm32": "https://cineball.netlify.app/download/app-armeabi-v7a-release.apk?v=208",
+  "sha256": "4c4124f9d8a34eb64f61c28db5c274c607b17bf0eaba17a02c515a115056a564",
+  "sha256Arm64": "4c4124f9d8a34eb64f61c28db5c274c607b17bf0eaba17a02c515a115056a564",
+  "sha256Arm32": "a7d8758d119bdaf057460cb98dae83b4f2cd925b2b84d3373348563a96a556a4",
+  "sizeBytes": 25529773,
   "forceUpdate": false,
   "minSupportedVersion": 1,
-  "notes": "قناة الرياضية 1 في قسم القنوات بأعلى جودة"
+  "notes": "قناة الرياضية 1، وبث بلا قصّ من الأعلى"
 }
