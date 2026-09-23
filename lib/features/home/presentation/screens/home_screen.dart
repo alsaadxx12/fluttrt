@@ -2148,8 +2148,9 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     const double cardW = 264;
     const double cardH = 148;
     // The catalogue's own art is a poster, and a poster cropped wide shows
-    // a strip of a face. A landscape still from TMDB is what a wide card
-    // wants; until it arrives, the poster's top - where the faces are.
+    // a strip of a face. A landscape still - the catalogue's own cover, or
+    // TMDB's for the same title - is what a wide card wants. Without one,
+    // the poster is shown whole, over a blurred, darkened copy of itself.
     final own = series.backdropUrl ?? '';
     final ownIsWide =
         own.isNotEmpty && own != series.imgUrl && own != series.imgThumbUrl;
@@ -2164,37 +2165,72 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
           height: cardH,
           child: ClipRRect(
             borderRadius: BorderRadius.circular(6),
-            child: Consumer(builder: (context, ref, _) {
-              final fetched = ownIsWide
-                  ? null
-                  : ref.watch(spotlightBackdropProvider(series.id)).valueOrNull;
-              final wide = ownIsWide ? own : fetched;
-              final image = wide ?? series.cardImageUrl;
-              return Stack(
-                fit: StackFit.expand,
-                children: [
-                  ColoredBox(color: _p.bg),
-                  if (image.isNotEmpty)
+            child: Consumer(
+              builder: (context, ref, _) {
+                final fetched = ownIsWide
+                    ? null
+                    : ref
+                        .watch(
+                            spotlightBackdropProvider(wideStillKeyFor(series)))
+                        .valueOrNull;
+                final wide = ownIsWide ? own : fetched;
+                final poster = series.imageForWidth(
+                    _decodeWidthFor(cardH * 2 / 3).toDouble(),
+                    hiRes: true);
+                if (wide != null) {
+                  return CachedNetworkImage(
+                    imageUrl: wide,
+                    cacheManager: appImageCache,
+                    fit: BoxFit.cover,
+                    filterQuality: FilterQuality.high,
+                    memCacheWidth: _hiResDecodeWidth(cardW),
+                    fadeInDuration: Duration.zero,
+                    fadeOutDuration: Duration.zero,
+                    placeholderFadeInDuration: Duration.zero,
+                    useOldImageOnUrlChange: true,
+                    placeholder: (_, __) => ColoredBox(color: _p.skeleton),
+                    errorWidget: (_, __, ___) => _buildPosterPlaceholder(),
+                  );
+                }
+                if (poster.isEmpty) return _buildPosterPlaceholder();
+                return Stack(
+                  fit: StackFit.expand,
+                  children: [
+                    // The same picture, blown up and blurred, fills the
+                    // width; the picture itself stands whole in front.
+                    ImageFiltered(
+                      imageFilter: ImageFilter.blur(sigmaX: 18, sigmaY: 18),
+                      child: CachedNetworkImage(
+                        imageUrl: poster,
+                        cacheManager: appImageCache,
+                        fit: BoxFit.cover,
+                        memCacheWidth: _hiResDecodeWidth(cardW / 3),
+                        fadeInDuration: Duration.zero,
+                        fadeOutDuration: Duration.zero,
+                        placeholderFadeInDuration: Duration.zero,
+                        placeholder: (_, __) => ColoredBox(color: _p.skeleton),
+                        errorWidget: (_, __, ___) =>
+                            ColoredBox(color: _p.skeleton),
+                      ),
+                    ),
+                    const ColoredBox(color: Color(0x66000000)),
                     CachedNetworkImage(
-                      imageUrl: image,
+                      imageUrl: poster,
                       cacheManager: appImageCache,
-                      fit: BoxFit.cover,
-                      alignment:
-                          wide == null ? Alignment.topCenter : Alignment.center,
+                      fit: BoxFit.contain,
                       filterQuality: FilterQuality.high,
-                      memCacheWidth: _hiResDecodeWidth(cardW),
+                      memCacheWidth: _hiResDecodeWidth(cardH * 2 / 3),
                       fadeInDuration: Duration.zero,
                       fadeOutDuration: Duration.zero,
                       placeholderFadeInDuration: Duration.zero,
                       useOldImageOnUrlChange: true,
-                      placeholder: (_, __) => ColoredBox(color: _p.skeleton),
+                      placeholder: (_, __) => const SizedBox.shrink(),
                       errorWidget: (_, __, ___) => _buildPosterPlaceholder(),
-                    )
-                  else
-                    _buildPosterPlaceholder(),
-                ],
-              );
-            }),
+                    ),
+                  ],
+                );
+              },
+            ),
           ),
         ),
       ),

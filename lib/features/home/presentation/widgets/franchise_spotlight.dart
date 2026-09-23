@@ -19,19 +19,31 @@ import 'franchise_showcase.dart' show FranchiseScreen;
 /// poster again; then TMDB's backdrop for the same title and year, which
 /// is a real landscape still from the film; and nothing when neither has
 /// one, in which case the poster is shown cropped wide.
-final spotlightBackdropProvider = FutureProvider.family<String?, String>((ref, filmId) async {
-  final service = ref.watch(cinemanaServiceProvider);
-  CinemanaItem? film;
-  try {
-    film = await service.fetchItemDetails(filmId);
-  } catch (_) {}
-  final own = film?.backdropUrl ?? '';
-  if (own.isNotEmpty && own != (film?.imgUrl ?? '') && own != (film?.imgThumbUrl ?? '')) {
-    return own;
+typedef WideStillKey = ({String id, String title, String year});
+
+/// The key for [spotlightBackdropProvider] from a catalogue item.
+WideStillKey wideStillKeyFor(CinemanaItem item) => (
+      id: item.id,
+      title: item.enTitle.trim().isNotEmpty ? item.enTitle.trim() : item.arTitle.trim(),
+      year: item.year.trim(),
+    );
+
+final spotlightBackdropProvider = FutureProvider.family<String?, WideStillKey>((ref, key) async {
+  // The catalogue's own cover, for its own titles.
+  if (int.tryParse(key.id) != null) {
+    try {
+      final film = await ref.watch(cinemanaServiceProvider).fetchItemDetails(key.id);
+      final own = film?.backdropUrl ?? '';
+      if (film != null && own.isNotEmpty && own != (film.imgUrl ?? '') && own != (film.imgThumbUrl ?? '')) {
+        return own;
+      }
+    } catch (_) {}
   }
-  if (film == null) return null;
-  final title = film.enTitle.trim().isNotEmpty ? film.enTitle.trim() : film.arTitle.trim();
-  return _tmdb.backdropForTitle(title, year: film.year.trim());
+  if (key.title.isEmpty) return null;
+  // TMDB by title and year; then by title alone, since a year the source
+  // guessed at is a year TMDB will not agree with.
+  return await _tmdb.backdropForTitle(key.title, year: key.year) ??
+      (key.year.isEmpty ? null : await _tmdb.backdropForTitle(key.title));
 });
 
 final TmdbService _tmdb = TmdbService();
@@ -99,6 +111,9 @@ class _FranchiseSpotlightState extends State<FranchiseSpotlight> {
               height: height,
               child: PageView.builder(
                 controller: _pages,
+                // The other way round from the page's own direction: the
+                // way the user's thumb expects the next series to come.
+                reverse: true,
                 onPageChanged: (i) => setState(() => _page = i),
                 itemCount: franchises.length,
                 itemBuilder: (context, i) => _SpotlightPage(
@@ -159,7 +174,7 @@ class _SpotlightPage extends ConsumerWidget {
     final newest = films.isEmpty ? null : films.first;
     final backdrop = newest == null
         ? null
-        : ref.watch(spotlightBackdropProvider(newest.id)).valueOrNull;
+        : ref.watch(spotlightBackdropProvider(wideStillKeyFor(newest))).valueOrNull;
     final fallback = newest?.cardImageUrl ?? '';
     final years = films.map((f) => int.tryParse(f.year.trim())).whereType<int>().toList()..sort();
     final line = films.isEmpty
