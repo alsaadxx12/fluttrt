@@ -33,6 +33,17 @@ class AloulaService {
 
   static const String pageUrl = 'https://aloula.sba.sa/live/$sports1Name';
 
+  /// What the CDN in front of the channel wants on every request for the
+  /// stream: a browser's name and, above all, the site as the Origin.
+  /// Without the Origin it answers 403 - to the player, to the relay, to
+  /// anyone - which is what kept the channel dark.
+  static const Map<String, String> cdnHeaders = {
+    'User-Agent':
+        'Mozilla/5.0 (Linux; Android 14) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Mobile Safari/537.36',
+    'Origin': 'https://aloula.sba.sa',
+    'Referer': 'https://aloula.sba.sa/',
+  };
+
   static const Map<String, String> _headers = {
     'User-Agent':
         'Mozilla/5.0 (Linux; Android 14) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Mobile Safari/537.36',

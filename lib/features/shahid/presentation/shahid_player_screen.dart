@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:io';
 
 import 'package:cached_network_image/cached_network_image.dart';
+import 'package:flutter/foundation.dart' show debugPrint;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -14,6 +15,7 @@ import '../../casting/services/cast_media_source.dart';
 import '../../casting/services/cast_service.dart';
 import '../../casting/widgets/cast_device_sheet.dart';
 import '../../casting/services/local_stream_server.dart';
+import '../../sports/data/services/aloula_service.dart';
 import '../../sports/presentation/providers/alkass_provider.dart';
 import '../data/shahid_models.dart';
 import 'shahid_providers.dart';
@@ -111,6 +113,7 @@ class _ShahidPlayerScreenState extends ConsumerState<ShahidPlayerScreen> {
               title: channel.title,
               streamUrl: url,
               posterUrl: channel.logoUrl(480) ?? '',
+              headers: channel.pageUrl.contains('aloula.sba.sa') ? AloulaService.cdnHeaders : null,
             ),
           );
       await _video?.pause();
@@ -133,21 +136,12 @@ class _ShahidPlayerScreenState extends ConsumerState<ShahidPlayerScreen> {
 
     // Whatever the relay was serving for the last channel is dropped.
     ref.read(phoneRelayProvider).clear();
-    var url = await _freshUrl(channel);
+    final url = await _freshUrl(channel);
     if (!mounted || token != _openToken) return;
-    if (url != null && channel.pageUrl.contains('aloula.sba.sa')) {
-      // KSA Sports 1 through the phone's own relay: Akamai in front of it
-      // turns the player's requests away (403) while the app's own, made
-      // with a browser's name, go through. So the app fetches the pieces
-      // and the player reads one continuous stream from the phone.
-      final relayed = await ref.read(phoneRelayProvider).publish(
-            url,
-            contentType: 'application/x-mpegURL',
-            loopback: true,
-          );
-      if (!mounted || token != _openToken) return;
-      if (relayed != null) url = relayed;
-    }
+    // What the request carries: for KSA Sports 1 the site's Origin, which
+    // its CDN insists on; a browser's name for everything.
+    final fromAloula = channel.pageUrl.contains('aloula.sba.sa');
+    final headers = fromAloula ? AloulaService.cdnHeaders : _browserHeaders;
     if (url == null) {
       setState(() {
         _loading = false;
@@ -184,13 +178,7 @@ class _ShahidPlayerScreenState extends ConsumerState<ShahidPlayerScreen> {
         }));
 
         await _desktopPlayer!.open(
-          Media(
-            url,
-            httpHeaders: const {
-              'User-Agent':
-                  'Mozilla/5.0 (Linux; Android 14) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Mobile Safari/537.36',
-            },
-          ),
+          Media(url, httpHeaders: headers),
           play: true,
         );
         if (!mounted || token != _openToken) return;
@@ -208,20 +196,45 @@ class _ShahidPlayerScreenState extends ConsumerState<ShahidPlayerScreen> {
       return;
     }
 
+    if (await _startPhone(url, headers, token)) return;
+    if (!mounted || token != _openToken) return;
+    if (fromAloula) {
+      // Turned away directly: through the phone's own relay, which asks
+      // with the same headers and hands the player one joined stream.
+      final relayed = await ref.read(phoneRelayProvider).publish(
+            url,
+            contentType: 'application/x-mpegURL',
+            headers: headers,
+            loopback: true,
+          );
+      if (!mounted || token != _openToken) return;
+      if (relayed != null && await _startPhone(relayed, headers, token)) return;
+      if (!mounted || token != _openToken) return;
+    }
+    setState(() {
+      _loading = false;
+      _error = 'تعذّر تشغيل البث';
+    });
+  }
+
+  static const Map<String, String> _browserHeaders = {
+    'User-Agent':
+        'Mozilla/5.0 (Linux; Android 14) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Mobile Safari/537.36',
+  };
+
+  /// Starts the phone's player on [url]; false when it could not.
+  Future<bool> _startPhone(String url, Map<String, String> headers, int token) async {
     final controller = VideoPlayerController.networkUrl(
       Uri.parse(url),
       // A relayed channel is one continuous mpeg-ts stream, not a playlist.
       formatHint: url.contains('.m3u8') ? VideoFormat.hls : VideoFormat.other,
-      httpHeaders: const {
-        'User-Agent':
-            'Mozilla/5.0 (Linux; Android 14) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Mobile Safari/537.36',
-      },
+      httpHeaders: headers,
     );
     try {
       await controller.initialize();
       if (!mounted || token != _openToken) {
         await controller.dispose();
-        return;
+        return true;
       }
       controller.addListener(_onVideoEvent);
       await controller.play();
@@ -230,13 +243,11 @@ class _ShahidPlayerScreenState extends ConsumerState<ShahidPlayerScreen> {
         _loading = false;
       });
       _scheduleHide();
+      return true;
     } catch (e) {
+      debugPrint('[channel] ${url.split("?").first.split("/").last}: $e');
       await controller.dispose();
-      if (!mounted || token != _openToken) return;
-      setState(() {
-        _loading = false;
-        _error = 'تعذّر تشغيل البث';
-      });
+      return false;
     }
   }
 

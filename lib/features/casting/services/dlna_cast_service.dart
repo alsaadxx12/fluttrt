@@ -539,6 +539,7 @@ class DlnaCastService implements CastService {
       // chose over a stretched picture.
       final served = await _local.publish(
             media.streamUrl,
+            headers: media.headers,
             contentType: plan.mime,
             subtitleFuture: plan.withSubtitle ? plan.subtitle : null,
             fill: MkvFill.crop,

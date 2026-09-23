@@ -63,25 +63,20 @@ class CastMediaSource {
     }
     // Where it was left last time, on the phone or on a screen, unless
     // the caller has a place of its own in mind.
-    final startAt = position > Duration.zero
-        ? position
-        : (await ResumeStore.read(videoId) ?? Duration.zero);
+    final startAt = position > Duration.zero ? position : (await ResumeStore.read(videoId) ?? Duration.zero);
 
     // Every other picture on offer under the ceiling, for a link that
     // turns out slower than it measured.
     final fallbacks = [
       for (final s in streams)
-        if (heightOf(s) > 0 && heightOf(s) <= maxCastHeight)
-          CastStreamOption(url: s.videoUrl, height: heightOf(s)),
+        if (heightOf(s) > 0 && heightOf(s) <= maxCastHeight) CastStreamOption(url: s.videoUrl, height: heightOf(s)),
     ];
 
     final episodeName = episode == null
         ? ''
         : (episode.arTitle.trim().isNotEmpty
             ? episode.arTitle.trim()
-            : (episode.enTitle.trim().isNotEmpty
-                ? episode.enTitle.trim()
-                : 'الحلقة ${episode.episodeNumber}'));
+            : (episode.enTitle.trim().isNotEmpty ? episode.enTitle.trim() : 'الحلقة ${episode.episodeNumber}'));
     final title = episode == null ? item.displayTitle : '${item.displayTitle} — $episodeName';
 
     return CastMedia(
@@ -90,9 +85,7 @@ class CastMediaSource {
       description: item.arContent.isNotEmpty ? item.arContent : item.enContent,
       posterUrl: item.bestPosterUrl,
       streamUrl: best.videoUrl,
-      contentType: best.videoUrl.toLowerCase().contains('.m3u8')
-          ? 'application/x-mpegURL'
-          : 'video/mp4',
+      contentType: best.videoUrl.toLowerCase().contains('.m3u8') ? 'application/x-mpegURL' : 'video/mp4',
       subtitleUrl: subtitleUrl,
       subtitleLabel: subtitleUrl == null ? null : subtitleLabel,
       position: startAt,
@@ -111,8 +104,7 @@ class CastMediaSource {
   static const String _relay = 'https://cineball.netlify.app/relay';
 
   /// Wraps [url] so a screen other than the phone can actually fetch it.
-  static String relayed(String url) =>
-      '$_relay?u=${Uri.encodeComponent(url)}';
+  static String relayed(String url) => '$_relay?u=${Uri.encodeComponent(url)}';
 
   /// True when [url] belongs to a source that refuses a plain request.
   ///
@@ -130,6 +122,7 @@ class CastMediaSource {
     required String title,
     required String streamUrl,
     String posterUrl = '',
+    Map<String, String>? headers,
   }) =>
       CastMedia(
         mediaId: id,
@@ -138,6 +131,7 @@ class CastMediaSource {
         posterUrl: posterUrl,
         contentType: 'application/x-mpegURL',
         isLive: true,
+        headers: headers,
       );
 
   /// The height of a stream, read out of its name: 1080 for «1080p».

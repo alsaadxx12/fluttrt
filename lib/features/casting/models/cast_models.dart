@@ -83,7 +83,8 @@ enum CastBrand {
     if (text.contains('sony') || text.contains('bravia')) return sony;
     if (text.contains('hisense') || text.contains('vidaa')) return hisense;
     if (text.contains('haier')) return haier;
-    if (text.contains('xiaomi') || text.contains('mi tv') || text.contains('mi box') || text.contains('redmi')) return xiaomi;
+    if (text.contains('xiaomi') || text.contains('mi tv') || text.contains('mi box') || text.contains('redmi'))
+      return xiaomi;
     if (text.contains('philips')) return philips;
     if (text.contains('panasonic')) return panasonic;
     if (text.contains('toshiba')) return toshiba;
@@ -124,6 +125,7 @@ class CastMedia {
     this.quality,
     this.height = 0,
     this.fallbacks = const [],
+    this.headers,
   });
 
   final String mediaId;
@@ -137,6 +139,10 @@ class CastMedia {
   /// 'application/x-mpegURL' for HLS, 'video/mp4' otherwise. Null lets the
   /// receiver decide from the url.
   final String? contentType;
+
+  /// What the phone sends upstream when it fetches the stream for the set:
+  /// a CDN that wants the site named as Origin gets it here.
+  final Map<String, String>? headers;
 
   final String? subtitleUrl;
   final String? subtitleLabel;
@@ -170,8 +176,7 @@ class CastMedia {
     return best;
   }
 
-  bool get isHls =>
-      contentType == 'application/x-mpegURL' || streamUrl.toLowerCase().contains('.m3u8');
+  bool get isHls => contentType == 'application/x-mpegURL' || streamUrl.toLowerCase().contains('.m3u8');
 
   CastMedia copyWith({
     Duration? position,
@@ -194,6 +199,7 @@ class CastMedia {
         quality: quality ?? this.quality,
         height: height ?? this.height,
         fallbacks: fallbacks,
+        headers: headers,
       );
 
   /// The LOAD_MEDIA command as the receiver reads it.
