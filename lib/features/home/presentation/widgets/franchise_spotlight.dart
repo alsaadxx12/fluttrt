@@ -24,17 +24,24 @@ typedef WideStillKey = ({String id, String title, String year});
 /// The key for [spotlightBackdropProvider] from a catalogue item.
 WideStillKey wideStillKeyFor(CinemanaItem item) => (
       id: item.id,
-      title: item.enTitle.trim().isNotEmpty ? item.enTitle.trim() : item.arTitle.trim(),
+      title: item.enTitle.trim().isNotEmpty
+          ? item.enTitle.trim()
+          : item.arTitle.trim(),
       year: item.year.trim(),
     );
 
-final spotlightBackdropProvider = FutureProvider.family<String?, WideStillKey>((ref, key) async {
+final spotlightBackdropProvider =
+    FutureProvider.family<String?, WideStillKey>((ref, key) async {
   // The catalogue's own cover, for its own titles.
   if (int.tryParse(key.id) != null) {
     try {
-      final film = await ref.watch(cinemanaServiceProvider).fetchItemDetails(key.id);
+      final film =
+          await ref.watch(cinemanaServiceProvider).fetchItemDetails(key.id);
       final own = film?.backdropUrl ?? '';
-      if (film != null && own.isNotEmpty && own != (film.imgUrl ?? '') && own != (film.imgThumbUrl ?? '')) {
+      if (film != null &&
+          own.isNotEmpty &&
+          own != (film.imgUrl ?? '') &&
+          own != (film.imgThumbUrl ?? '')) {
         return own;
       }
     } catch (_) {}
@@ -136,7 +143,8 @@ class _FranchiseSpotlightState extends State<FranchiseSpotlight> {
                     width: i == _page ? 18 : 6,
                     height: 6,
                     decoration: BoxDecoration(
-                      color: i == _page ? const Color(0xFFE50914) : Colors.white24,
+                      color:
+                          i == _page ? const Color(0xFFE50914) : Colors.white24,
                       borderRadius: BorderRadius.circular(3),
                     ),
                   ),
@@ -165,18 +173,26 @@ class _SpotlightPage extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final p = AppPalette.of(context);
-    final given = ref.watch(franchiseFilmsProvider(franchise.id)).valueOrNull ?? const <CinemanaItem>[];
+    final given = ref.watch(franchiseFilmsProvider(franchise.id)).valueOrNull ??
+        const <CinemanaItem>[];
     // Newest first, by year, whatever order the catalogue handed them in:
     // the first is the newest, and the newest is the picture and the first
     // card. Ties keep the catalogue's order.
     final films = List<CinemanaItem>.of(given)
-      ..sort((a, b) => (int.tryParse(b.year.trim()) ?? 0).compareTo(int.tryParse(a.year.trim()) ?? 0));
+      ..sort((a, b) => (int.tryParse(b.year.trim()) ?? 0)
+          .compareTo(int.tryParse(a.year.trim()) ?? 0));
     final newest = films.isEmpty ? null : films.first;
     final backdrop = newest == null
         ? null
-        : ref.watch(spotlightBackdropProvider(wideStillKeyFor(newest))).valueOrNull;
+        : ref
+            .watch(spotlightBackdropProvider(wideStillKeyFor(newest)))
+            .valueOrNull;
     final fallback = newest?.cardImageUrl ?? '';
-    final years = films.map((f) => int.tryParse(f.year.trim())).whereType<int>().toList()..sort();
+    final years = films
+        .map((f) => int.tryParse(f.year.trim()))
+        .whereType<int>()
+        .toList()
+      ..sort();
     final line = films.isEmpty
         ? ''
         : 'شاهد سلسلة ${franchise.name} كاملة: ${FilmFranchise.countLabel(films)}'
@@ -204,7 +220,9 @@ class _SpotlightPage extends ConsumerWidget {
                     cacheManager: appImageCache,
                     fit: BoxFit.cover,
                     // A poster cropped wide keeps its top, where the faces are.
-                    alignment: backdrop == null ? Alignment.topCenter : Alignment.center,
+                    alignment: backdrop == null
+                        ? Alignment.topCenter
+                        : Alignment.center,
                     filterQuality: FilterQuality.high,
                     fadeInDuration: const Duration(milliseconds: 250),
                     fadeOutDuration: Duration.zero,
@@ -217,7 +235,12 @@ class _SpotlightPage extends ConsumerWidget {
                     gradient: LinearGradient(
                       begin: Alignment.topCenter,
                       end: Alignment.bottomCenter,
-                      colors: [Colors.transparent, Colors.transparent, const Color(0xCC000000), p.bg],
+                      colors: [
+                        Colors.transparent,
+                        Colors.transparent,
+                        const Color(0xCC000000),
+                        p.bg
+                      ],
                       stops: const [0, 0.35, 0.72, 1],
                     ),
                   ),
@@ -247,7 +270,11 @@ class _SpotlightPage extends ConsumerWidget {
                           line,
                           maxLines: 2,
                           overflow: TextOverflow.ellipsis,
-                          style: const TextStyle(color: Colors.white70, fontSize: 12.5, fontWeight: FontWeight.w600, height: 1.35),
+                          style: const TextStyle(
+                              color: Colors.white70,
+                              fontSize: 12.5,
+                              fontWeight: FontWeight.w600,
+                              height: 1.35),
                         ),
                       ],
                     ],
@@ -273,7 +300,9 @@ class _SpotlightPage extends ConsumerWidget {
                   separatorBuilder: (_, __) => const SizedBox(width: 12),
                   itemBuilder: (_, __) => Container(
                     width: 104,
-                    decoration: BoxDecoration(color: p.skeleton, borderRadius: BorderRadius.circular(6)),
+                    decoration: BoxDecoration(
+                        color: p.skeleton,
+                        borderRadius: BorderRadius.circular(6)),
                   ),
                 )
               : WheelScroll(
@@ -295,7 +324,10 @@ class _SpotlightPage extends ConsumerWidget {
                         index: i,
                         extent: 116,
                         width: 104,
-                        child: _PartCard(film: films[i], number: films.length - i, newest: i == 0),
+                        child: _PartCard(
+                            film: films[i],
+                            number: films.length - i,
+                            newest: i == 0),
                       ),
                     ),
                   ),
@@ -315,7 +347,8 @@ class _SpotlightPage extends ConsumerWidget {
 /// One part of the series: the poster with its number on a badge at the
 /// foot, and «الأحدث» on the newest one.
 class _PartCard extends StatelessWidget {
-  const _PartCard({required this.film, required this.number, this.newest = false});
+  const _PartCard(
+      {required this.film, required this.number, this.newest = false});
 
   final CinemanaItem film;
   final int number;
@@ -332,6 +365,10 @@ class _PartCard extends StatelessWidget {
         width: 104,
         child: ClipRRect(
           borderRadius: BorderRadius.circular(6),
+          // One layer, then the clip: the picture and its shading are
+          // composited before the rounded edge is applied, so the
+          // half-pixel bottom row is shaded like every other row.
+          clipBehavior: Clip.antiAliasWithSaveLayer,
           child: Stack(
             fit: StackFit.expand,
             children: [
@@ -360,25 +397,33 @@ class _PartCard extends StatelessWidget {
                     if (newest)
                       Container(
                         margin: const EdgeInsets.only(bottom: 4),
-                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 8, vertical: 2),
                         decoration: BoxDecoration(
                           color: const Color(0xFF19C3E6),
                           borderRadius: BorderRadius.circular(8),
                         ),
                         child: const Text(
                           'الأحدث',
-                          style: TextStyle(color: Colors.black, fontSize: 9.5, fontWeight: FontWeight.w900),
+                          style: TextStyle(
+                              color: Colors.black,
+                              fontSize: 9.5,
+                              fontWeight: FontWeight.w900),
                         ),
                       ),
                     Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 3),
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 9, vertical: 3),
                       decoration: BoxDecoration(
                         color: const Color(0xFFE50914),
                         borderRadius: BorderRadius.circular(10),
                       ),
                       child: Text(
                         film.isSeries ? 'الموسم $number' : 'الجزء $number',
-                        style: const TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.w900),
+                        style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 10,
+                            fontWeight: FontWeight.w900),
                       ),
                     ),
                   ],

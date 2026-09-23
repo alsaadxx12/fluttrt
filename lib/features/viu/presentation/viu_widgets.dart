@@ -34,6 +34,10 @@ class ViuPosterCard extends StatelessWidget {
         width: width,
         child: ClipRRect(
           borderRadius: BorderRadius.circular(6),
+          // One layer, then the clip: the picture and its shading are
+          // composited before the rounded edge is applied, so the
+          // half-pixel bottom row is shaded like every other row.
+          clipBehavior: Clip.antiAliasWithSaveLayer,
           child: AspectRatio(
             aspectRatio: 2 / 3,
             child: Stack(
@@ -55,11 +59,12 @@ class ViuPosterCard extends StatelessWidget {
                     placeholderFadeInDuration: Duration.zero,
                     useOldImageOnUrlChange: true,
                     placeholder: (_, __) => const SizedBox.shrink(),
-                    errorWidget: (_, __, ___) => const Icon(Icons.movie_rounded, color: Colors.white24),
+                    errorWidget: (_, __, ___) =>
+                        const Icon(Icons.movie_rounded, color: Colors.white24),
                   ),
                 // Past the foot by two points: a gradient that stopped on the
-                  // card's half-pixel edge left one bright row of the poster showing.
-                  const Positioned(
+                // card's half-pixel edge left one bright row of the poster showing.
+                const Positioned(
                   left: 0,
                   right: 0,
                   top: 0,
@@ -69,7 +74,12 @@ class ViuPosterCard extends StatelessWidget {
                       gradient: LinearGradient(
                         begin: Alignment.topCenter,
                         end: Alignment.bottomCenter,
-                        colors: [Colors.transparent, Colors.transparent, Color(0xB3000000), Color(0xF0000000)],
+                        colors: [
+                          Colors.transparent,
+                          Colors.transparent,
+                          Color(0xB3000000),
+                          Color(0xF0000000)
+                        ],
                         stops: [0, 0.45, 0.75, 1],
                       ),
                     ),
@@ -120,8 +130,11 @@ class ViuHomeSection extends ConsumerWidget {
                 ),
                 if (shows.isNotEmpty)
                   InkWell(
-                    onTap: () => Navigator.of(context, rootNavigator: true).push(
-                      MaterialPageRoute(builder: (_) => ViuCategoryScreen(category: category)),
+                    onTap: () =>
+                        Navigator.of(context, rootNavigator: true).push(
+                      MaterialPageRoute(
+                          builder: (_) =>
+                              ViuCategoryScreen(category: category)),
                     ),
                     borderRadius: BorderRadius.circular(8),
                     child: const Padding(
@@ -131,10 +144,14 @@ class ViuHomeSection extends ConsumerWidget {
                         children: [
                           Text(
                             'عرض الكل',
-                            style: TextStyle(color: Color(0xFFE50914), fontSize: 13, fontWeight: FontWeight.bold),
+                            style: TextStyle(
+                                color: Color(0xFFE50914),
+                                fontSize: 13,
+                                fontWeight: FontWeight.bold),
                           ),
                           SizedBox(width: 2),
-                          Icon(Icons.chevron_left_rounded, size: 18, color: Color(0xFFE50914)),
+                          Icon(Icons.chevron_left_rounded,
+                              size: 18, color: Color(0xFFE50914)),
                         ],
                       ),
                     ),
@@ -152,7 +169,9 @@ class ViuHomeSection extends ConsumerWidget {
                 controller: controller,
                 padding: const EdgeInsets.symmetric(horizontal: 16),
                 scrollDirection: Axis.horizontal,
-                physics: shows.isEmpty ? const NeverScrollableScrollPhysics() : const ClampingScrollPhysics(),
+                physics: shows.isEmpty
+                    ? const NeverScrollableScrollPhysics()
+                    : const ClampingScrollPhysics(),
                 itemCount: shows.isEmpty ? 4 : shows.length,
                 separatorBuilder: (_, __) => const SizedBox(width: 12),
                 itemBuilder: (_, i) => shows.isEmpty

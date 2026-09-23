@@ -21,16 +21,20 @@ class OtherFilm {
   const OtherFilm.viu(ViuShow this.viu) : cinemana = null;
   const OtherFilm.cinemana(CinemanaItem this.cinemana) : viu = null;
 
-  String get key => viu != null ? 'viu:${viu!.seriesId}' : 'cin:${cinemana!.id}';
+  String get key =>
+      viu != null ? 'viu:${viu!.seriesId}' : 'cin:${cinemana!.id}';
   String get title => viu?.displayName ?? cinemana!.displayTitle;
-  String? get poster => viu != null ? (viu!.portraitUrl ?? viu!.landscapeUrl) : cinemana!.cardImageUrl;
+  String? get poster => viu != null
+      ? (viu!.portraitUrl ?? viu!.landscapeUrl)
+      : cinemana!.cardImageUrl;
 
   void open(BuildContext context) {
     if (viu != null) {
       openViuShow(context, viu!);
     } else {
       Navigator.of(context, rootNavigator: true).push(
-        MaterialPageRoute(builder: (_) => CinemanaDetailScreen(item: cinemana!)),
+        MaterialPageRoute(
+            builder: (_) => CinemanaDetailScreen(item: cinemana!)),
       );
     }
   }
@@ -40,20 +44,27 @@ class OtherFilm {
 /// dealt across many genres, so the list is varied and only films.
 Future<List<OtherFilm>> fetchOtherFilms(WidgetRef ref, int page) async {
   final viuFilms = page == 0
-      ? ref.read(viuServiceProvider).fetchFreeMovies().catchError((Object _) => <ViuShow>[])
+      ? ref
+          .read(viuServiceProvider)
+          .fetchFreeMovies()
+          .catchError((Object _) => <ViuShow>[])
       : Future.value(<ViuShow>[]);
   final results = await Future.wait<Object>([
     viuFilms,
     ref.read(cinemanaServiceProvider).fetchVariedMovies(page: page),
   ]);
   return [
-    for (final v in ViuShow.mergeVersions(results[0] as List<ViuShow>)) OtherFilm.viu(v),
+    for (final v in ViuShow.mergeVersions(results[0] as List<ViuShow>))
+      OtherFilm.viu(v),
     for (final c in results[1] as List<CinemanaItem>) OtherFilm.cinemana(c),
   ];
 }
 
 final otherFilmsHomeProvider = FutureProvider<List<OtherFilm>>((ref) async {
-  final viu = await ref.read(viuServiceProvider).fetchFreeMovies().catchError((Object _) => <ViuShow>[]);
+  final viu = await ref
+      .read(viuServiceProvider)
+      .fetchFreeMovies()
+      .catchError((Object _) => <ViuShow>[]);
   final varied = await ref.read(cinemanaServiceProvider).fetchVariedMovies();
   return [
     for (final v in ViuShow.mergeVersions(viu)) OtherFilm.viu(v),
@@ -78,6 +89,10 @@ class OtherFilmCard extends StatelessWidget {
         width: width,
         child: ClipRRect(
           borderRadius: BorderRadius.circular(6),
+          // One layer, then the clip: the picture and its shading are
+          // composited before the rounded edge is applied, so the
+          // half-pixel bottom row is shaded like every other row.
+          clipBehavior: Clip.antiAliasWithSaveLayer,
           child: AspectRatio(
             aspectRatio: 2 / 3,
             child: Stack(
@@ -98,11 +113,12 @@ class OtherFilmCard extends StatelessWidget {
                     placeholderFadeInDuration: Duration.zero,
                     useOldImageOnUrlChange: true,
                     placeholder: (_, __) => const SizedBox.shrink(),
-                    errorWidget: (_, __, ___) => const Icon(Icons.movie_rounded, color: Colors.white24),
+                    errorWidget: (_, __, ___) =>
+                        const Icon(Icons.movie_rounded, color: Colors.white24),
                   ),
                 // Past the foot by two points: a gradient that stopped on the
-                  // card's half-pixel edge left one bright row of the poster showing.
-                  const Positioned(
+                // card's half-pixel edge left one bright row of the poster showing.
+                const Positioned(
                   left: 0,
                   right: 0,
                   top: 0,
@@ -112,7 +128,12 @@ class OtherFilmCard extends StatelessWidget {
                       gradient: LinearGradient(
                         begin: Alignment.topCenter,
                         end: Alignment.bottomCenter,
-                        colors: [Colors.transparent, Colors.transparent, Color(0xB3000000), Color(0xF0000000)],
+                        colors: [
+                          Colors.transparent,
+                          Colors.transparent,
+                          Color(0xB3000000),
+                          Color(0xF0000000)
+                        ],
                         stops: [0, 0.45, 0.75, 1],
                       ),
                     ),
@@ -159,8 +180,10 @@ class OtherFilmsSection extends ConsumerWidget {
                 ),
                 if (films.isNotEmpty)
                   InkWell(
-                    onTap: () => Navigator.of(context, rootNavigator: true).push(
-                      MaterialPageRoute(builder: (_) => const OtherFilmsScreen()),
+                    onTap: () =>
+                        Navigator.of(context, rootNavigator: true).push(
+                      MaterialPageRoute(
+                          builder: (_) => const OtherFilmsScreen()),
                     ),
                     borderRadius: BorderRadius.circular(8),
                     child: const Padding(
@@ -169,9 +192,13 @@ class OtherFilmsSection extends ConsumerWidget {
                         mainAxisSize: MainAxisSize.min,
                         children: [
                           Text('عرض الكل',
-                              style: TextStyle(color: Color(0xFFE50914), fontSize: 13, fontWeight: FontWeight.bold)),
+                              style: TextStyle(
+                                  color: Color(0xFFE50914),
+                                  fontSize: 13,
+                                  fontWeight: FontWeight.bold)),
                           SizedBox(width: 2),
-                          Icon(Icons.chevron_left_rounded, size: 18, color: Color(0xFFE50914)),
+                          Icon(Icons.chevron_left_rounded,
+                              size: 18, color: Color(0xFFE50914)),
                         ],
                       ),
                     ),
@@ -189,7 +216,9 @@ class OtherFilmsSection extends ConsumerWidget {
                 controller: controller,
                 padding: const EdgeInsets.symmetric(horizontal: 16),
                 scrollDirection: Axis.horizontal,
-                physics: films.isEmpty ? const NeverScrollableScrollPhysics() : const ClampingScrollPhysics(),
+                physics: films.isEmpty
+                    ? const NeverScrollableScrollPhysics()
+                    : const ClampingScrollPhysics(),
                 itemCount: films.isEmpty ? 4 : films.length,
                 separatorBuilder: (_, __) => const SizedBox(width: 12),
                 itemBuilder: (_, i) => films.isEmpty
@@ -274,7 +303,8 @@ class _OtherFilmsScreenState extends ConsumerState<OtherFilmsScreen> {
         backgroundColor: isDark ? const Color(0xFF0D111A) : Colors.white,
         foregroundColor: isDark ? Colors.white : Colors.black87,
         elevation: 0,
-        title: Text(ViuCategory.movies.title, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w900)),
+        title: Text(ViuCategory.movies.title,
+            style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w900)),
       ),
       body: _films.isEmpty
           ? Center(
@@ -285,7 +315,9 @@ class _OtherFilmsScreenState extends ConsumerState<OtherFilmsScreen> {
                         _hasMore = true;
                         _loadMore();
                       },
-                      child: Text(_failed ? 'تعذّر التحميل - إعادة المحاولة' : 'لا توجد أفلام حالياً'),
+                      child: Text(_failed
+                          ? 'تعذّر التحميل - إعادة المحاولة'
+                          : 'لا توجد أفلام حالياً'),
                     ),
             )
           : NotificationListener<ScrollNotification>(
@@ -298,7 +330,8 @@ class _OtherFilmsScreenState extends ConsumerState<OtherFilmsScreen> {
                   SliverPadding(
                     padding: const EdgeInsets.fromLTRB(14, 14, 14, 8),
                     sliver: SliverGrid(
-                      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                      gridDelegate:
+                          const SliverGridDelegateWithFixedCrossAxisCount(
                         crossAxisCount: 3,
                         mainAxisSpacing: 12,
                         crossAxisSpacing: 10,
@@ -306,7 +339,8 @@ class _OtherFilmsScreenState extends ConsumerState<OtherFilmsScreen> {
                       ),
                       delegate: SliverChildBuilderDelegate(
                         (context, i) => LayoutBuilder(
-                          builder: (context, box) => OtherFilmCard(film: _films[i], width: box.maxWidth),
+                          builder: (context, box) => OtherFilmCard(
+                              film: _films[i], width: box.maxWidth),
                         ),
                         childCount: _films.length,
                       ),
@@ -317,7 +351,8 @@ class _OtherFilmsScreenState extends ConsumerState<OtherFilmsScreen> {
                       padding: const EdgeInsets.only(bottom: 24, top: 8),
                       child: Center(
                         child: _loading
-                            ? const CircularProgressIndicator(color: Color(0xFFE50914), strokeWidth: 2.5)
+                            ? const CircularProgressIndicator(
+                                color: Color(0xFFE50914), strokeWidth: 2.5)
                             : const SizedBox.shrink(),
                       ),
                     ),

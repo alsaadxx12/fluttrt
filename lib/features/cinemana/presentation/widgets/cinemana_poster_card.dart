@@ -51,14 +51,20 @@ class _CinemanaPosterCardState extends ConsumerState<CinemanaPosterCard>
               children: [
                 ClipRRect(
                   borderRadius: BorderRadius.circular(6),
+                  // One layer, then the clip: the picture and its shading are
+                  // composited before the rounded edge is applied, so the
+                  // half-pixel bottom row is shaded like every other row.
+                  clipBehavior: Clip.antiAliasWithSaveLayer,
                   child: Container(
                     decoration: BoxDecoration(
                       // Loading placeholder behind the poster: the palette's
                       // skeleton tone, so it still shows on the white page.
-                      color: isDark ? const Color(0xFF22222B) : palette.skeleton,
+                      color:
+                          isDark ? const Color(0xFF22222B) : palette.skeleton,
                       borderRadius: BorderRadius.circular(6),
                       border: Border.all(
-                        color: isDark ? const Color(0xFF33333F) : palette.border,
+                        color:
+                            isDark ? const Color(0xFF33333F) : palette.border,
                         width: 1,
                       ),
                     ),
@@ -67,28 +73,37 @@ class _CinemanaPosterCardState extends ConsumerState<CinemanaPosterCard>
                             // Sized to the card as actually drawn: the medium
                             // poster on a phone, the full one when a wide window
                             // draws the card larger than the medium poster is.
-                            final px = box.maxWidth * MediaQuery.of(context).devicePixelRatio;
+                            final px = box.maxWidth *
+                                MediaQuery.of(context).devicePixelRatio;
                             return CachedNetworkImage(
-                            imageUrl: widget.item.imageForWidth(px, hiRes: preferFullArtwork),
-                            cacheManager: appImageCache,
-                            fit: BoxFit.cover,
-                            filterQuality: FilterQuality.high,
-                            // Decode at the card's own pixel size, capped.
-                            memCacheWidth: px.isFinite && px > 0 ? px.clamp(200, 600).round() : null,
-                            // A cached poster is simply there: no fade, no
-                            // settle, and the old picture stays up while a
-                            // resized card swaps its URL.
-                            fadeInDuration: Duration.zero,
-                            fadeOutDuration: Duration.zero,
-                            placeholderFadeInDuration: Duration.zero,
-                            useOldImageOnUrlChange: true,
-                            placeholder: (_, __) => Shimmer(
-                              base: isDark ? const Color(0xFF141926) : palette.skeleton,
-                              highlight: isDark ? const Color(0xFF1E2636) : Colors.white,
-                              child: const SizedBox.expand(),
-                            ),
-                            errorWidget: (_, __, ___) => _buildPlaceholder(isDark),
-                          );
+                              imageUrl: widget.item
+                                  .imageForWidth(px, hiRes: preferFullArtwork),
+                              cacheManager: appImageCache,
+                              fit: BoxFit.cover,
+                              filterQuality: FilterQuality.high,
+                              // Decode at the card's own pixel size, capped.
+                              memCacheWidth: px.isFinite && px > 0
+                                  ? px.clamp(200, 600).round()
+                                  : null,
+                              // A cached poster is simply there: no fade, no
+                              // settle, and the old picture stays up while a
+                              // resized card swaps its URL.
+                              fadeInDuration: Duration.zero,
+                              fadeOutDuration: Duration.zero,
+                              placeholderFadeInDuration: Duration.zero,
+                              useOldImageOnUrlChange: true,
+                              placeholder: (_, __) => Shimmer(
+                                base: isDark
+                                    ? const Color(0xFF141926)
+                                    : palette.skeleton,
+                                highlight: isDark
+                                    ? const Color(0xFF1E2636)
+                                    : Colors.white,
+                                child: const SizedBox.expand(),
+                              ),
+                              errorWidget: (_, __, ___) =>
+                                  _buildPlaceholder(isDark),
+                            );
                           })
                         : _buildPlaceholder(isDark),
                   ),
@@ -100,7 +115,8 @@ class _CinemanaPosterCardState extends ConsumerState<CinemanaPosterCard>
                     top: 8,
                     start: 8,
                     child: Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 6, vertical: 3),
                       decoration: BoxDecoration(
                         color: Colors.black.withOpacity(0.78),
                         borderRadius: BorderRadius.circular(6),
@@ -112,7 +128,8 @@ class _CinemanaPosterCardState extends ConsumerState<CinemanaPosterCard>
                       child: Row(
                         mainAxisSize: MainAxisSize.min,
                         children: [
-                          const Icon(Icons.star_rounded, size: 13, color: Colors.amber),
+                          const Icon(Icons.star_rounded,
+                              size: 13, color: Colors.amber),
                           const SizedBox(width: 3),
                           Text(
                             widget.item.stars,
@@ -132,7 +149,8 @@ class _CinemanaPosterCardState extends ConsumerState<CinemanaPosterCard>
                   top: 8,
                   end: 8,
                   child: Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                     decoration: BoxDecoration(
                       color: widget.item.isSeries
                           ? const Color(0xFF1976D2).withOpacity(0.85)
@@ -186,7 +204,9 @@ class _CinemanaPosterCardState extends ConsumerState<CinemanaPosterCard>
                         ),
                         child: Center(
                           child: Icon(
-                            isFav ? Icons.favorite_rounded : Icons.favorite_border_rounded,
+                            isFav
+                                ? Icons.favorite_rounded
+                                : Icons.favorite_border_rounded,
                             size: 17,
                             color: Colors.white,
                           ),

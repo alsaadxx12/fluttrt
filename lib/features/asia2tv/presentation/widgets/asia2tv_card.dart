@@ -56,12 +56,18 @@ class Asia2TvCard extends StatelessWidget {
             // Poster
             ClipRRect(
               borderRadius: BorderRadius.circular(6),
+              // One layer, then the clip: the picture and its shading are
+              // composited before the rounded edge is applied, so the
+              // half-pixel bottom row is shaded like every other row.
+              clipBehavior: Clip.antiAliasWithSaveLayer,
               child: Stack(
                 children: [
                   Container(
                     width: width,
                     height: height,
-                    color: isDark ? const Color(0xFF0D121D) : const Color(0xFFE2E8F0),
+                    color: isDark
+                        ? const Color(0xFF0D121D)
+                        : const Color(0xFFE2E8F0),
                     child: item.posterUrl.isNotEmpty
                         ? CachedNetworkImage(
                             imageUrl: item.posterUrl,
@@ -69,15 +75,19 @@ class Asia2TvCard extends StatelessWidget {
                             memCacheWidth: 400,
                             placeholder: (_, __) => Center(
                               child: Container(
-                                color: isDark ? const Color(0xFF0B101B) : Colors.grey[200],
+                                color: isDark
+                                    ? const Color(0xFF0B101B)
+                                    : Colors.grey[200],
                               ),
                             ),
                             errorWidget: (_, __, ___) => const Center(
-                              child: Icon(Icons.movie_creation_outlined, color: Colors.white24, size: 36),
+                              child: Icon(Icons.movie_creation_outlined,
+                                  color: Colors.white24, size: 36),
                             ),
                           )
                         : const Center(
-                            child: Icon(Icons.movie_creation_outlined, color: Colors.white24, size: 36),
+                            child: Icon(Icons.movie_creation_outlined,
+                                color: Colors.white24, size: 36),
                           ),
                   ),
 
@@ -107,7 +117,8 @@ class Asia2TvCard extends StatelessWidget {
                       top: 6,
                       right: 6,
                       child: Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 6, vertical: 2),
                         decoration: BoxDecoration(
                           color: Colors.black.withOpacity(0.75),
                           borderRadius: BorderRadius.circular(5),
@@ -134,7 +145,8 @@ class Asia2TvCard extends StatelessWidget {
                       children: [
                         if (item.episodeNumber != null)
                           Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 6, vertical: 2),
                             decoration: BoxDecoration(
                               color: AppColors.primary.withOpacity(0.9),
                               borderRadius: BorderRadius.circular(5),
@@ -150,7 +162,8 @@ class Asia2TvCard extends StatelessWidget {
                           )
                         else if (item.isMovie)
                           Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 6, vertical: 2),
                             decoration: BoxDecoration(
                               color: Colors.deepPurpleAccent.withOpacity(0.9),
                               borderRadius: BorderRadius.circular(5),
@@ -172,7 +185,8 @@ class Asia2TvCard extends StatelessWidget {
                             color: Colors.black.withOpacity(0.6),
                             shape: BoxShape.circle,
                           ),
-                          child: const Icon(Icons.play_arrow_rounded, color: Colors.white, size: 14),
+                          child: const Icon(Icons.play_arrow_rounded,
+                              color: Colors.white, size: 14),
                         ),
                       ],
                     ),

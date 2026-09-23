@@ -1508,6 +1508,10 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
       // shows through a blur, with a thin light edge.
       child: ClipRRect(
         borderRadius: BorderRadius.circular(6),
+        // One layer, then the clip: the picture and its shading are
+        // composited before the rounded edge is applied, so the
+        // half-pixel bottom row is shaded like every other row.
+        clipBehavior: Clip.antiAliasWithSaveLayer,
         child: BackdropFilter(
           filter: ImageFilter.blur(sigmaX: 18, sigmaY: 18),
           child: Container(
@@ -1851,6 +1855,10 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
               separatorBuilder: (_, __) => const SizedBox(width: 12),
               itemBuilder: (_, __) => ClipRRect(
                 borderRadius: BorderRadius.circular(6),
+                // One layer, then the clip: the picture and its shading are
+                // composited before the rounded edge is applied, so the
+                // half-pixel bottom row is shaded like every other row.
+                clipBehavior: Clip.antiAliasWithSaveLayer,
                 child: Shimmer(
                   base: _p.skeleton,
                   highlight: _p.isDark
@@ -1923,6 +1931,10 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
           width: 104,
           child: ClipRRect(
             borderRadius: BorderRadius.circular(6),
+            // One layer, then the clip: the picture and its shading are
+            // composited before the rounded edge is applied, so the
+            // half-pixel bottom row is shaded like every other row.
+            clipBehavior: Clip.antiAliasWithSaveLayer,
             child: Stack(
               fit: StackFit.expand,
               children: [
@@ -2174,6 +2186,10 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
           height: cardH,
           child: ClipRRect(
             borderRadius: BorderRadius.circular(6),
+            // One layer, then the clip: the picture and its shading are
+            // composited before the rounded edge is applied, so the
+            // half-pixel bottom row is shaded like every other row.
+            clipBehavior: Clip.antiAliasWithSaveLayer,
             child: Consumer(
               builder: (context, ref, _) {
                 final fetched = ownIsWide
