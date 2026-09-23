@@ -1,15 +1,15 @@
 {
   "updateEnabled": true,
-  "versionCode": 2202,
-  "versionName": "1.0.196",
-  "apkUrl": "https://cineball.netlify.app/download/app.apk?v=202",
-  "apkUrlArm64": "https://cineball.netlify.app/download/app-arm64-v8a-release.apk?v=202",
-  "apkUrlArm32": "https://cineball.netlify.app/download/app-armeabi-v7a-release.apk?v=202",
-  "sha256": "43a0a00be8868c7b72a7f1e40d47805eb03c4e23a86a50ed0aa2fd0af6241d95",
-  "sha256Arm64": "43a0a00be8868c7b72a7f1e40d47805eb03c4e23a86a50ed0aa2fd0af6241d95",
-  "sha256Arm32": "cce4accd4b123216ae75f9ed7c09007dcc4fdcf818ec8de2470f15f9e16fc946",
-  "sizeBytes": 25529042,
+  "versionCode": 2203,
+  "versionName": "1.0.197",
+  "apkUrl": "https://cineball.netlify.app/download/app.apk?v=203",
+  "apkUrlArm64": "https://cineball.netlify.app/download/app-arm64-v8a-release.apk?v=203",
+  "apkUrlArm32": "https://cineball.netlify.app/download/app-armeabi-v7a-release.apk?v=203",
+  "sha256": "d4ee8347990e8624cc4a33a54add6bb338c5b1722479aa1a48ca792d9b2cf115",
+  "sha256Arm64": "d4ee8347990e8624cc4a33a54add6bb338c5b1722479aa1a48ca792d9b2cf115",
+  "sha256Arm32": "5ea1b5c0dc275b5f5e919bfe7668094674a8d6a2f8a18adece79d29ce50ce1c8",
+  "sizeBytes": 25523573,
   "forceUpdate": false,
   "minSupportedVersion": 1,
-  "notes": "صور عريضة حقيقية لبطاقات المسلسلات العربية"
+  "notes": "بحث وقائمة جانبية وصفحات أقسام زجاجية، وبطاقات أنظف"
 }
