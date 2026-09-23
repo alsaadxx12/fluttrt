@@ -798,12 +798,13 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
           children: [
             SizedBox(height: artworkTop),
 
-            // Artwork carousel with its own clean rounded corners, fully separated from the bar
+            // Artwork carousel, square-cornered: the picture runs edge to
+            // edge, the way a poster on a wall does.
             SizedBox(
               height: artworkHeight,
               width: double.infinity,
               child: ClipRRect(
-                borderRadius: BorderRadius.circular(18),
+                borderRadius: BorderRadius.zero,
                 child: movies.isNotEmpty
                     ? GestureDetector(
                         onTap: () {
@@ -974,7 +975,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
             child: Padding(
               padding: const EdgeInsets.only(top: 8, bottom: 20),
               child: ClipRRect(
-                borderRadius: BorderRadius.circular(10),
+                borderRadius: BorderRadius.zero,
                 child: CachedNetworkImage(
                   imageUrl: imageUrl,
                   cacheManager: appImageCache,
