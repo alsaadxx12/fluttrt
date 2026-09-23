@@ -1,3 +1,5 @@
+import 'dart:ui' show ImageFilter;
+
 import 'package:flutter/material.dart';
 import 'package:lottie/lottie.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -10,7 +12,7 @@ import 'package:youtube_downloader/features/subscription/presentation/providers/
 import 'package:youtube_downloader/features/auth/presentation/providers/auth_provider.dart';
 
 /// Subtle neutral wash behind the active row — replaces red active tint.
-const Color _kActiveFill = Color(0x14FFFFFF);
+const Color _kActiveFill = Color(0x1FFFFFFF);
 
 class AppDrawer extends ConsumerStatefulWidget {
   const AppDrawer({super.key});
@@ -32,9 +34,25 @@ class _AppDrawerState extends ConsumerState<AppDrawer> {
     final userProfile = ref.watch(userProfileProvider).valueOrNull;
     final sportsSub = ref.watch(sportsSubscriptionProvider).valueOrNull;
 
+    // Glass: the page behind shows through a deep blur and a dark tint
+    // that lightens towards the top, with a thin light edge on the open
+    // side. Every panel inside is a lighter sheen on the same glass.
     return Drawer(
-      backgroundColor: palette.bg,
-      child: SafeArea(
+      backgroundColor: Colors.transparent,
+      elevation: 0,
+      child: ClipRect(
+        child: BackdropFilter(
+          filter: ImageFilter.blur(sigmaX: 28, sigmaY: 28),
+          child: Container(
+            decoration: BoxDecoration(
+              gradient: const LinearGradient(
+                begin: Alignment.topCenter,
+                end: Alignment.bottomCenter,
+                colors: [Color(0xCC0A0D14), Color(0xE0040609)],
+              ),
+              border: BorderDirectional(end: BorderSide(color: Colors.white.withOpacity(0.12), width: 0.8)),
+            ),
+            child: SafeArea(
         top: false,
         child: Column(
           children: [
@@ -49,7 +67,7 @@ class _AppDrawerState extends ConsumerState<AppDrawer> {
                 left: 18,
                 right: 18,
               ),
-              color: palette.bg,
+              color: Colors.transparent,
               child: Stack(
                 alignment: Alignment.center,
                 children: [
@@ -103,10 +121,13 @@ class _AppDrawerState extends ConsumerState<AppDrawer> {
               margin: const EdgeInsets.fromLTRB(14, 4, 14, 8),
               padding: const EdgeInsets.all(12),
               decoration: BoxDecoration(
-                color: isDark
-                    ? Colors.white.withOpacity(0.04)
-                    : const Color(0xFFF8FAFC),
-                borderRadius: BorderRadius.circular(14),
+                gradient: LinearGradient(
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                  colors: [Colors.white.withOpacity(0.12), Colors.white.withOpacity(0.04)],
+                ),
+                borderRadius: BorderRadius.circular(10),
+                border: Border.all(color: Colors.white.withOpacity(0.16), width: 0.8),
               ),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -201,20 +222,12 @@ class _AppDrawerState extends ConsumerState<AppDrawer> {
                           ),
                         ),
                         const Spacer(),
-                        Container(
-                          padding: const EdgeInsets.symmetric(
-                              horizontal: 8, vertical: 3),
-                          decoration: BoxDecoration(
-                            color: AppColors.success.withOpacity(0.15),
-                            borderRadius: BorderRadius.circular(8),
-                          ),
-                          child: Text(
-                            '${sportsSub?.remainingDays ?? 0} يوم',
-                            style: const TextStyle(
-                              color: AppColors.success,
-                              fontSize: 11,
-                              fontWeight: FontWeight.w900,
-                            ),
+                        Text(
+                          '${sportsSub?.remainingDays ?? 0} يوم',
+                          style: const TextStyle(
+                            color: AppColors.success,
+                            fontSize: 11,
+                            fontWeight: FontWeight.w900,
                           ),
                         ),
                       ],
@@ -385,9 +398,9 @@ class _AppDrawerState extends ConsumerState<AppDrawer> {
               width: double.infinity,
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
               decoration: BoxDecoration(
-                color: palette.bg,
+                color: Colors.transparent,
                 border: Border(
-                  top: BorderSide(color: palette.border, width: 1),
+                  top: BorderSide(color: Colors.white.withOpacity(0.10), width: 0.8),
                 ),
               ),
               child: Row(
@@ -468,6 +481,9 @@ class _AppDrawerState extends ConsumerState<AppDrawer> {
           ],
         ),
       ),
+          ),
+        ),
+      ),
     );
   }
 }
@@ -508,9 +524,12 @@ class _DrawerItem extends StatelessWidget {
             height: 46,
             decoration: BoxDecoration(
               color: isSelected ? _kActiveFill : Colors.transparent,
-              borderRadius: BorderRadius.circular(12),
+              borderRadius: BorderRadius.circular(8),
+              border: isSelected ? Border.all(color: Colors.white.withOpacity(0.18), width: 0.8) : null,
             ),
             child: Stack(
+              // Centred: the row used to sit along the top of its band.
+              alignment: AlignmentDirectional.centerStart,
               children: [
                 // Active marker: a slim white bar hugging the start edge.
                 if (isSelected)

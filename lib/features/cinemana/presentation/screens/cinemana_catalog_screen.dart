@@ -465,15 +465,13 @@ class _CinemanaCatalogScreenState extends ConsumerState<CinemanaCatalogScreen> {
                         width: AppSearchField.defaultHeight,
                         height: AppSearchField.defaultHeight,
                         decoration: BoxDecoration(
-                          // Flat white button, hairline border only; red once
-                          // a filter is set.
-                          color: isDark ? const Color(0xFF1B1B22) : palette.card,
-                          borderRadius: BorderRadius.circular(AppSearchField.defaultRadius),
+                          // Glass: a sheen of white on the page, brighter
+                          // (and red-edged) once a filter is set.
+                          color: Colors.white.withOpacity(filterActive ? 0.22 : 0.10),
+                          borderRadius: BorderRadius.circular(AppSearchField.defaultHeight / 2),
                           border: Border.all(
-                            color: filterActive
-                                ? _accentColor
-                                : (isDark ? const Color(0xFF2C2C38) : palette.border),
-                            width: 1,
+                            color: filterActive ? _accentColor : Colors.white.withOpacity(0.22),
+                            width: 0.8,
                           ),
                         ),
                         child: Stack(
@@ -481,9 +479,7 @@ class _CinemanaCatalogScreenState extends ConsumerState<CinemanaCatalogScreen> {
                           children: [
                             Icon(
                               Icons.tune_rounded,
-                              color: filterActive
-                                  ? _accentColor
-                                  : (isDark ? Colors.white70 : Colors.black87),
+                              color: filterActive ? _accentColor : Colors.white,
                               size: 20,
                             ),
                             if (filterActive)
@@ -532,27 +528,24 @@ class _CinemanaCatalogScreenState extends ConsumerState<CinemanaCatalogScreen> {
                                 height: 38,
                                 padding: const EdgeInsets.all(3),
                                 decoration: BoxDecoration(
-                                  // Light mode: flat white segmented control, hairline border only.
-                                  color: isDark ? const Color(0xFF1B1B22) : palette.card,
-                                  borderRadius: BorderRadius.circular(12),
-                                  border: Border.all(
-                                    color: isDark ? const Color(0xFF2C2C38) : palette.border,
-                                    width: 1,
-                                  ),
+                                  // Glass, with the corners of the cards below.
+                                  color: Colors.white.withOpacity(0.08),
+                                  borderRadius: BorderRadius.circular(6),
+                                  border: Border.all(color: Colors.white.withOpacity(0.16), width: 0.8),
                                 ),
                                 child: Row(
                                   children: [
                                     Expanded(
                                       child: InkWell(
                                         onTap: () => sectionNotifier.setAnimeSubKind(2),
-                                        borderRadius: BorderRadius.circular(10),
+                                        borderRadius: BorderRadius.circular(4),
                                         child: Container(
                                           alignment: Alignment.center,
                                           decoration: BoxDecoration(
                                             color: sectionState.animeSubKind == 2
-                                                ? const Color(0xFFFF9100)
+                                                ? Colors.white.withOpacity(0.22)
                                                 : Colors.transparent,
-                                            borderRadius: BorderRadius.circular(10),
+                                            borderRadius: BorderRadius.circular(4),
                                           ),
                                           child: Text(
                                             'مسلسلات الأنمي',
@@ -570,14 +563,14 @@ class _CinemanaCatalogScreenState extends ConsumerState<CinemanaCatalogScreen> {
                                     Expanded(
                                       child: InkWell(
                                         onTap: () => sectionNotifier.setAnimeSubKind(1),
-                                        borderRadius: BorderRadius.circular(10),
+                                        borderRadius: BorderRadius.circular(4),
                                         child: Container(
                                           alignment: Alignment.center,
                                           decoration: BoxDecoration(
                                             color: sectionState.animeSubKind == 1
-                                                ? const Color(0xFFFF9100)
+                                                ? Colors.white.withOpacity(0.22)
                                                 : Colors.transparent,
-                                            borderRadius: BorderRadius.circular(10),
+                                            borderRadius: BorderRadius.circular(4),
                                           ),
                                           child: Text(
                                             'أفلام الأنمي',
@@ -657,24 +650,17 @@ class _CinemanaCatalogScreenState extends ConsumerState<CinemanaCatalogScreen> {
 
                                     return InkWell(
                                       onTap: () => sectionNotifier.setCategory(id == 0 ? null : id),
-                                      borderRadius: BorderRadius.circular(17),
+                                      borderRadius: BorderRadius.circular(6),
                                       child: Container(
                                         padding: const EdgeInsets.symmetric(horizontal: 14),
                                         alignment: Alignment.center,
+                                        // Glass chips with the cards' corners; the chosen one brighter.
                                         decoration: BoxDecoration(
-                                          color: isSelected
-                                              ? _accentColor
-                                              : (isDark
-                                                  ? const Color(0xFF1E1E26)
-                                                  : palette.card),
-                                          borderRadius: BorderRadius.circular(17),
+                                          color: Colors.white.withOpacity(isSelected ? 0.22 : 0.08),
+                                          borderRadius: BorderRadius.circular(6),
                                           border: Border.all(
-                                            color: isSelected
-                                                ? _accentColor
-                                                : (isDark
-                                                    ? const Color(0xFF2C2C38)
-                                                    : palette.border),
-                                            width: 1,
+                                            color: Colors.white.withOpacity(isSelected ? 0.35 : 0.14),
+                                            width: 0.8,
                                           ),
                                         ),
                                         child: Text(

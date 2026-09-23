@@ -12,7 +12,7 @@ class Asia2TvCategoryScreen extends ConsumerStatefulWidget {
 
   const Asia2TvCategoryScreen({
     super.key,
-    this.initialCategory = Asia2TvCategory.newEpisodes,
+    this.initialCategory = Asia2TvCategory.korean,
   });
 
   @override
@@ -26,7 +26,6 @@ class _Asia2TvCategoryScreenState extends ConsumerState<Asia2TvCategoryScreen>
   String _searchQuery = '';
 
   static const List<Asia2TvCategory> _categories = [
-    Asia2TvCategory.newEpisodes,
     Asia2TvCategory.korean,
     Asia2TvCategory.japanese,
     Asia2TvCategory.chinese,
@@ -90,11 +89,20 @@ class _Asia2TvCategoryScreenState extends ConsumerState<Asia2TvCategoryScreen>
 
               // Categories TabBar (hidden when searching)
               if (!isSearching)
+                // Glass tabs with the cards' corners: the chosen one is a
+                // brighter sheen, the rest are words on the page.
                 TabBar(
                   controller: _tabController,
                   isScrollable: true,
-                  indicatorColor: AppColors.primary,
-                  indicatorWeight: 2.5,
+                  dividerColor: Colors.transparent,
+                  indicatorSize: TabBarIndicatorSize.tab,
+                  indicatorPadding: const EdgeInsets.symmetric(vertical: 6),
+                  labelPadding: const EdgeInsets.symmetric(horizontal: 14),
+                  indicator: BoxDecoration(
+                    color: Colors.white.withOpacity(0.18),
+                    borderRadius: BorderRadius.circular(6),
+                    border: Border.all(color: Colors.white.withOpacity(0.30), width: 0.8),
+                  ),
                   labelColor: Colors.white,
                   unselectedLabelColor: Colors.white54,
                   labelStyle: const TextStyle(fontSize: 13, fontWeight: FontWeight.w900),

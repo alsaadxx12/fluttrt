@@ -73,7 +73,7 @@ class AppSearchField extends StatefulWidget {
   final bool soft;
 
   /// Default height of the pill; layouts that reserve room for the field use this.
-  static const double defaultHeight = 40;
+  static const double defaultHeight = 36;
   static const double defaultRadius = 20;
 
   /// What the app can find: the hint names one at a time.
@@ -109,7 +109,8 @@ class _AppSearchFieldState extends State<AppSearchField> {
   Widget build(BuildContext context) {
     final p = AppPalette.of(context);
     final isDark = p.isDark;
-    const fill = Color(0xFF070A10);
+    // The page's own colour: the field is a pill cut out of the page.
+    final fill = p.bg;
     final border = Border.all(color: Colors.white.withOpacity(0.08), width: 0.8);
     final tall = widget.height >= 46;
     final glyph = tall ? 22.0 : 20.0;

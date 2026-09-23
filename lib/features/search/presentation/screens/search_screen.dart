@@ -2,6 +2,8 @@ import 'dart:async';
 
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:dio/dio.dart';
+import 'dart:ui' show ImageFilter;
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -125,19 +127,15 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
         child: Column(
           children: [
             Padding(
-              padding: const EdgeInsets.fromLTRB(8, 8, 8, 4),
+              padding: const EdgeInsets.fromLTRB(16, 8, 16, 4),
+              // The field alone: no back button (the system gesture leaves),
+              // and no taller than the fields on every other page.
               child: Row(
                 children: [
-                  IconButton(
-                    icon: Icon(Icons.arrow_forward_rounded, color: p.icon),
-                    onPressed: () => Navigator.of(context).maybePop(),
-                    tooltip: 'رجوع',
-                  ),
                   Expanded(
                     child: AppSearchField(
                       controller: _controller,
                       focusNode: _focusNode,
-                      height: 48,
                       soft: true,
                       hints: const [
                         'ابحث عن فيلم، مسلسل، أو أنمي',
@@ -154,7 +152,6 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
                       },
                     ),
                   ),
-                  const SizedBox(width: 4),
                 ],
               ),
             ),
@@ -217,8 +214,6 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Icon(Icons.search_rounded, color: p.textFaint, size: 44),
-              const SizedBox(height: 12),
               Text(
                 'ابحث عن فيلم، مسلسل، أنمي أو مباراة',
                 textAlign: TextAlign.center,
@@ -265,86 +260,100 @@ class _ResultTile extends StatelessWidget {
       onTap: () => Navigator.of(context, rootNavigator: true).push(
         MaterialPageRoute(builder: (_) => CinemanaDetailScreen(item: item)),
       ),
-      child: Container(
-        height: 85,
-        padding: const EdgeInsets.all(8),
-        decoration: BoxDecoration(
-          color: p.card,
-          borderRadius: BorderRadius.circular(14),
-        ),
-        child: Row(
-          children: [
-            ClipRRect(
-              borderRadius: BorderRadius.circular(10),
-              child: SizedBox(
-                width: 55,
-                height: 70,
-                child: (poster != null && poster.isNotEmpty)
-                    ? CachedNetworkImage(
-                        imageUrl: poster,
-                        cacheManager: appImageCache,
-                        fit: BoxFit.cover,
-                        filterQuality: FilterQuality.high,
-                        memCacheWidth: (55 * dpr).round(),
-                        fadeInDuration: Duration.zero,
-                        fadeOutDuration: Duration.zero,
-                        placeholderFadeInDuration: Duration.zero,
-                        useOldImageOnUrlChange: true,
-                        placeholder: (_, __) => ColoredBox(color: p.cardAlt),
-                        errorWidget: (_, __, ___) => ColoredBox(
-                          color: p.cardAlt,
-                          child: Icon(Icons.movie_outlined, color: p.textFaint),
-                        ),
-                      )
-                    : ColoredBox(
-                        color: p.cardAlt,
-                        child: Icon(Icons.movie_outlined, color: p.textFaint),
-                      ),
+      // Glass, like the cards on the home page: the page shows through a
+      // deep blur and a faint white sheen, under a thin light edge.
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(6),
+        clipBehavior: Clip.antiAliasWithSaveLayer,
+        child: BackdropFilter(
+          filter: ImageFilter.blur(sigmaX: 24, sigmaY: 24),
+          child: Container(
+            height: 85,
+            padding: const EdgeInsets.all(8),
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+                colors: [Colors.white.withOpacity(0.14), Colors.white.withOpacity(0.05)],
               ),
+              borderRadius: BorderRadius.circular(6),
+              border: Border.all(color: Colors.white.withOpacity(0.20), width: 0.8),
             ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Text(
-                    item.displayTitle,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: TextStyle(color: p.text, fontSize: 14, fontWeight: FontWeight.bold),
-                  ),
-                  const SizedBox(height: 4),
-                  Row(
-                    children: [
-                      const Icon(Icons.star_rounded, color: Color(0xFFFFB800), size: 14),
-                      const SizedBox(width: 3),
-                      Text(
-                        item.stars.isNotEmpty ? item.stars : '8.0',
-                        style: TextStyle(color: p.text, fontSize: 11.5, fontWeight: FontWeight.bold),
-                      ),
-                      if (item.year.isNotEmpty) ...[
-                        Text(' • ', style: TextStyle(color: p.textFaint)),
-                        Text(item.year, style: TextStyle(color: p.textMuted, fontSize: 11)),
-                      ],
-                      if (item.categories.isNotEmpty) ...[
-                        Text(' • ', style: TextStyle(color: p.textFaint)),
-                        Flexible(
-                          child: Text(
-                            item.categories.first,
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            style: TextStyle(color: p.textMuted, fontSize: 11),
+            child: Row(
+              children: [
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(4),
+                  child: SizedBox(
+                    width: 55,
+                    height: 70,
+                    child: (poster != null && poster.isNotEmpty)
+                        ? CachedNetworkImage(
+                            imageUrl: poster,
+                            cacheManager: appImageCache,
+                            fit: BoxFit.cover,
+                            filterQuality: FilterQuality.high,
+                            memCacheWidth: (55 * dpr).round(),
+                            fadeInDuration: Duration.zero,
+                            fadeOutDuration: Duration.zero,
+                            placeholderFadeInDuration: Duration.zero,
+                            useOldImageOnUrlChange: true,
+                            placeholder: (_, __) => ColoredBox(color: p.cardAlt),
+                            errorWidget: (_, __, ___) => ColoredBox(
+                              color: p.cardAlt,
+                              child: Icon(Icons.movie_outlined, color: p.textFaint),
+                            ),
+                          )
+                        : ColoredBox(
+                            color: p.cardAlt,
+                            child: Icon(Icons.movie_outlined, color: p.textFaint),
                           ),
-                        ),
-                      ],
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Text(
+                        item.displayTitle,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(color: p.text, fontSize: 14, fontWeight: FontWeight.bold),
+                      ),
+                      const SizedBox(height: 4),
+                      Row(
+                        children: [
+                          const Icon(Icons.star_rounded, color: Color(0xFFFFB800), size: 14),
+                          const SizedBox(width: 3),
+                          Text(
+                            item.stars.isNotEmpty ? item.stars : '8.0',
+                            style: TextStyle(color: p.text, fontSize: 11.5, fontWeight: FontWeight.bold),
+                          ),
+                          if (item.year.isNotEmpty) ...[
+                            Text(' • ', style: TextStyle(color: p.textFaint)),
+                            Text(item.year, style: TextStyle(color: p.textMuted, fontSize: 11)),
+                          ],
+                          if (item.categories.isNotEmpty) ...[
+                            Text(' • ', style: TextStyle(color: p.textFaint)),
+                            Flexible(
+                              child: Text(
+                                item.categories.first,
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: TextStyle(color: p.textMuted, fontSize: 11),
+                              ),
+                            ),
+                          ],
+                        ],
+                      ),
                     ],
                   ),
-                ],
-              ),
+                ),
+                Icon(Icons.chevron_left_rounded, color: p.textFaint),
+              ],
             ),
-            Icon(Icons.chevron_left_rounded, color: p.textFaint),
-          ],
+          ),
         ),
       ),
     );
