@@ -69,7 +69,6 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
   Timer? _prefetchTimer;
 
   Timer? _heroAutoSlideTimer;
-  bool _isAutoSlidePaused = false;
 
   @override
   void initState() {
@@ -191,9 +190,22 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     }
   }
 
+  /// How many pictures the hero has to move between; set as it is built.
+  int _heroCount = 0;
+
+  /// The hero moves on to the next picture every six seconds, on its own
+  /// and without pause: a finger on it swipes, and nothing else.
   void _startAutoSlideTimer() {
     _heroAutoSlideTimer?.cancel();
-    // Auto-slide animation disabled per user request
+    _heroAutoSlideTimer = Timer.periodic(const Duration(seconds: 6), (_) {
+      if (!mounted || _heroCount < 2 || !_heroPageController.hasClients) return;
+      final next = (_heroPage.value + 1) % _heroCount;
+      _heroPageController.animateToPage(
+        next,
+        duration: const Duration(milliseconds: 650),
+        curve: Curves.easeInOutCubic,
+      );
+    });
   }
 
   @override
@@ -737,6 +749,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
   ) {
     final media = MediaQuery.of(context);
     final isDesktop = availableWidth > 680;
+    _heroCount = movies.length;
     // Pinned top bar: compact vertical padding
     final topBarHeight = media.padding.top + 52.0;
     // Sleek minimal separation gap between top bar and hero artwork:
@@ -772,39 +785,20 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
               child: ClipRRect(
                 borderRadius: BorderRadius.zero,
                 child: movies.isNotEmpty
-                    ? GestureDetector(
-                        onTap: () {
-                          // Only the timer reads this; no rebuild needed.
-                          _isAutoSlidePaused = !_isAutoSlidePaused;
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            SnackBar(
-                              content: Text(
-                                _isAutoSlidePaused
-                                    ? 'تم إيقاف التحريك التلقائي'
-                                    : 'تم استئناف التحريك التلقائي',
-                                style: const TextStyle(fontSize: 12),
-                              ),
-                              duration: const Duration(seconds: 1),
-                              behavior: SnackBarBehavior.floating,
-                              backgroundColor: const Color(0xFF1B2232),
-                            ),
-                          );
+                    ? PageView.builder(
+                        controller: _heroPageController,
+                        physics: const ClampingScrollPhysics(),
+                        onPageChanged: (index) {
+                          // Dots and details listen to the notifier; the
+                          // page itself is left alone.
+                          _heroPage.value = index;
+                          _precacheNextHeroSlides(movies, availableWidth);
                         },
-                        child: PageView.builder(
-                          controller: _heroPageController,
-                          physics: const ClampingScrollPhysics(),
-                          onPageChanged: (index) {
-                            // Dots and details listen to the notifier; the
-                            // page itself is left alone.
-                            _heroPage.value = index;
-                            _precacheNextHeroSlides(movies, availableWidth);
-                          },
-                          itemCount: movies.length,
-                          itemBuilder: (context, index) {
-                            return _buildHeroFullPoster(
-                                movies[index], availableWidth);
-                          },
-                        ),
+                        itemCount: movies.length,
+                        itemBuilder: (context, index) {
+                          return _buildHeroFullPoster(
+                              movies[index], availableWidth);
+                        },
                       )
                     : (isLoading
                         ? _buildHeroLoadingSkeleton()
@@ -1148,8 +1142,6 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
         ? movie.categories.take(2).join(' • ')
         : (movie.isSeries ? 'مسلسل' : 'فيلم');
     final yearText = movie.year.isNotEmpty ? movie.year : '2026';
-    final storyText =
-        movie.arContent.isNotEmpty ? movie.arContent : movie.enContent;
 
     return Column(
       mainAxisSize: MainAxisSize.min,
@@ -1202,60 +1194,68 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
           ],
         ),
 
-        // Story summary (if present, as seen on Cinemana website)
-        if (storyText.isNotEmpty) ...[
-          const SizedBox(height: 3),
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 14),
-            child: Text(
-              storyText,
-              textAlign: TextAlign.center,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: TextStyle(
-                color: Colors.white.withOpacity(0.85),
-                fontSize: 11.5,
-                fontWeight: FontWeight.w500,
-                height: 1.3,
-                shadows: const [
-                  Shadow(color: Colors.black, blurRadius: 3),
-                  Shadow(color: Colors.black87, blurRadius: 10),
-                ],
-              ),
-            ),
-          ),
-        ],
-
         const SizedBox(height: 8),
 
-        ElevatedButton.icon(
-          onPressed: () {
-            Navigator.of(context, rootNavigator: true).push(
-              MaterialPageRoute(
-                builder: (_) => CinemanaDetailScreen(item: movie),
+        // «+» for the list, «شاهد» for the film: the two things to do
+        // with a picture, and nothing to read.
+        Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Consumer(
+              builder: (context, ref, _) {
+                final saved = ref.watch(cinemanaFavoritesProvider).any((it) => it.id == movie.id);
+                return Tooltip(
+                  message: saved ? 'في قائمتي' : 'أضف إلى قائمتي',
+                  child: Material(
+                    color: Colors.white.withOpacity(saved ? 0.28 : 0.16),
+                    shape: const CircleBorder(side: BorderSide(color: Colors.white54, width: 0.8)),
+                    clipBehavior: Clip.antiAlias,
+                    child: InkWell(
+                      onTap: () => ref.read(cinemanaFavoritesProvider.notifier).toggleFavorite(movie),
+                      child: SizedBox(
+                        width: 36,
+                        height: 36,
+                        child: Icon(
+                          saved ? Icons.check_rounded : Icons.add_rounded,
+                          color: Colors.white,
+                          size: 22,
+                        ),
+                      ),
+                    ),
+                  ),
+                );
+              },
+            ),
+            const SizedBox(width: 10),
+            ElevatedButton.icon(
+              onPressed: () {
+                Navigator.of(context, rootNavigator: true).push(
+                  MaterialPageRoute(
+                    builder: (_) => CinemanaDetailScreen(item: movie),
+                  ),
+                );
+              },
+              icon: const Icon(Icons.play_arrow_rounded, color: Colors.white, size: 20),
+              label: const Text(
+                'شاهد',
+                style: TextStyle(
+                  color: Colors.white,
+                  fontSize: 13.5,
+                  fontWeight: FontWeight.w800,
+                ),
               ),
-            );
-          },
-          icon: const Icon(Icons.play_arrow_rounded,
-              color: Colors.white, size: 20),
-          label: const Text(
-            'شاهد الآن',
-            style: TextStyle(
-              color: Colors.white,
-              fontSize: 13.5,
-              fontWeight: FontWeight.w800,
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFFE50914),
+                foregroundColor: Colors.white,
+                elevation: 4,
+                shadowColor: const Color(0xFFE50914).withOpacity(0.45),
+                padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 6),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(20),
+                ),
+              ),
             ),
-          ),
-          style: ElevatedButton.styleFrom(
-            backgroundColor: const Color(0xFFE50914),
-            foregroundColor: Colors.white,
-            elevation: 4,
-            shadowColor: const Color(0xFFE50914).withOpacity(0.45),
-            padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 6),
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(20),
-            ),
-          ),
+          ],
         ),
 
         const SizedBox(height: 6),
