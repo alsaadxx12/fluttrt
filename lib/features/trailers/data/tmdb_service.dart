@@ -123,6 +123,38 @@ class TmdbService {
     }
   }
 
+  /// A wide still from the film called [title], or null when TMDB has none.
+  ///
+  /// The catalogue's own art is posters; a collection staged big wants a
+  /// landscape, and TMDB has one for nearly every film people know by
+  /// name. Searched by title and year, the first match with a backdrop
+  /// wins.
+  Future<String?> backdropForTitle(String title, {String? year}) async {
+    final q = title.trim();
+    if (!TmdbConfig.isConfigured || q.isEmpty) return null;
+    try {
+      final res = await _dio.get<Map<String, dynamic>>(
+        '/search/movie',
+        queryParameters: {
+          'query': q,
+          'language': 'en-US',
+          if (year != null && year.isNotEmpty) 'year': year,
+          'include_adult': false,
+        },
+      );
+      final results = (res.data?['results'] as List?) ?? const [];
+      for (final r in results.whereType<Map<String, dynamic>>()) {
+        final path = r['backdrop_path'];
+        if (path is String && path.isNotEmpty) {
+          return 'https://image.tmdb.org/t/p/w1280$path';
+        }
+      }
+      return null;
+    } catch (_) {
+      return null;
+    }
+  }
+
   /// The best trailer key for one film, or null.
   Future<String?> _videoKey(int movieId, {String? path}) async {
     try {

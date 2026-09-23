@@ -8,28 +8,52 @@ import 'package:youtube_downloader/features/asia2tv/presentation/open_catalogue_
 import 'package:youtube_downloader/features/cinemana/data/cinemana_franchises.dart';
 import 'package:youtube_downloader/features/cinemana/data/models/cinemana_models.dart';
 import 'package:youtube_downloader/features/cinemana/presentation/providers/cinemana_provider.dart';
+import 'package:youtube_downloader/features/trailers/data/tmdb_service.dart';
 import 'package:youtube_downloader/presentation/widgets/card_motion.dart';
 import 'package:youtube_downloader/presentation/widgets/reveal.dart';
 import 'franchise_showcase.dart' show FranchiseScreen;
 
-/// One film series, big, in the middle of the home page.
+/// A wide picture for one film, found wherever one exists.
 ///
-/// A backdrop the width of the page with the series' name over it, and
-/// under it every part of the series in order, each with its number on a
-/// small badge — the way a streaming service stages a collection. The
-/// chips across the top swap in another series; the first one is the one
-/// shown when the page opens.
-class FranchiseSpotlight extends ConsumerStatefulWidget {
+/// The catalogue's own cover first, when it has one that is not just the
+/// poster again; then TMDB's backdrop for the same title and year, which
+/// is a real landscape still from the film; and nothing when neither has
+/// one, in which case the poster is shown cropped wide.
+final spotlightBackdropProvider = FutureProvider.family<String?, String>((ref, filmId) async {
+  final service = ref.watch(cinemanaServiceProvider);
+  CinemanaItem? film;
+  try {
+    film = await service.fetchItemDetails(filmId);
+  } catch (_) {}
+  final own = film?.backdropUrl ?? '';
+  if (own.isNotEmpty && own != (film?.imgUrl ?? '') && own != (film?.imgThumbUrl ?? '')) {
+    return own;
+  }
+  if (film == null) return null;
+  final title = film.enTitle.trim().isNotEmpty ? film.enTitle.trim() : film.arTitle.trim();
+  return _tmdb.backdropForTitle(title, year: film.year.trim());
+});
+
+final TmdbService _tmdb = TmdbService();
+
+/// Film series staged big in the middle of the home page.
+///
+/// One series at a time: a wide still from its newest part, the width of
+/// the page, with the series' name and a line about it over the foot of
+/// the picture, and every part of the series in a row that sits over the
+/// picture's bottom edge — the way a streaming service stages a
+/// collection. A swipe on the picture brings the next series.
+class FranchiseSpotlight extends StatefulWidget {
   const FranchiseSpotlight({super.key, this.ids = defaultIds});
 
-  /// The series on offer, newest and best known first.
+  /// The series on offer, in the order a swipe reaches them.
   final List<String> ids;
 
   static const List<String> defaultIds = [
-    'harry-potter',
     'james-bond',
-    'fast-furious',
     'mission-impossible',
+    'harry-potter',
+    'fast-furious',
     'john-wick',
     'jurassic',
     'spider-man',
@@ -37,128 +61,151 @@ class FranchiseSpotlight extends ConsumerStatefulWidget {
   ];
 
   @override
-  ConsumerState<FranchiseSpotlight> createState() => _FranchiseSpotlightState();
+  State<FranchiseSpotlight> createState() => _FranchiseSpotlightState();
 }
 
-class _FranchiseSpotlightState extends ConsumerState<FranchiseSpotlight> {
-  int _index = 0;
+class _FranchiseSpotlightState extends State<FranchiseSpotlight> {
+  final PageController _pages = PageController();
+  int _page = 0;
 
-  FilmFranchise? get _franchise {
-    final id = widget.ids[_index.clamp(0, widget.ids.length - 1)];
-    for (final f in FilmFranchise.all) {
-      if (f.id == id) return f;
-    }
-    return null;
+  @override
+  void dispose() {
+    _pages.dispose();
+    super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
+    final franchises = [
+      for (final id in widget.ids)
+        for (final f in FilmFranchise.all)
+          if (f.id == id) f,
+    ];
+    if (franchises.isEmpty) return const SizedBox.shrink();
+
+    return LayoutBuilder(
+      builder: (context, box) {
+        final width = box.maxWidth;
+        final pictureHeight = width * 10 / 16;
+        // The row of parts sits this far up over the picture's foot.
+        const overlap = 56.0;
+        const rowHeight = 156.0;
+        final height = pictureHeight - overlap + rowHeight + 8;
+        return Column(
+          children: [
+            SizedBox(
+              height: height,
+              child: PageView.builder(
+                controller: _pages,
+                onPageChanged: (i) => setState(() => _page = i),
+                itemCount: franchises.length,
+                itemBuilder: (context, i) => _SpotlightPage(
+                  franchise: franchises[i],
+                  pictureHeight: pictureHeight,
+                  overlap: overlap,
+                  rowHeight: rowHeight,
+                ),
+              ),
+            ),
+            const SizedBox(height: 8),
+            // Which series is on show, and how many more a swipe reaches.
+            Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                for (var i = 0; i < franchises.length; i++)
+                  AnimatedContainer(
+                    duration: const Duration(milliseconds: 200),
+                    margin: const EdgeInsets.symmetric(horizontal: 3),
+                    width: i == _page ? 18 : 6,
+                    height: 6,
+                    decoration: BoxDecoration(
+                      color: i == _page ? const Color(0xFFE50914) : Colors.white24,
+                      borderRadius: BorderRadius.circular(3),
+                    ),
+                  ),
+              ],
+            ),
+          ],
+        );
+      },
+    );
+  }
+}
+
+class _SpotlightPage extends ConsumerWidget {
+  const _SpotlightPage({
+    required this.franchise,
+    required this.pictureHeight,
+    required this.overlap,
+    required this.rowHeight,
+  });
+
+  final FilmFranchise franchise;
+  final double pictureHeight;
+  final double overlap;
+  final double rowHeight;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
     final p = AppPalette.of(context);
-    final franchise = _franchise;
-    if (franchise == null) return const SizedBox.shrink();
-    final async = ref.watch(franchiseFilmsProvider(franchise.id));
-    final films = async.valueOrNull ?? const <CinemanaItem>[];
-
-    // The picture: the newest part that has a wide image, so the block
-    // looks like the film people know it by.
-    String backdrop = '';
-    for (final film in films.reversed) {
-      if ((film.backdropUrl ?? '').isNotEmpty) {
-        backdrop = film.backdropUrl!;
-        break;
-      }
-    }
-    if (backdrop.isEmpty && films.isNotEmpty) backdrop = films.last.bestBackdropUrl;
-
+    final films = ref.watch(franchiseFilmsProvider(franchise.id)).valueOrNull ?? const <CinemanaItem>[];
+    // Release order from the catalogue: the last is the newest, and the
+    // newest is the picture and the first card.
+    final newest = films.isEmpty ? null : films.last;
+    final backdrop = newest == null
+        ? null
+        : ref.watch(spotlightBackdropProvider(newest.id)).valueOrNull;
+    final fallback = newest?.cardImageUrl ?? '';
     final years = films.map((f) => int.tryParse(f.year.trim())).whereType<int>().toList()..sort();
     final line = films.isEmpty
         ? ''
-        : [
-            FilmFranchise.countLabel(films),
-            if (years.isNotEmpty) (years.first == years.last ? '${years.first}' : '${years.first} – ${years.last}'),
-          ].join(' · ');
+        : 'شاهد سلسلة ${franchise.name} كاملة: ${FilmFranchise.countLabel(films)}'
+            '${years.isEmpty ? '' : years.first == years.last ? ' · ${years.first}' : ' من ${years.first} إلى ${years.last}'}'
+            '${newest == null ? '' : ' · الأحدث: ${newest.displayTitle}'}';
 
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
+    return Stack(
       children: [
-        // The chips: which series is on show.
-        SizedBox(
-          height: 34,
-          child: ListView.separated(
-            padding: const EdgeInsets.symmetric(horizontal: 16),
-            scrollDirection: Axis.horizontal,
-            physics: const BouncingScrollPhysics(),
-            itemCount: widget.ids.length,
-            separatorBuilder: (_, __) => const SizedBox(width: 8),
-            itemBuilder: (context, i) {
-              final f = FilmFranchise.all.where((x) => x.id == widget.ids[i]).firstOrNull;
-              if (f == null) return const SizedBox.shrink();
-              final on = i == _index;
-              return Material(
-                color: on ? const Color(0xFFE50914) : p.cardAlt,
-                borderRadius: BorderRadius.circular(17),
-                clipBehavior: Clip.antiAlias,
-                child: InkWell(
-                  onTap: () => setState(() => _index = i),
-                  child: Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 14),
-                    child: Center(
-                      child: Text(
-                        f.name,
-                        style: TextStyle(
-                          color: on ? Colors.white : p.text,
-                          fontSize: 12.5,
-                          fontWeight: FontWeight.w800,
-                        ),
-                      ),
-                    ),
-                  ),
-                ),
-              );
-            },
-          ),
-        ),
-        const SizedBox(height: 12),
-
-        // The picture, the width of the page, with the name over it.
-        GestureDetector(
-          onTap: films.isEmpty ? null : () => _openAll(franchise),
-          child: AspectRatio(
-            aspectRatio: 16 / 10,
+        // The picture, with the words over its foot.
+        Positioned(
+          top: 0,
+          left: 0,
+          right: 0,
+          height: pictureHeight,
+          child: GestureDetector(
+            onTap: films.isEmpty ? null : () => _openAll(context),
             child: Stack(
               fit: StackFit.expand,
               children: [
-                AnimatedSwitcher(
-                  duration: const Duration(milliseconds: 320),
-                  child: backdrop.isEmpty
-                      ? ColoredBox(key: const ValueKey('none'), color: p.skeleton)
-                      : CachedNetworkImage(
-                          key: ValueKey(backdrop),
-                          imageUrl: backdrop,
-                          cacheManager: appImageCache,
-                          fit: BoxFit.cover,
-                          filterQuality: FilterQuality.high,
-                          fadeInDuration: Duration.zero,
-                          fadeOutDuration: Duration.zero,
-                          placeholder: (_, __) => ColoredBox(color: p.skeleton),
-                          errorWidget: (_, __, ___) => ColoredBox(color: p.skeleton),
-                        ),
-                ),
-                // Dark towards the foot, where the words are.
-                const DecoratedBox(
+                ColoredBox(color: p.skeleton),
+                if ((backdrop ?? fallback).isNotEmpty)
+                  CachedNetworkImage(
+                    key: ValueKey(backdrop ?? fallback),
+                    imageUrl: backdrop ?? fallback,
+                    cacheManager: appImageCache,
+                    fit: BoxFit.cover,
+                    // A poster cropped wide keeps its top, where the faces are.
+                    alignment: backdrop == null ? Alignment.topCenter : Alignment.center,
+                    filterQuality: FilterQuality.high,
+                    fadeInDuration: const Duration(milliseconds: 250),
+                    fadeOutDuration: Duration.zero,
+                    placeholder: (_, __) => ColoredBox(color: p.skeleton),
+                    errorWidget: (_, __, ___) => ColoredBox(color: p.skeleton),
+                  ),
+                // Dark towards the foot, where the words and the cards are.
+                DecoratedBox(
                   decoration: BoxDecoration(
                     gradient: LinearGradient(
                       begin: Alignment.topCenter,
                       end: Alignment.bottomCenter,
-                      colors: [Colors.transparent, Colors.transparent, Color(0xB3000000), Color(0xF2000000)],
-                      stops: [0, 0.4, 0.78, 1],
+                      colors: [Colors.transparent, Colors.transparent, const Color(0xCC000000), p.bg],
+                      stops: const [0, 0.35, 0.72, 1],
                     ),
                   ),
                 ),
                 PositionedDirectional(
                   start: 16,
                   end: 16,
-                  bottom: 14,
+                  bottom: overlap + 12,
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     mainAxisSize: MainAxisSize.min,
@@ -175,41 +222,28 @@ class _FranchiseSpotlightState extends ConsumerState<FranchiseSpotlight> {
                         ),
                       ),
                       if (line.isNotEmpty) ...[
-                        const SizedBox(height: 4),
+                        const SizedBox(height: 5),
                         Text(
                           line,
-                          style: const TextStyle(color: Colors.white70, fontSize: 12.5, fontWeight: FontWeight.w600),
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(color: Colors.white70, fontSize: 12.5, fontWeight: FontWeight.w600, height: 1.35),
                         ),
                       ],
                     ],
                   ),
                 ),
-                if (films.isNotEmpty)
-                  PositionedDirectional(
-                    end: 12,
-                    bottom: 16,
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                      decoration: BoxDecoration(
-                        color: Colors.white.withOpacity(0.14),
-                        borderRadius: BorderRadius.circular(16),
-                        border: Border.all(color: Colors.white.withOpacity(0.25), width: 0.8),
-                      ),
-                      child: const Text(
-                        'عرض الكل',
-                        style: TextStyle(color: Colors.white, fontSize: 11.5, fontWeight: FontWeight.w800),
-                      ),
-                    ),
-                  ),
               ],
             ),
           ),
         ),
-        const SizedBox(height: 10),
 
-        // Every part, in order, with its number.
-        SizedBox(
-          height: 156,
+        // The parts, newest first, over the foot of the picture.
+        Positioned(
+          left: 0,
+          right: 0,
+          top: pictureHeight - overlap,
+          height: rowHeight,
           child: films.isEmpty
               ? ListView.separated(
                   padding: const EdgeInsets.symmetric(horizontal: 16),
@@ -231,17 +265,20 @@ class _FranchiseSpotlightState extends ConsumerState<FranchiseSpotlight> {
                     physics: const ClampingScrollPhysics(),
                     itemCount: films.length,
                     separatorBuilder: (_, __) => const SizedBox(width: 12),
-                    itemBuilder: (context, i) => CardEntrance(
-                      group: 'spotlight-${franchise.id}',
-                      index: i,
-                      child: CarouselFocus(
-                        controller: controller,
+                    itemBuilder: (context, i) {
+                      final index = films.length - 1 - i;
+                      return CardEntrance(
+                        group: 'spotlight-${franchise.id}',
                         index: i,
-                        extent: 116,
-                        width: 104,
-                        child: _PartCard(film: films[i], number: i + 1),
-                      ),
-                    ),
+                        child: CarouselFocus(
+                          controller: controller,
+                          index: i,
+                          extent: 116,
+                          width: 104,
+                          child: _PartCard(film: films[index], number: index + 1, newest: i == 0),
+                        ),
+                      );
+                    },
                   ),
                 ),
         ),
@@ -249,7 +286,7 @@ class _FranchiseSpotlightState extends ConsumerState<FranchiseSpotlight> {
     );
   }
 
-  void _openAll(FilmFranchise franchise) {
+  void _openAll(BuildContext context) {
     Navigator.of(context, rootNavigator: true).push(
       MaterialPageRoute(builder: (_) => FranchiseScreen(franchise: franchise)),
     );
@@ -257,12 +294,13 @@ class _FranchiseSpotlightState extends ConsumerState<FranchiseSpotlight> {
 }
 
 /// One part of the series: the poster with its number on a badge at the
-/// foot, the way a service marks «New Season».
+/// foot, and «الأحدث» on the newest one.
 class _PartCard extends StatelessWidget {
-  const _PartCard({required this.film, required this.number});
+  const _PartCard({required this.film, required this.number, this.newest = false});
 
   final CinemanaItem film;
   final int number;
+  final bool newest;
 
   @override
   Widget build(BuildContext context) {
@@ -297,18 +335,34 @@ class _PartCard extends StatelessWidget {
                 left: 0,
                 right: 0,
                 bottom: 8,
-                child: Center(
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 3),
-                    decoration: BoxDecoration(
-                      color: const Color(0xFFE50914),
-                      borderRadius: BorderRadius.circular(10),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    if (newest)
+                      Container(
+                        margin: const EdgeInsets.only(bottom: 4),
+                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFF19C3E6),
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: const Text(
+                          'الأحدث',
+                          style: TextStyle(color: Colors.black, fontSize: 9.5, fontWeight: FontWeight.w900),
+                        ),
+                      ),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 3),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFE50914),
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      child: Text(
+                        film.isSeries ? 'الموسم $number' : 'الجزء $number',
+                        style: const TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.w900),
+                      ),
                     ),
-                    child: Text(
-                      film.isSeries ? 'الموسم $number' : 'الجزء $number',
-                      style: const TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.w900),
-                    ),
-                  ),
+                  ],
                 ),
               ),
             ],
