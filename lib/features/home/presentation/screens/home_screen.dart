@@ -39,7 +39,6 @@ import '../widgets/alkass_channels_row.dart';
 import '../../../../presentation/widgets/reveal.dart';
 import '../../../sports/data/match_merge.dart';
 import '../../../sports/data/match_order.dart';
-import '../widgets/film_deck.dart';
 import '../../../../core/video/desktop_video.dart';
 import 'package:youtube_downloader/core/scroll/app_scroll_physics.dart';
 import 'package:youtube_downloader/features/update/presentation/update_controller.dart';
@@ -703,10 +702,6 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
               ),
             ),
 
-            // The newest films wait on the rail rather than interrupting the
-            // page. This is the one side surface: the old card that slid in by
-            // itself on start-up is gone.
-            const FilmDeck(),
           ],
         ),
       ),
