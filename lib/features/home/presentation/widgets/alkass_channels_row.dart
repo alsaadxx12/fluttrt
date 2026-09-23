@@ -1,5 +1,3 @@
-import 'dart:ui';
-
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -13,14 +11,14 @@ import '../../../shahid/presentation/shahid_player_screen.dart';
 import '../../../sports/data/services/alkass_service.dart';
 import '../../../sports/presentation/providers/alkass_provider.dart';
 
-/// Alkass's free channels on the home page: one glass tile per channel with
-/// its mark, and a tap opens the channel in the live player with the other
-/// channels a tap away under it.
+/// Alkass's free channels on the home page: one page-black tile per channel
+/// with its mark and its name, and a tap opens the channel full-screen at
+/// once, the other channels a tap away over the picture.
 class AlkassChannelsRow extends ConsumerWidget {
   const AlkassChannelsRow({super.key});
 
-  static const double _tileW = 132;
-  static const double _tileH = 76;
+  static const double _tileW = 176;
+  static const double _tileH = 112;
   static const double _gap = 12;
 
   @override
@@ -141,35 +139,41 @@ class _Tile extends StatelessWidget {
           child: ClipRRect(
             borderRadius: BorderRadius.circular(6),
             clipBehavior: Clip.antiAliasWithSaveLayer,
-            // Glass, like the match card: what lies under shows through a
-            // blur and a faint tint, and the mark sits on top.
-            child: BackdropFilter(
-              filter: ImageFilter.blur(sigmaX: 14, sigmaY: 14),
-              child: Container(
-                decoration: BoxDecoration(
-                  color: Colors.white.withOpacity(0.07),
-                  border: Border.all(color: Colors.white.withOpacity(0.10), width: 0.6),
-                  borderRadius: BorderRadius.circular(6),
-                ),
-                padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 14),
-                child: channel.logo.isEmpty
-                    ? const Icon(Icons.live_tv_rounded, color: Colors.white54)
-                    : CachedNetworkImage(
-                        imageUrl: channel.logo,
-                        cacheManager: appImageCache,
-                        fit: BoxFit.contain,
-                        filterQuality: FilterQuality.high,
-                        memCacheWidth: 400,
-                        fadeInDuration: Duration.zero,
-                        fadeOutDuration: Duration.zero,
-                        placeholderFadeInDuration: Duration.zero,
-                        placeholder: (_, __) => const SizedBox.shrink(),
-                        errorWidget: (_, __, ___) => Text(
-                          channel.arabicTitle,
-                          textAlign: TextAlign.center,
-                          style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w800, fontSize: 13),
-                        ),
-                      ),
+            // The page's own black under the mark, a hairline edge to show
+            // the card, and the channel's name beneath.
+            child: Container(
+              decoration: BoxDecoration(
+                color: AppPalette.of(context).bg,
+                border: Border.all(color: Colors.white.withOpacity(0.12), width: 0.6),
+                borderRadius: BorderRadius.circular(6),
+              ),
+              padding: const EdgeInsets.fromLTRB(20, 14, 20, 10),
+              child: Column(
+                children: [
+                  Expanded(
+                    child: channel.logo.isEmpty
+                        ? const Icon(Icons.live_tv_rounded, color: Colors.white54)
+                        : CachedNetworkImage(
+                            imageUrl: channel.logo,
+                            cacheManager: appImageCache,
+                            fit: BoxFit.contain,
+                            filterQuality: FilterQuality.high,
+                            memCacheWidth: 400,
+                            fadeInDuration: Duration.zero,
+                            fadeOutDuration: Duration.zero,
+                            placeholderFadeInDuration: Duration.zero,
+                            placeholder: (_, __) => const SizedBox.shrink(),
+                            errorWidget: (_, __, ___) => const Icon(Icons.live_tv_rounded, color: Colors.white54),
+                          ),
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    channel.arabicTitle,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w800, fontSize: 12.5),
+                  ),
+                ],
               ),
             ),
           ),
@@ -179,12 +183,13 @@ class _Tile extends StatelessWidget {
   }
 }
 
-/// Opens [channel] in the live player, with [all] under it to switch to.
+/// Opens [channel] straight into the full-screen picture, with [all] in a
+/// strip over it to switch to: no channel page on the way.
 void openAlkassChannel(BuildContext context, AlkassChannel channel, List<AlkassChannel> all) {
   final items = all.map(asShahidItem).toList();
   Navigator.of(context).push(
     MaterialPageRoute(
-      builder: (_) => ShahidPlayerScreen(channel: asShahidItem(channel), channels: items),
+      builder: (_) => ShahidPlayerScreen(channel: asShahidItem(channel), channels: items, startFullscreen: true),
     ),
   );
 }

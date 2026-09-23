@@ -44,9 +44,9 @@ void main() {
     },
   ];
 
-  test('only the free channels, in the site\'s order', () {
+  test('only the free Alkass channels, in the site\'s order; «shoof» is not one of them', () {
     final channels = AlkassService.parse(json);
-    expect(channels.map((c) => c.webname), ['one', 'two', 'shoof1']);
+    expect(channels.map((c) => c.webname), ['one', 'two']);
     expect(channels.every((c) => c.isFree), isTrue);
   });
 
@@ -57,7 +57,7 @@ void main() {
 
   test('the names on the cards are Arabic', () {
     final channels = AlkassService.parse(json);
-    expect(channels.map((c) => c.arabicTitle), ['الكأس 1', 'الكأس 2', 'شوف 1']);
+    expect(channels.map((c) => c.arabicTitle), ['الكأس 1', 'الكأس 2']);
   });
 
   test('the token\'s expiry is read from the address', () {

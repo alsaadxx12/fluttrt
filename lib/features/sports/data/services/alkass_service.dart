@@ -134,6 +134,10 @@ class AlkassService {
         isPremium: isPremium,
         sorting: (row['Sorting'] as num?)?.toInt() ?? 999,
       );
+      // «Shoof» is the site's own promotional channel, not one of the
+      // Alkass channels; the site keeps it out of its guide, and so does
+      // the row.
+      if (channel.webname.toLowerCase().startsWith('shoof')) continue;
       if (channel.isFree && channel.id > 0) out.add(channel);
     }
     out.sort((a, b) => a.sorting.compareTo(b.sorting));

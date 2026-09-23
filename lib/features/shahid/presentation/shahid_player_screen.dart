@@ -8,7 +8,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:media_kit/media_kit.dart';
 import 'package:media_kit_video/media_kit_video.dart';
 import 'package:video_player/video_player.dart';
-import 'package:youtube_downloader/presentation/widgets/app_search_field.dart';
 
 import '../../casting/controllers/cast_controller.dart';
 import '../../casting/services/cast_media_source.dart';
@@ -26,10 +25,16 @@ class ShahidPlayerScreen extends ConsumerStatefulWidget {
   /// Other channels shown under the player for one-tap switching.
   final List<ShahidItem> channels;
 
+  /// Opens straight into the full-screen player, with the other channels
+  /// in a strip over the picture, and leaves when the viewer backs out of
+  /// it: no channel page in between.
+  final bool startFullscreen;
+
   const ShahidPlayerScreen({
     super.key,
     required this.channel,
     this.channels = const [],
+    this.startFullscreen = false,
   });
 
   @override
@@ -48,13 +53,15 @@ class _ShahidPlayerScreenState extends ConsumerState<ShahidPlayerScreen> {
   bool _fullscreen = false;
   Timer? _hideControls;
   int _openToken = 0;
-  final _search = TextEditingController();
-  String _query = '';
 
   @override
   void initState() {
     super.initState();
     _current = widget.channel;
+    if (widget.startFullscreen) {
+      _fullscreen = true;
+      _applyChrome(true);
+    }
     _open(_current);
   }
 
@@ -233,6 +240,20 @@ class _ShahidPlayerScreenState extends ConsumerState<ShahidPlayerScreen> {
 
   void _setFullscreen(bool on) {
     setState(() => _fullscreen = on);
+    _applyChrome(on);
+  }
+
+  /// Backing out of the full-screen picture: to the channel page, or, when
+  /// the player was opened straight into it, out of the player altogether.
+  void _leaveFullscreen() {
+    if (widget.startFullscreen) {
+      Navigator.of(context).maybePop();
+    } else {
+      _setFullscreen(false);
+    }
+  }
+
+  void _applyChrome(bool on) {
     if (!Platform.isWindows && !Platform.isLinux && !Platform.isMacOS) {
       if (on) {
         SystemChrome.setPreferredOrientations([
@@ -249,7 +270,6 @@ class _ShahidPlayerScreenState extends ConsumerState<ShahidPlayerScreen> {
 
   @override
   void dispose() {
-    _search.dispose();
     _hideControls?.cancel();
     _video?.removeListener(_onVideoEvent);
     _video?.dispose();
@@ -348,7 +368,7 @@ class _ShahidPlayerScreenState extends ConsumerState<ShahidPlayerScreen> {
                     child: SafeArea(
                       child: IconButton(
                         icon: const Icon(Icons.arrow_back_rounded, color: Colors.white, size: 24),
-                        onPressed: () => _setFullscreen(false),
+                        onPressed: _leaveFullscreen,
                         tooltip: 'رجوع',
                       ),
                     ),
@@ -369,12 +389,41 @@ class _ShahidPlayerScreenState extends ConsumerState<ShahidPlayerScreen> {
                     ),
                   ),
                 ),
+                // The other channels, a tap away over the picture - the way
+                // the broadcaster's own site does it.
+                if (_fullscreen && widget.channels.length > 1)
+                  Positioned(
+                    left: 0,
+                    right: 0,
+                    bottom: 56,
+                    child: _channelStrip(),
+                  ),
+                // To the television, from the picture itself.
+                if (_fullscreen)
+                  PositionedDirectional(
+                    bottom: 8,
+                    end: 52,
+                    child: Consumer(
+                      builder: (context, ref, _) {
+                        final casting = ref.watch(isCastingProvider);
+                        return IconButton(
+                          onPressed: _castCurrent,
+                          tooltip: 'البث على التلفاز',
+                          icon: Icon(
+                            casting ? Icons.cast_connected_rounded : Icons.cast_rounded,
+                            color: casting ? const Color(0xFFE50914) : Colors.white,
+                            size: 24,
+                          ),
+                        );
+                      },
+                    ),
+                  ),
                 // fullscreen toggle
                 PositionedDirectional(
                   bottom: 8,
                   end: 8,
                   child: IconButton(
-                    onPressed: () => _setFullscreen(!_fullscreen),
+                    onPressed: () => _fullscreen ? _leaveFullscreen() : _setFullscreen(true),
                     icon: Icon(
                       _fullscreen ? Icons.fullscreen_exit_rounded : Icons.fullscreen_rounded,
                       color: Colors.white,
@@ -391,19 +440,57 @@ class _ShahidPlayerScreenState extends ConsumerState<ShahidPlayerScreen> {
     );
   }
 
-  static String _norm(String s) =>
-      s.toLowerCase().replaceAll(RegExp('[أإآ]'), 'ا').replaceAll('ة', 'ه').replaceAll('ى', 'ي').trim();
+  /// The other channels as a strip of marks over the full-screen picture,
+  /// the one playing outlined; a tap switches.
+  Widget _channelStrip() {
+    return SizedBox(
+      height: 58,
+      child: ListView.separated(
+        scrollDirection: Axis.horizontal,
+        padding: const EdgeInsets.symmetric(horizontal: 16),
+        itemCount: widget.channels.length,
+        separatorBuilder: (_, __) => const SizedBox(width: 8),
+        itemBuilder: (context, i) {
+          final c = widget.channels[i];
+          final on = c.id == _current.id;
+          final l = c.logoUrl(240);
+          return GestureDetector(
+            onTap: () => _open(c),
+            child: Container(
+              width: 96,
+              decoration: BoxDecoration(
+                color: on ? const Color(0xFFE50914).withOpacity(0.85) : Colors.black.withOpacity(0.55),
+                borderRadius: BorderRadius.circular(6),
+                border: Border.all(color: on ? const Color(0xFFE50914) : Colors.white24, width: 0.8),
+              ),
+              padding: const EdgeInsets.fromLTRB(10, 6, 10, 4),
+              child: Column(
+                children: [
+                  Expanded(
+                    child: l == null
+                        ? const Icon(Icons.live_tv_rounded, color: Colors.white70, size: 18)
+                        : CachedNetworkImage(imageUrl: l, fit: BoxFit.contain, memCacheWidth: 240),
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    c.title,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.w800),
+                  ),
+                ],
+              ),
+            ),
+          );
+        },
+      ),
+    );
+  }
 
   /// Two big tiles per row. Shahid's own 16:9 tiles fill the card; other
   /// channels' logos are shown whole. Channels sharing a logo get their name.
   Widget _otherChannelsGrid(List<ShahidItem> others) {
-    final q = _norm(_query);
-    final shown = q.isEmpty ? others : others.where((c) => _norm(c.title).contains(q)).toList();
-    if (shown.isEmpty) {
-      return const Center(
-        child: Text('لا توجد قناة بهذا الاسم', style: TextStyle(color: Colors.black45, fontSize: 13.5)),
-      );
-    }
+    final shown = others;
     final logoCount = <String, int>{};
     for (final c in widget.channels) {
       final l = c.logoTemplate;
@@ -482,7 +569,7 @@ class _ShahidPlayerScreenState extends ConsumerState<ShahidPlayerScreen> {
       content = PopScope(
         canPop: false,
         onPopInvokedWithResult: (didPop, _) {
-          if (!didPop) _setFullscreen(false);
+          if (!didPop) _leaveFullscreen();
         },
         child: Scaffold(backgroundColor: Colors.black, body: _playerArea()),
       );
@@ -541,23 +628,9 @@ class _ShahidPlayerScreenState extends ConsumerState<ShahidPlayerScreen> {
               if (others.isNotEmpty) ...[
                 Padding(
                   padding: const EdgeInsets.fromLTRB(16, 14, 16, 8),
-                  child: Row(
-                    children: [
-                      const Text(
-                        'قنوات أخرى',
-                        style: TextStyle(color: Colors.black87, fontSize: 16, fontWeight: FontWeight.w900),
-                      ),
-                      const SizedBox(width: 12),
-                      // Search the channels by name - the shared flat pill.
-                      Expanded(
-                        child: AppSearchField(
-                          controller: _search,
-                          hintText: 'ابحث عن قناة',
-                          onChanged: (v) => setState(() => _query = v),
-                          onClear: () => setState(() => _query = ''),
-                        ),
-                      ),
-                    ],
+                  child: const Text(
+                    'قنوات أخرى',
+                    style: TextStyle(color: Colors.black87, fontSize: 16, fontWeight: FontWeight.w900),
                   ),
                 ),
                 Expanded(child: _otherChannelsGrid(others)),
@@ -572,7 +645,7 @@ class _ShahidPlayerScreenState extends ConsumerState<ShahidPlayerScreen> {
       bindings: {
         const SingleActivator(LogicalKeyboardKey.escape): () {
           if (_fullscreen) {
-            _setFullscreen(false);
+            _leaveFullscreen();
           } else {
             Navigator.of(context).maybePop();
           }
