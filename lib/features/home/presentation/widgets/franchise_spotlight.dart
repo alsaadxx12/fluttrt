@@ -150,9 +150,12 @@ class _SpotlightPage extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final p = AppPalette.of(context);
-    final films = ref.watch(franchiseFilmsProvider(franchise.id)).valueOrNull ?? const <CinemanaItem>[];
-    // The catalogue hands the parts newest first: the first is the newest,
-    // and the newest is the picture and the first card.
+    final given = ref.watch(franchiseFilmsProvider(franchise.id)).valueOrNull ?? const <CinemanaItem>[];
+    // Newest first, by year, whatever order the catalogue handed them in:
+    // the first is the newest, and the newest is the picture and the first
+    // card. Ties keep the catalogue's order.
+    final films = List<CinemanaItem>.of(given)
+      ..sort((a, b) => (int.tryParse(b.year.trim()) ?? 0).compareTo(int.tryParse(a.year.trim()) ?? 0));
     final newest = films.isEmpty ? null : films.first;
     final backdrop = newest == null
         ? null
