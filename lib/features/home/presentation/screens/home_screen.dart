@@ -481,17 +481,6 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
 
     (_) => const SizedBox(height: 24),
 
-    // أحدث المسلسلات الحصرية (إصدارات جديدة 2024-2026)
-    (_) => _wideSeriesRowSection(
-          provider: exclusiveLatestSeriesProvider,
-          title: 'أحدث المسلسلات الحصرية',
-          badge: 'حصري',
-          onViewAll: () =>
-              context.push('/exclusive', extra: ExclusiveCategory.series),
-        ),
-
-    (_) => const SizedBox(height: 24),
-
     // أحدث الأفلام الحصرية (إصدارات جديدة 2024-2026)
     (_) => _posterRowSection(
           provider: exclusiveLatestMoviesProvider,
@@ -1511,165 +1500,162 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
           ),
         );
       },
-      // Frosted glass, the way iOS draws a card over a picture: the page
-      // shows through a blur, with a thin light edge.
+      // Black, exactly, like the page: the card is its edge and what is
+      // written on it.
       child: ClipRRect(
         borderRadius: BorderRadius.circular(6),
         // One layer, then the clip: the picture and its shading are
         // composited before the rounded edge is applied, so the
         // half-pixel bottom row is shaded like every other row.
         clipBehavior: Clip.antiAliasWithSaveLayer,
-        child: BackdropFilter(
-          filter: ImageFilter.blur(sigmaX: 18, sigmaY: 18),
-          child: Container(
-            width: 250,
-            decoration: BoxDecoration(
-              color: Colors.white.withOpacity(_p.isDark ? 0.07 : 0.55),
-              borderRadius: BorderRadius.circular(6),
-              border: Border.all(
-                color: Colors.white.withOpacity(0.14),
-                width: 0.8,
-              ),
+        child: Container(
+          width: 250,
+          decoration: BoxDecoration(
+            color: Colors.black,
+            borderRadius: BorderRadius.circular(6),
+            border: Border.all(
+              color: Colors.white.withOpacity(0.14),
+              width: 0.8,
             ),
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-            child: Column(
-              children: [
-                // Top Row: Status Badge & Tournament Name
-                Row(
-                  children: [
-                    _buildMatchStatusBadge(match, matchTime),
-                    const Spacer(),
-                    Flexible(
-                      child: Text(
-                        leagueName,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: TextStyle(
-                          color: _p.textMuted,
-                          fontSize: 11,
-                          fontWeight: FontWeight.w600,
-                        ),
+          ),
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+          child: Column(
+            children: [
+              // Top Row: Status Badge & Tournament Name
+              Row(
+                children: [
+                  _buildMatchStatusBadge(match, matchTime),
+                  const Spacer(),
+                  Flexible(
+                    child: Text(
+                      leagueName,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                        color: _p.textMuted,
+                        fontSize: 11,
+                        fontWeight: FontWeight.w600,
                       ),
                     ),
-                    const SizedBox(width: 4),
-                    Icon(
-                      Icons.sports_soccer_rounded,
-                      color: _p.textMuted,
-                      size: 14,
-                    ),
-                  ],
-                ),
-                // Main Match Row: Home Club Logo - Center Score/Time - Away Club Logo,
-                // centred in the space under the top row.
-                Expanded(
-                  child: Center(
-                    child: Row(
-                      children: [
-                        // Home Club
-                        Expanded(
-                          child: Column(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              GlowingCrest(url: match.home.logo, size: 76),
-                              const SizedBox(height: 8),
-                              Text(
-                                match.home.name,
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                                textAlign: TextAlign.center,
+                  ),
+                  const SizedBox(width: 4),
+                  Icon(
+                    Icons.sports_soccer_rounded,
+                    color: _p.textMuted,
+                    size: 14,
+                  ),
+                ],
+              ),
+              // Main Match Row: Home Club Logo - Center Score/Time - Away Club Logo,
+              // centred in the space under the top row.
+              Expanded(
+                child: Center(
+                  child: Row(
+                    children: [
+                      // Home Club
+                      Expanded(
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            GlowingCrest(url: match.home.logo, size: 76),
+                            const SizedBox(height: 8),
+                            Text(
+                              match.home.name,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              textAlign: TextAlign.center,
+                              style: TextStyle(
+                                color: _p.text,
+                                fontSize: 12,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+
+                      // Center: score or local time, then the play button beneath
+                      Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 8),
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            if (match.isLive || match.isEnded) ...[
+                              MatchScoreLine(
+                                homeScore: match.homeScore,
+                                awayScore: match.awayScore,
                                 style: TextStyle(
                                   color: _p.text,
-                                  fontSize: 12,
-                                  fontWeight: FontWeight.bold,
+                                  fontSize: 22,
+                                  fontWeight: FontWeight.w900,
+                                  letterSpacing: 2,
                                 ),
                               ),
-                            ],
-                          ),
-                        ),
-
-                        // Center: score or local time, then the play button beneath
-                        Padding(
-                          padding: const EdgeInsets.symmetric(horizontal: 8),
-                          child: Column(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              if (match.isLive || match.isEnded) ...[
-                                MatchScoreLine(
-                                  homeScore: match.homeScore,
-                                  awayScore: match.awayScore,
-                                  style: TextStyle(
-                                    color: _p.text,
-                                    fontSize: 22,
-                                    fontWeight: FontWeight.w900,
-                                    letterSpacing: 2,
-                                  ),
+                              Text(
+                                match.isLive
+                                    ? (match.minute != null
+                                        ? "${match.minute}'"
+                                        : "مباشر")
+                                    : 'انتهت',
+                                style: TextStyle(
+                                  color: match.isLive
+                                      ? const Color(0xFFFF2A4A)
+                                      : const Color(0xFF94A3B8),
+                                  fontSize: 11,
+                                  fontWeight: FontWeight.w700,
                                 ),
+                              ),
+                            ] else ...[
+                              Text(
+                                matchTime,
+                                style: const TextStyle(
+                                  color: Color(0xFFFF4D5B),
+                                  fontSize: 17,
+                                  fontWeight: FontWeight.w900,
+                                ),
+                              ),
+                              if (matchDate.isNotEmpty) ...[
+                                const SizedBox(height: 2),
                                 Text(
-                                  match.isLive
-                                      ? (match.minute != null
-                                          ? "${match.minute}'"
-                                          : "مباشر")
-                                      : 'انتهت',
+                                  matchDate,
                                   style: TextStyle(
-                                    color: match.isLive
-                                        ? const Color(0xFFFF2A4A)
-                                        : const Color(0xFF94A3B8),
-                                    fontSize: 11,
-                                    fontWeight: FontWeight.w700,
+                                    color: _p.textFaint,
+                                    fontSize: 9.5,
+                                    fontWeight: FontWeight.w500,
                                   ),
                                 ),
-                              ] else ...[
-                                Text(
-                                  matchTime,
-                                  style: const TextStyle(
-                                    color: Color(0xFFFF4D5B),
-                                    fontSize: 17,
-                                    fontWeight: FontWeight.w900,
-                                  ),
-                                ),
-                                if (matchDate.isNotEmpty) ...[
-                                  const SizedBox(height: 2),
-                                  Text(
-                                    matchDate,
-                                    style: TextStyle(
-                                      color: _p.textFaint,
-                                      fontSize: 9.5,
-                                      fontWeight: FontWeight.w500,
-                                    ),
-                                  ),
-                                ],
                               ],
                             ],
-                          ),
+                          ],
                         ),
+                      ),
 
-                        // Away Club
-                        Expanded(
-                          child: Column(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              GlowingCrest(url: match.away.logo, size: 76),
-                              const SizedBox(height: 8),
-                              Text(
-                                match.away.name,
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                                textAlign: TextAlign.center,
-                                style: TextStyle(
-                                  color: _p.text,
-                                  fontSize: 12,
-                                  fontWeight: FontWeight.bold,
-                                ),
+                      // Away Club
+                      Expanded(
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            GlowingCrest(url: match.away.logo, size: 76),
+                            const SizedBox(height: 8),
+                            Text(
+                              match.away.name,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              textAlign: TextAlign.center,
+                              style: TextStyle(
+                                color: _p.text,
+                                fontSize: 12,
+                                fontWeight: FontWeight.bold,
                               ),
-                            ],
-                          ),
+                            ),
+                          ],
                         ),
-                      ],
-                    ),
+                      ),
+                    ],
                   ),
                 ),
-              ],
-            ),
+              ),
+            ],
           ),
         ),
       ),
@@ -1728,8 +1714,9 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
       return Container(
         padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
         decoration: BoxDecoration(
-          color: const Color(0xFFE50914).withOpacity(0.2),
+          color: Colors.black,
           borderRadius: BorderRadius.circular(8),
+          border: Border.all(color: Colors.white.withOpacity(0.14), width: 0.8),
         ),
         child: Text(
           cleanTime.isNotEmpty && cleanTime != 'VS' ? cleanTime : 'قادمة',
