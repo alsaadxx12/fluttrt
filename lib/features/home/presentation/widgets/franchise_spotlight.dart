@@ -19,16 +19,26 @@ import 'franchise_showcase.dart' show FranchiseScreen;
 /// poster again; then TMDB's backdrop for the same title and year, which
 /// is a real landscape still from the film; and nothing when neither has
 /// one, in which case the poster is shown cropped wide.
-typedef WideStillKey = ({String id, String title, String year});
+typedef WideStillKey = ({
+  String id,
+  String title,
+  String altTitle,
+  String year
+});
 
-/// The key for [spotlightBackdropProvider] from a catalogue item.
-WideStillKey wideStillKeyFor(CinemanaItem item) => (
-      id: item.id,
-      title: item.enTitle.trim().isNotEmpty
-          ? item.enTitle.trim()
-          : item.arTitle.trim(),
-      year: item.year.trim(),
-    );
+/// The key for [spotlightBackdropProvider] from a catalogue item: both of
+/// its names, since an Arabic or Turkish series is often on TMDB under
+/// the one the catalogue did not put first.
+WideStillKey wideStillKeyFor(CinemanaItem item) {
+  final en = item.enTitle.trim();
+  final ar = item.arTitle.trim();
+  return (
+    id: item.id,
+    title: en.isNotEmpty ? en : ar,
+    altTitle: en.isNotEmpty && ar != en ? ar : '',
+    year: item.year.trim(),
+  );
+}
 
 final spotlightBackdropProvider =
     FutureProvider.family<String?, WideStillKey>((ref, key) async {
@@ -48,9 +58,15 @@ final spotlightBackdropProvider =
   }
   if (key.title.isEmpty) return null;
   // TMDB by title and year; then by title alone, since a year the source
-  // guessed at is a year TMDB will not agree with.
+  // guessed at is a year TMDB will not agree with; then the other name.
   return await _tmdb.backdropForTitle(key.title, year: key.year) ??
-      (key.year.isEmpty ? null : await _tmdb.backdropForTitle(key.title));
+      (key.year.isEmpty ? null : await _tmdb.backdropForTitle(key.title)) ??
+      (key.altTitle.isEmpty
+          ? null
+          : await _tmdb.backdropForTitle(key.altTitle, year: key.year)) ??
+      (key.altTitle.isEmpty || key.year.isEmpty
+          ? null
+          : await _tmdb.backdropForTitle(key.altTitle));
 });
 
 final TmdbService _tmdb = TmdbService();
