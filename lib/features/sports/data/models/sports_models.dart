@@ -145,6 +145,25 @@ class SportMatchItem {
 
   bool get isScheduled => !isLive && !isEnded;
 
+  /// How long before kick-off a match opens.
+  static const Duration opensBefore = Duration(minutes: 15);
+
+  /// When the match can be opened: a quarter of an hour before kick-off.
+  /// Null when the kick-off is not known.
+  DateTime? get opensAt {
+    final ko = DateTime.tryParse(kickoffAt);
+    return ko == null ? null : ko.toLocal().subtract(opensBefore);
+  }
+
+  /// Whether the match can be opened now: one in play or over always, one
+  /// still to come only from a quarter of an hour before kick-off. A match
+  /// whose kick-off is not known is not kept out.
+  bool get canOpen {
+    if (isLive || isEnded) return true;
+    final at = opensAt;
+    return at == null || !DateTime.now().isBefore(at);
+  }
+
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||

@@ -940,7 +940,9 @@ class _SportsScreenState extends ConsumerState<SportsScreen> {
         color: Colors.transparent,
         child: InkWell(
           onTap: () {
-            if (isUpcoming) {
+            // A match still to come opens a quarter of an hour before
+            // kick-off, not earlier.
+            if (isUpcoming && !match.canOpen) {
               ScaffoldMessenger.of(context).removeCurrentSnackBar();
               final timeStr = _formatKickoff(match.kickoffAt);
               ScaffoldMessenger.of(context).showSnackBar(
@@ -952,8 +954,8 @@ class _SportsScreenState extends ConsumerState<SportsScreen> {
                       Expanded(
                         child: Text(
                           timeStr.isNotEmpty
-                              ? 'المباراة لم تبدأ بعد، سيبدأ البث المباشر في تمام الساعة $timeStr'
-                              : 'المباراة لم تبدأ بعد، سيتوفر البث المباشر فور انطلاقها',
+                              ? 'تُفتح المباراة قبل انطلاقها بربع ساعة، الانطلاق في تمام الساعة $timeStr'
+                              : 'تُفتح المباراة قبل انطلاقها بربع ساعة',
                           style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 12.5),
                         ),
                       ),

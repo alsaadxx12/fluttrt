@@ -1477,6 +1477,26 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
 
     return GestureDetector(
       onTap: () {
+        // A match still to come opens a quarter of an hour before
+        // kick-off, not earlier.
+        if (!match.canOpen) {
+          ScaffoldMessenger.of(context).removeCurrentSnackBar();
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(
+                matchTime != 'VS'
+                    ? 'تُفتح المباراة قبل انطلاقها بربع ساعة، الانطلاق في تمام الساعة $matchTime'
+                    : 'تُفتح المباراة قبل انطلاقها بربع ساعة',
+                style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 12.5),
+              ),
+              behavior: SnackBarBehavior.floating,
+              backgroundColor: const Color(0xFF1E2638),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+              duration: const Duration(seconds: 3),
+            ),
+          );
+          return;
+        }
         Navigator.of(context).push(
           MaterialPageRoute(
             builder: (_) => SportsPlayerScreen(match: match),
