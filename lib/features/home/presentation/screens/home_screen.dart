@@ -2218,41 +2218,22 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                   );
                 }
                 if (poster.isEmpty) return _buildPosterPlaceholder();
-                return Stack(
-                  fit: StackFit.expand,
-                  children: [
-                    // The same picture, blown up and blurred, fills the
-                    // width; the picture itself stands whole in front.
-                    ImageFiltered(
-                      imageFilter: ImageFilter.blur(sigmaX: 18, sigmaY: 18),
-                      child: CachedNetworkImage(
-                        imageUrl: poster,
-                        cacheManager: appImageCache,
-                        fit: BoxFit.cover,
-                        memCacheWidth: _hiResDecodeWidth(cardW / 3),
-                        fadeInDuration: Duration.zero,
-                        fadeOutDuration: Duration.zero,
-                        placeholderFadeInDuration: Duration.zero,
-                        placeholder: (_, __) => ColoredBox(color: _p.skeleton),
-                        errorWidget: (_, __, ___) =>
-                            ColoredBox(color: _p.skeleton),
-                      ),
-                    ),
-                    const ColoredBox(color: Color(0x66000000)),
-                    CachedNetworkImage(
-                      imageUrl: poster,
-                      cacheManager: appImageCache,
-                      fit: BoxFit.contain,
-                      filterQuality: FilterQuality.high,
-                      memCacheWidth: _hiResDecodeWidth(cardH * 2 / 3),
-                      fadeInDuration: Duration.zero,
-                      fadeOutDuration: Duration.zero,
-                      placeholderFadeInDuration: Duration.zero,
-                      useOldImageOnUrlChange: true,
-                      placeholder: (_, __) => const SizedBox.shrink(),
-                      errorWidget: (_, __, ___) => _buildPosterPlaceholder(),
-                    ),
-                  ],
+                // No landscape anywhere: the poster fills the wide card
+                // from its top, where the faces are. Never a narrow poster
+                // standing in the middle of a wide card.
+                return CachedNetworkImage(
+                  imageUrl: poster,
+                  cacheManager: appImageCache,
+                  fit: BoxFit.cover,
+                  alignment: Alignment.topCenter,
+                  filterQuality: FilterQuality.high,
+                  memCacheWidth: _hiResDecodeWidth(cardW),
+                  fadeInDuration: Duration.zero,
+                  fadeOutDuration: Duration.zero,
+                  placeholderFadeInDuration: Duration.zero,
+                  useOldImageOnUrlChange: true,
+                  placeholder: (_, __) => ColoredBox(color: _p.skeleton),
+                  errorWidget: (_, __, ___) => _buildPosterPlaceholder(),
                 );
               },
             ),
