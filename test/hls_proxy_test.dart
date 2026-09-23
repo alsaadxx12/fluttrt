@@ -38,6 +38,23 @@ void main() {
       expect(list.encrypted, isTrue);
     });
 
+    test('the first pieces sent leave the set about twelve seconds in hand, no more', () {
+      List<LivePiece> pieces(double seconds, int count) =>
+          List.generate(count, (i) => LivePiece('https://a/$i.ts', seconds));
+      expect(LocalStreamServer.liveStart(pieces(10, 7)), 5, reason: 'two ten-second pieces');
+      expect(LocalStreamServer.liveStart(pieces(4, 6)), 3, reason: 'three four-second pieces');
+      expect(LocalStreamServer.liveStart(pieces(30, 5)), 4, reason: 'one long piece is enough');
+      expect(LocalStreamServer.liveStart(pieces(10, 1)), 0);
+    });
+
+    test('the wall-clock time of each piece is carried forward from the one given', () {
+      const text = '#EXTM3U\n#EXT-X-PROGRAM-DATE-TIME:2026-09-23T14:00:00.000Z\n'
+          '#EXTINF:10,\na.ts\n#EXTINF:10,\nb.ts\n';
+      final list = LocalStreamServer.parsePlaylist(text, 'https://cdn.example.com/a/b.m3u8');
+      expect(list.pieces[0].at, DateTime.utc(2026, 9, 23, 14, 0, 0));
+      expect(list.pieces[1].at, DateTime.utc(2026, 9, 23, 14, 0, 10));
+    });
+
     test('a stream is a playlist by its type or its name', () {
       expect(LocalStreamServer.isPlaylist('application/x-mpegURL', 'https://a/b'), isTrue);
       expect(LocalStreamServer.isPlaylist(null, 'https://a/live.m3u8?token=1'), isTrue);

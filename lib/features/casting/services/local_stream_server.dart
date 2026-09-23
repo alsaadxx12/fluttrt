@@ -876,6 +876,9 @@ class LocalStreamServer {
     var variantNext = false;
     var variantBandwidth = 0;
     var duration = 0.0;
+    // The wall-clock time a piece starts, when the playlist says: given
+    // once and carried forward piece by piece.
+    DateTime? at;
     for (final raw in text.split('\n')) {
       final line = raw.trim();
       if (line.isEmpty) continue;
@@ -888,6 +891,8 @@ class LocalStreamServer {
           target = double.tryParse(after(line)) ?? target;
         } else if (line.startsWith('#EXT-X-ENDLIST')) {
           ended = true;
+        } else if (line.startsWith('#EXT-X-PROGRAM-DATE-TIME:')) {
+          at = DateTime.tryParse(after(line)) ?? at;
         } else if (line.startsWith('#EXT-X-MAP:')) {
           final m = RegExp(r'URI="([^"]+)"').firstMatch(line);
           if (m != null) init = resolve(m.group(1)!);
@@ -908,7 +913,8 @@ class LocalStreamServer {
         }
         continue;
       }
-      pieces.add(LivePiece(resolve(line), duration));
+      pieces.add(LivePiece(resolve(line), duration, at: at));
+      if (at != null) at = at.add(Duration(milliseconds: (duration * 1000).round()));
       duration = 0;
     }
     return LivePlaylist(
@@ -946,6 +952,7 @@ class LocalStreamServer {
     String? initSent;
     var misses = 0;
     var why = 'done';
+    var reported = 0;
     try {
       while (!gone()) {
         LivePlaylist? list;
@@ -964,11 +971,11 @@ class LocalStreamServer {
         }
         misses = 0;
         final pieces = list.pieces;
-        // The first time, from near the live edge - three pieces back, so
-        // the set has something to buffer. After that, from the piece after
-        // the last one sent; and when the window has moved past that, from
-        // the start of the window, with a gap the set will ride over.
-        var from = last < 0 ? max(0, pieces.length - 3) : last + 1 - list.sequence;
+        // The first time, from near the live edge, leaving the set a few
+        // seconds in hand. After that, from the piece after the last one
+        // sent; and when the window has moved past that, from the start of
+        // the window, with a gap the set will ride over.
+        var from = last < 0 ? liveStart(pieces) : last + 1 - list.sequence;
         if (from < 0) {
           debugPrint('[cast] live: fell ${-from} pieces behind; catching up');
           from = 0;
@@ -990,10 +997,27 @@ class LocalStreamServer {
           why = 'the channel ended';
           break;
         }
+        // How far behind the game the set is being kept, every half minute:
+        // the pieces not yet sent, and the age of the last one when the
+        // playlist says when each piece was.
+        if (clock.elapsedMilliseconds - reported > 30000 && pieces.isNotEmpty) {
+          reported = clock.elapsedMilliseconds;
+          final newest = list.sequence + pieces.length - 1;
+          final sentAt = last - list.sequence;
+          final piece = sentAt >= 0 && sentAt < pieces.length ? pieces[sentAt] : null;
+          final at = piece?.at;
+          final age = at == null
+              ? ''
+              : ', ${DateTime.now().toUtc().difference(at.toUtc()).inSeconds - piece!.duration.round()}s old';
+          debugPrint('[cast] live: at piece $last of $newest (${newest - last} back$age), '
+              '${(sent / 1e6).toStringAsFixed(1)}MB in ${(clock.elapsedMilliseconds / 1000).round()}s');
+        }
         if (!any) {
-          // Nothing new yet: back for the playlist in about half a piece.
-          final wait = ((pieces.isEmpty ? list.target : pieces.last.duration) * 500).round();
-          await Future<void>.delayed(Duration(milliseconds: wait.clamp(1000, 6000)));
+          // Nothing new yet: back for the playlist in a moment. A quarter
+          // of a piece, and never more than three seconds - every second
+          // waited here is a second further behind the game.
+          final wait = (list.target * 250).round();
+          await Future<void>.delayed(Duration(milliseconds: wait.clamp(1000, 3000)));
         }
       }
       await socket.flush();
@@ -1005,6 +1029,20 @@ class LocalStreamServer {
     if (why == 'done' && gone()) why = closed ? 'the set hung up' : 'casting stopped';
     debugPrint('[cast] live: ${(sent / 1e6).toStringAsFixed(1)}MB in ${(clock.elapsedMilliseconds / 1000).round()}s, '
         'last piece $last -> $why');
+  }
+
+  /// Where to begin in a playlist read for the first time: as close to the
+  /// end as leaves the set about twelve seconds in hand. Every piece back
+  /// from the end is that much further behind the game.
+  @visibleForTesting
+  static int liveStart(List<LivePiece> pieces) {
+    var covered = 0.0;
+    var i = pieces.length;
+    while (i > 0 && covered < 12) {
+      i--;
+      covered += pieces[i].duration > 0 ? pieces[i].duration : 6;
+    }
+    return i;
   }
 
   /// Copies one piece to the set; false when it could not be fetched.
@@ -1614,12 +1652,15 @@ class LivePlaylist {
 
 /// One piece of a live channel.
 class LivePiece {
-  const LivePiece(this.url, this.duration);
+  const LivePiece(this.url, this.duration, {this.at});
 
   final String url;
 
   /// In seconds.
   final double duration;
+
+  /// When the piece starts, by the wall clock, if the playlist said.
+  final DateTime? at;
 }
 
 class _Source {
