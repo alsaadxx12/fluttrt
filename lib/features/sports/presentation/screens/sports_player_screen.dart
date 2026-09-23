@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:io';
 import 'package:flutter/material.dart';
+import 'package:youtube_downloader/presentation/widgets/pinch_zoom.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:media_kit/media_kit.dart';
@@ -157,9 +158,11 @@ class _SportsPlayerScreenState extends ConsumerState<_SportsPlayerBody> with Wid
   bool _isPlaying = true;
   Timer? _hideControlsTimer;
   int _streamLoadToken = 0;
-  // Cover from the start: the picture fills the screen with its shape
-  // kept and a sliver cropped at the sides, never black bars.
-  BoxFit _videoFit = BoxFit.cover;
+  // Filling the screen from the start, as it always did; the fit button
+  // cycles fill, cover and the original shape, and a pinch zooms any of
+  // them.
+  BoxFit _videoFit = BoxFit.fill;
+  final ZoomController _zoom = ZoomController();
   String? _fitToastText;
   Timer? _fitToastTimer;
 
@@ -178,12 +181,12 @@ class _SportsPlayerScreenState extends ConsumerState<_SportsPlayerBody> with Wid
 
   void _cycleVideoFit() {
     setState(() {
-      if (_videoFit == BoxFit.cover) {
-        _videoFit = BoxFit.fill;
-      } else if (_videoFit == BoxFit.fill) {
+      if (_videoFit == BoxFit.fill) {
+        _videoFit = BoxFit.cover;
+      } else if (_videoFit == BoxFit.cover) {
         _videoFit = BoxFit.contain;
       } else {
-        _videoFit = BoxFit.cover;
+        _videoFit = BoxFit.fill;
       }
     });
     _showFitToast(_videoFitTitle);
@@ -252,6 +255,7 @@ class _SportsPlayerScreenState extends ConsumerState<_SportsPlayerBody> with Wid
 
   @override
   void dispose() {
+    _zoom.dispose();
     WidgetsBinding.instance.removeObserver(this);
     _hideControlsTimer?.cancel();
     _winFullscreenSub?.cancel();
@@ -1394,12 +1398,9 @@ class _SportsPlayerScreenState extends ConsumerState<_SportsPlayerBody> with Wid
                 ? win_web.Webview(_winWebController!)
                 : (_webController != null ? WebViewWidget(controller: _webController!) : const SizedBox.shrink())
           else if (isDesktop && _desktopVideoController != null)
-            SizedBox.expand(
+Zoomed(zoom: _zoom, child:             SizedBox.expand(
               child: FittedBox(
                 fit: _videoFit,
-                // Anchored to the top: what a cover crops comes off the
-                // foot of the picture, never the scoreboard at its head.
-                alignment: Alignment.topCenter,
                 clipBehavior: Clip.hardEdge,
                 child: SizedBox(
                   width: 16,
@@ -1410,13 +1411,12 @@ class _SportsPlayerScreenState extends ConsumerState<_SportsPlayerBody> with Wid
                   ),
                 ),
               ),
-            )
+            ))
           else if (v != null && v.value.isInitialized)
-            ClipRect(
+Zoomed(zoom: _zoom, child:             ClipRect(
               child: SizedBox.expand(
                 child: FittedBox(
                   fit: _videoFit,
-                  alignment: Alignment.topCenter,
                   clipBehavior: Clip.hardEdge,
                   child: Transform.scale(
                     scaleX: 1.018,
@@ -1431,7 +1431,7 @@ class _SportsPlayerScreenState extends ConsumerState<_SportsPlayerBody> with Wid
                   ),
                 ),
               ),
-            ),
+            )),
           // Watermark Shield: Solid dark frosted badge with App Logo covering the broadcaster logo/ad in top-right
           Positioned(
             top: fullscreen ? 4 : 2,
@@ -1502,6 +1502,8 @@ class _SportsPlayerScreenState extends ConsumerState<_SportsPlayerBody> with Wid
       },
       child: GestureDetector(
         onTap: _toggleControls,
+        onScaleStart: (_) => _zoom.begin(),
+        onScaleUpdate: (d) => _zoom.update(d.scale),
         onDoubleTap: () => _setFullscreen(!fullscreen),
         behavior: HitTestBehavior.opaque,
         child: playerWidget,
@@ -1594,6 +1596,8 @@ class _SportsPlayerScreenState extends ConsumerState<_SportsPlayerBody> with Wid
             Positioned.fill(
               child: GestureDetector(
                 onTap: _toggleControls,
+                onScaleStart: (_) => _zoom.begin(),
+                onScaleUpdate: (d) => _zoom.update(d.scale),
                 onDoubleTap: () => _setFullscreen(!fullscreen),
                 behavior: HitTestBehavior.translucent,
                 child: const SizedBox.expand(),

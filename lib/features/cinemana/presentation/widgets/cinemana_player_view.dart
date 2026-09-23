@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:youtube_downloader/presentation/widgets/pinch_zoom.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:video_player/video_player.dart';
 
@@ -117,10 +118,11 @@ class _CinemanaPlayerViewState extends State<CinemanaPlayerView> {
 
   bool _controlsVisible = true;
 
-  /// Full screen fills the screen: the picture keeps its shape and a
-  /// sliver is cropped at the foot (never the head), instead of black
-  /// bars round it. Off, the whole picture shows, bars and all.
-  bool _cover = true;
+  /// The whole picture at 1; a pinch on it zooms in, a button jumps to
+  /// the zoom that fills the screen and back.
+  final ZoomController _zoom = ZoomController();
+  BoxConstraints? _lastBox;
+  double _lastAr = 16 / 9;
   Timer? _hideTimer;
   double? _dragMs; // seek bar position while dragging
   bool _preview = false; // sample subtitle line after a settings change
@@ -132,6 +134,7 @@ class _CinemanaPlayerViewState extends State<CinemanaPlayerView> {
   @override
   void initState() {
     super.initState();
+    _zoom.addListener(_onZoom);
     widget.controller?.addListener(_onVideo);
     _scheduleHide();
   }
@@ -150,6 +153,8 @@ class _CinemanaPlayerViewState extends State<CinemanaPlayerView> {
 
   @override
   void dispose() {
+    _zoom.removeListener(_onZoom);
+    _zoom.dispose();
     widget.controller?.removeListener(_onVideo);
     _hideTimer?.cancel();
     _previewTimer?.cancel();
@@ -245,34 +250,28 @@ class _CinemanaPlayerViewState extends State<CinemanaPlayerView> {
     final showView = ready || (c != null && isDesktopVideo);
     return ColoredBox(
       color: Colors.black,
-      child: LayoutBuilder(
-        builder: (context, box) => Stack(
+      child: LayoutBuilder(builder: (context, box) {
+        _lastBox = box;
+        if (c != null && c.value.aspectRatio > 0) _lastAr = c.value.aspectRatio;
+        return Stack(
           fit: StackFit.expand,
           children: [
-            if (showView && widget.fullscreen && _cover)
-              SizedBox.expand(
-                child: FittedBox(
-                  fit: BoxFit.cover,
-                  alignment: Alignment.topCenter,
-                  clipBehavior: Clip.hardEdge,
-                  child: SizedBox(
-                    width: c.value.size.width > 0 ? c.value.size.width : 1280,
-                    height: c.value.size.height > 0 ? c.value.size.height : 720,
+            if (showView)
+              Zoomed(
+                zoom: _zoom,
+                child: Center(
+                  child: AspectRatio(
+                    aspectRatio: c.value.aspectRatio > 0 ? c.value.aspectRatio : 16 / 9,
                     child: VideoPlayer(c),
                   ),
-                ),
-              )
-            else if (showView)
-              Center(
-                child: AspectRatio(
-                  aspectRatio: c.value.aspectRatio > 0 ? c.value.aspectRatio : 16 / 9,
-                  child: VideoPlayer(c),
                 ),
               ),
             // Tap: show/hide controls. Double-tap a side: ±10 s.
             GestureDetector(
               behavior: HitTestBehavior.opaque,
               onTap: _toggleControls,
+              onScaleStart: (_) => _zoom.begin(),
+              onScaleUpdate: (d) => _zoom.update(d.scale),
               onDoubleTapDown: (d) => _doubleTapAt = d.localPosition,
               onDoubleTap: () => _onDoubleTap(box.maxWidth),
             ),
@@ -294,9 +293,20 @@ class _CinemanaPlayerViewState extends State<CinemanaPlayerView> {
               ),
             _controlsLayer(box, ready),
           ],
-        ),
-      ),
+        );
+      }),
     );
+  }
+
+  void _onZoom() {
+    if (mounted) setState(() {});
+  }
+
+  void _toggleZoom() {
+    final box = _lastBox;
+    if (box == null) return;
+    _zoom.toggle(boxW: box.maxWidth, boxH: box.maxHeight, aspect: _lastAr);
+    _scheduleHide();
   }
 
   Widget _errorView(String message) => Center(
@@ -374,9 +384,10 @@ class _CinemanaPlayerViewState extends State<CinemanaPlayerView> {
     // The picture's own box inside the player (letterboxing aside), so the
     // subtitles sit on the video rather than on the black bars.
     final ar = c.value.aspectRatio > 0 ? c.value.aspectRatio : 16 / 9;
-    final covering = widget.fullscreen && _cover;
-    final videoH = covering ? box.maxHeight : (box.maxWidth / ar).clamp(0.0, box.maxHeight);
-    final barsH = covering ? 0.0 : (box.maxHeight - videoH) / 2;
+    // The picture's own box, as zoomed, so the subtitles sit on the video
+    // rather than on the black bars (which shrink as the zoom grows).
+    final videoH = ((box.maxWidth / ar).clamp(0.0, box.maxHeight) * _zoom.value).clamp(0.0, box.maxHeight);
+    final barsH = (box.maxHeight - videoH) / 2;
     final fontSize = (videoH * SubtitleSettings.scales[s.size]).clamp(11.0, 46.0);
     var bottom = barsH + videoH * (0.045 + s.lift);
     // Out of the way of the seek bar while it is showing.
@@ -532,33 +543,27 @@ class _CinemanaPlayerViewState extends State<CinemanaPlayerView> {
                   tip: s.on ? 'إخفاء الترجمة' : 'إظهار الترجمة',
                 ),
                 if (s.on) ...[
-                  _roundButton(Icons.text_decrease_rounded,
-                      s.canShrink ? () => _setSubs(s.copyWith(size: s.size - 1)) : null,
+                  _roundButton(
+                      Icons.text_decrease_rounded, s.canShrink ? () => _setSubs(s.copyWith(size: s.size - 1)) : null,
                       tip: 'تصغير الخط'),
-                  _roundButton(Icons.text_increase_rounded,
-                      s.canGrow ? () => _setSubs(s.copyWith(size: s.size + 1)) : null,
+                  _roundButton(
+                      Icons.text_increase_rounded, s.canGrow ? () => _setSubs(s.copyWith(size: s.size + 1)) : null,
                       tip: 'تكبير الخط'),
-                  _roundButton(
-                      Icons.keyboard_arrow_down_rounded,
-                      s.canLower
-                          ? () => _setSubs(s.copyWith(lift: s.lift - SubtitleSettings.liftStep))
-                          : null,
+                  _roundButton(Icons.keyboard_arrow_down_rounded,
+                      s.canLower ? () => _setSubs(s.copyWith(lift: s.lift - SubtitleSettings.liftStep)) : null,
                       tip: 'إنزال الترجمة'),
-                  _roundButton(
-                      Icons.keyboard_arrow_up_rounded,
-                      s.canRaise
-                          ? () => _setSubs(s.copyWith(lift: s.lift + SubtitleSettings.liftStep))
-                          : null,
+                  _roundButton(Icons.keyboard_arrow_up_rounded,
+                      s.canRaise ? () => _setSubs(s.copyWith(lift: s.lift + SubtitleSettings.liftStep)) : null,
                       tip: 'رفع الترجمة'),
                 ],
               ],
               if (widget.streams.length > 1) _qualityMenu(),
               if (widget.fullscreen)
                 _roundButton(
-                  _cover ? Icons.crop_free_rounded : Icons.fit_screen_rounded,
-                  () => setState(() => _cover = !_cover),
+                  _zoom.isWhole ? Icons.fit_screen_rounded : Icons.crop_free_rounded,
+                  _toggleZoom,
                   size: 22,
-                  tip: _cover ? 'الأبعاد الأصلية' : 'ملء الشاشة بلا حواف',
+                  tip: _zoom.isWhole ? 'ملء الشاشة' : 'الأبعاد الأصلية',
                 ),
               _roundButton(
                 widget.fullscreen ? Icons.fullscreen_exit_rounded : Icons.fullscreen_rounded,
@@ -654,8 +659,7 @@ class _CinemanaPlayerViewState extends State<CinemanaPlayerView> {
             valueListenable: c,
             builder: (_, v, __) {
               final total = v.duration.inMilliseconds.toDouble();
-              final pos =
-                  (_dragMs ?? v.position.inMilliseconds.toDouble()).clamp(0.0, total > 0 ? total : 0.0);
+              final pos = (_dragMs ?? v.position.inMilliseconds.toDouble()).clamp(0.0, total > 0 ? total : 0.0);
               final buffered = v.buffered.isEmpty ? 0.0 : v.buffered.last.end.inMilliseconds.toDouble();
               const timeStyle = TextStyle(color: Colors.white, fontSize: 11.5, fontWeight: FontWeight.w600);
               return Row(
@@ -708,10 +712,10 @@ class _CinemanaPlayerViewState extends State<CinemanaPlayerView> {
                   const SizedBox(width: 4),
                   if (widget.fullscreen)
                     _roundButton(
-                      _cover ? Icons.crop_free_rounded : Icons.fit_screen_rounded,
-                      () => setState(() => _cover = !_cover),
+                      _zoom.isWhole ? Icons.fit_screen_rounded : Icons.crop_free_rounded,
+                      _toggleZoom,
                       size: 24,
-                      tip: _cover ? 'الأبعاد الأصلية' : 'ملء الشاشة بلا حواف',
+                      tip: _zoom.isWhole ? 'ملء الشاشة' : 'الأبعاد الأصلية',
                     ),
                   _roundButton(
                     widget.fullscreen ? Icons.fullscreen_exit_rounded : Icons.fullscreen_rounded,

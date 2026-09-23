@@ -9,6 +9,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:media_kit/media_kit.dart';
 import 'package:media_kit_video/media_kit_video.dart';
 import 'package:video_player/video_player.dart';
+import 'package:youtube_downloader/presentation/widgets/pinch_zoom.dart';
 
 import '../../casting/controllers/cast_controller.dart';
 import '../../casting/services/cast_media_source.dart';
@@ -58,6 +59,9 @@ class _ShahidPlayerScreenState extends ConsumerState<ShahidPlayerScreen> {
   int _openToken = 0;
 
   LocalStreamServer? _relay;
+
+  /// The whole picture at 1; a pinch zooms in, the button fills the screen.
+  final ZoomController _zoom = ZoomController();
 
   @override
   void initState() {
@@ -272,6 +276,14 @@ class _ShahidPlayerScreenState extends ConsumerState<ShahidPlayerScreen> {
   /// they go away on their own, four seconds after it lifts. They used to
   /// toggle on the tap itself, and a tap while they were up put them away
   /// the moment the finger lifted.
+  void _toggleZoom() {
+    final size = MediaQuery.of(context).size;
+    final v = _video;
+    final aspect = v != null && v.value.isInitialized && v.value.aspectRatio > 0 ? v.value.aspectRatio : 16 / 9;
+    setState(() => _zoom.toggle(boxW: size.width, boxH: size.height, aspect: aspect));
+    _scheduleHide();
+  }
+
   void _holdControls() {
     _hideControls?.cancel();
     if (!_controlsVisible) setState(() => _controlsVisible = true);
@@ -333,6 +345,7 @@ class _ShahidPlayerScreenState extends ConsumerState<ShahidPlayerScreen> {
 
   @override
   void dispose() {
+    _zoom.dispose();
     _relay?.clear();
     _hideControls?.cancel();
     _video?.removeListener(_onVideoEvent);
@@ -368,6 +381,8 @@ class _ShahidPlayerScreenState extends ConsumerState<ShahidPlayerScreen> {
         onTapDown: (_) => _holdControls(),
         onTap: _toggleControls,
         onTapCancel: _scheduleHide,
+        onScaleStart: (_) => _zoom.begin(),
+        onScaleUpdate: (d) => _zoom.update(d.scale),
         // Filling whatever it is given: a stack left to size itself round
         // a spinner put the spinner in the corner of the screen.
         child: SizedBox.expand(
@@ -376,19 +391,14 @@ class _ShahidPlayerScreenState extends ConsumerState<ShahidPlayerScreen> {
             child: Stack(
               alignment: Alignment.center,
               children: [
-                // The picture fills whatever it is given, its own shape kept
-                // and its edges cropped: no black bars beside a 16:9 picture
-                // on a wider screen.
+                // The whole picture in its own shape, and a pinch (or the
+                // button) to bring it in as far as wanted.
                 if (isDesktop && _desktopVideoController != null)
-                  SizedBox.expand(
-                    child: FittedBox(
-                      fit: BoxFit.cover,
-                      // Cropped at the foot, never the head.
-                      alignment: Alignment.topCenter,
-                      clipBehavior: Clip.hardEdge,
-                      child: SizedBox(
-                        width: 16,
-                        height: 9,
+                  Zoomed(
+                    zoom: _zoom,
+                    child: Center(
+                      child: AspectRatio(
+                        aspectRatio: 16 / 9,
                         child: Video(
                           controller: _desktopVideoController!,
                           controls: NoVideoControls,
@@ -397,15 +407,11 @@ class _ShahidPlayerScreenState extends ConsumerState<ShahidPlayerScreen> {
                     ),
                   )
                 else if (v != null && v.value.isInitialized)
-                  SizedBox.expand(
-                    child: FittedBox(
-                      fit: BoxFit.cover,
-                      // Cropped at the foot, never the head.
-                      alignment: Alignment.topCenter,
-                      clipBehavior: Clip.hardEdge,
-                      child: SizedBox(
-                        width: v.value.size.width > 0 ? v.value.size.width : 1280,
-                        height: v.value.size.height > 0 ? v.value.size.height : 720,
+                  Zoomed(
+                    zoom: _zoom,
+                    child: Center(
+                      child: AspectRatio(
+                        aspectRatio: v.value.aspectRatio == 0 ? 16 / 9 : v.value.aspectRatio,
                         child: VideoPlayer(v),
                       ),
                     ),
@@ -499,6 +505,21 @@ class _ShahidPlayerScreenState extends ConsumerState<ShahidPlayerScreen> {
                       ),
                     ),
                   ),
+                  // Between the whole picture and one that fills the screen.
+                  if (_fullscreen)
+                    PositionedDirectional(
+                      bottom: 8,
+                      end: 96,
+                      child: IconButton(
+                        onPressed: _toggleZoom,
+                        tooltip: _zoom.isWhole ? 'ملء الشاشة' : 'الأبعاد الأصلية',
+                        icon: Icon(
+                          _zoom.isWhole ? Icons.fit_screen_rounded : Icons.crop_free_rounded,
+                          color: Colors.white,
+                          size: 24,
+                        ),
+                      ),
+                    ),
                   // To the television, from the picture itself.
                   if (_fullscreen)
                     PositionedDirectional(
