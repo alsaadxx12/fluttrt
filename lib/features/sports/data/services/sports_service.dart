@@ -412,8 +412,13 @@ class SportsService {
     }
   }
 
+  /// Arabic diacritics and the tatweel, which one feed writes and another
+  /// leaves out: the page says «عُمان» where the API says «عمان».
+  static final RegExp _tashkeel = RegExp(r'[\u064B-\u0652\u0670\u0640]');
+
   String cleanTeamNameForMatch(String name) {
     return name
+        .replaceAll(_tashkeel, '')
         .toLowerCase()
         .replaceAll(RegExp(r'^(نادي|نادى|فريق|ديبورتيفو)\s+'), '')
         .replaceAll(RegExp(r'\s+(fc|cf|sc|afc|ssc)$', caseSensitive: false), '')
@@ -502,7 +507,6 @@ class SportsService {
       final Map<String, List<SportMatchItem>> groupedByLeague = {};
       final Set<String> seenMatchLinks = {};
       final Set<String> seenMatchTeams = {};
-      final now = DateTime.now();
       int matchCounter = 0;
 
       for (int i = 1; i < blocks.length; i++) {
@@ -596,20 +600,18 @@ class SportsService {
           awayScore = awayScore ?? 0;
         }
 
-        // Kickoff time
+        // Kickoff time. Once a match is under way the page shows the score
+        // where the time was, and says nothing else about when it began -
+        // so the time is left empty here and filled in from 365scores below
+        // (see fillKickoffs). It used to default to noon, and every live
+        // match was shown as kicking off at three in the afternoon.
         String kickoffAt;
         if (dataStart != null && dataStart > 0) {
           kickoffAt = DateTime.fromMillisecondsSinceEpoch(dataStart * 1000, isUtc: true).toIso8601String();
         } else if (scoreTime.contains(':')) {
           kickoffAt = parseTimeToUtcIso(scoreTime, day: day);
         } else {
-          var targetDate = now;
-          if (day == 'yesterday' || isYesterdayMatch) {
-            targetDate = now.subtract(const Duration(days: 1));
-          } else if (day == 'tomorrow') {
-            targetDate = now.add(const Duration(days: 1));
-          }
-          kickoffAt = DateTime.utc(targetDate.year, targetDate.month, targetDate.day, 12, 0).toIso8601String();
+          kickoffAt = '';
         }
 
         // ID from URL suffix or counter
@@ -648,6 +650,29 @@ class SportsService {
         groupedByLeague.putIfAbsent(groupLeague, () => []).add(item);
       }
 
+      // Matches the page gave no kick-off time for get it from 365scores,
+      // which knows when every game began and how far into it we are.
+      final unknown = groupedByLeague.values.expand((l) => l).where((m) => m.kickoffAt.isEmpty).length;
+      if (unknown > 0) {
+        final reference = <SportMatchItem>[];
+        try {
+          for (final g in await fetch365Matches(day: day)) {
+            reference.addAll(g.matches);
+          }
+        } catch (e) {
+          debugPrint('[sports] 365 kick-off times: $e');
+        }
+        var filled = 0;
+        for (final list in groupedByLeague.values) {
+          for (var i = 0; i < list.length; i++) {
+            final fixed = fillKickoff(list[i], reference, agree: matchesTeams);
+            if (fixed.kickoffAt.isNotEmpty && list[i].kickoffAt.isEmpty) filled++;
+            list[i] = fixed;
+          }
+        }
+        debugPrint('[sports] $unknown matches without a kick-off time on the page; $filled filled from 365scores');
+      }
+
       int leagueCounter = 1;
       final List<LeagueGroup> groups = [];
       for (final entry in groupedByLeague.entries) {
@@ -663,6 +688,24 @@ class SportsService {
       debugPrint('[SPORTS] fetchKoraX90Matches error: $e');
       return [];
     }
+  }
+
+  /// [item] with its kick-off time (and the minute of play, when it has
+  /// none) taken from the record in [reference] for the same fixture.
+  /// Unchanged when it already has a time or no record agrees.
+  static SportMatchItem fillKickoff(
+    SportMatchItem item,
+    List<SportMatchItem> reference, {
+    required bool Function(String h1, String a1, String h2, String a2) agree,
+  }) {
+    if (item.kickoffAt.isNotEmpty) return item;
+    for (final other in reference) {
+      if (other.kickoffAt.isEmpty) continue;
+      if (agree(item.home.name, item.away.name, other.home.name, other.away.name)) {
+        return item.copyWith(kickoffAt: other.kickoffAt, minute: item.minute ?? other.minute);
+      }
+    }
+    return item;
   }
 
   /// Resolves direct stream servers for a Kora x90 match URL
@@ -1175,7 +1218,7 @@ class SportsService {
   /// A team's name as something two sources can agree on: no «نادي» or
   /// «منتخب» in front, no FC behind, no definite article, lower case.
   static String _teamKey(String? name) {
-    var s = (name ?? '').trim().toLowerCase();
+    var s = (name ?? '').replaceAll(_tashkeel, '').trim().toLowerCase();
     if (s.isEmpty) return '';
     s = s
         .replaceAll(RegExp(r'^(نادي|نادى|فريق|منتخب)\s+'), '')
