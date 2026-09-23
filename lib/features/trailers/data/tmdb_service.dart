@@ -158,6 +158,13 @@ class TmdbService {
       if (q.isNotEmpty && year != null && year.isNotEmpty) () => _searchBackdrop('/search/multi', q, lang),
     ];
     var h = cleanTitle(hint ?? '');
+    // A title the region knows by its own name, which TMDB does not list
+    // as a translation: the original is asked for straight away.
+    final known = knownOriginals[q];
+    if (known != null) {
+      tries.insert(0, () => _searchBackdrop(series == false ? '/search/movie' : '/search/tv', known, 'tr-TR'));
+      tries.insert(1, () => _searchBackdrop('/search/multi', known, 'en-US'));
+    }
     if (h.isEmpty && arabic) {
       // A listing in two scripts («الأسيرة Esaret») carries the original
       // name in the Latin half.
@@ -205,6 +212,37 @@ class TmdbService {
     } catch (_) {}
     return null;
   }
+
+  /// Arabic names of series the region watches, by the original names
+  /// TMDB lists them under. Only the ones TMDB's Arabic translations do
+  /// not cover; the rest are found by the Arabic name itself.
+  static const Map<String, String> knownOriginals = {
+    'وادي الذئاب': 'Kurtlar Vadisi',
+    'وادى الذئاب': 'Kurtlar Vadisi',
+    'حب أبيض وأسود': 'Siyah Beyaz Aşk',
+    'حب ابيض واسود': 'Siyah Beyaz Aşk',
+    'حب أعمى': 'Kara Sevda',
+    'حب اعمى': 'Kara Sevda',
+    'عاصمة عبد الحميد': 'Payitaht Abdülhamid',
+    'الأسيرة': 'Esaret',
+    'الاسيرة': 'Esaret',
+    'انت من احببت': 'Sevdiğim Sensin',
+    'أنت من أحببت': 'Sevdiğim Sensin',
+    'قيامة أرطغرل': 'Diriliş: Ertuğrul',
+    'قيامة ارطغرل': 'Diriliş: Ertuğrul',
+    'المؤسس عثمان': 'Kuruluş: Osman',
+    'العشق الممنوع': 'Aşk-ı Memnu',
+    'حريم السلطان': 'Muhteşem Yüzyıl',
+    'العشق الأسود': 'Kara Sevda',
+    'الحفرة': 'Çukur',
+    'المتوحش': 'Yabani',
+    'طائر الرفراف': 'Yalı Çapkını',
+    'الطائر المبكر': 'Erkenci Kuş',
+    'المدينة البعيدة': 'Uzak Şehir',
+    'الغرفة الحمراء': 'Kırmızı Oda',
+    'أمي': 'Anne',
+    'سراج الليل': 'Gece Lambası',
+  };
 
   /// The title as TMDB would know it: without the words a catalogue
   /// listing adds («مسلسل», «مدبلج», «Dubbed», a season or an episode,
