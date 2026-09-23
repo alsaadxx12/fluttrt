@@ -1,15 +1,15 @@
 {
   "updateEnabled": true,
-  "versionCode": 2192,
-  "versionName": "1.0.186",
-  "apkUrl": "https://cineball.netlify.app/download/app.apk?v=192",
-  "apkUrlArm64": "https://cineball.netlify.app/download/app-arm64-v8a-release.apk?v=192",
-  "apkUrlArm32": "https://cineball.netlify.app/download/app-armeabi-v7a-release.apk?v=192",
-  "sha256": "c6469291a1f50c39a9234897b86cb440ad82ad1e20b89f0beaa3ea6b70ea8fba",
-  "sha256Arm64": "c6469291a1f50c39a9234897b86cb440ad82ad1e20b89f0beaa3ea6b70ea8fba",
-  "sha256Arm32": "c15b1c86c42aab18de8ea59176be4124554da555383d2a2738cd66fa228f7959",
-  "sizeBytes": 25532536,
+  "versionCode": 2193,
+  "versionName": "1.0.187",
+  "apkUrl": "https://cineball.netlify.app/download/app.apk?v=193",
+  "apkUrlArm64": "https://cineball.netlify.app/download/app-arm64-v8a-release.apk?v=193",
+  "apkUrlArm32": "https://cineball.netlify.app/download/app-armeabi-v7a-release.apk?v=193",
+  "sha256": "39ba121c2b4170edad22b22daadb3076d7e433684666b362eddbc29be9635ab7",
+  "sha256Arm64": "39ba121c2b4170edad22b22daadb3076d7e433684666b362eddbc29be9635ab7",
+  "sha256Arm32": "9bc62e21486213b88074aa5c8ebd505d996f03c5e717bab870db3c8ddfe0c66f",
+  "sizeBytes": 25526319,
   "forceUpdate": false,
   "minSupportedVersion": 1,
-  "notes": "قنوات الكأس: بطاقات أكبر بأسمائها، وعرض فوري بملء الشاشة مع التبديل والبث على التلفاز"
+  "notes": "صفحة مباريات اليوم فقط، بطاقات مباريات سوداء، وقنوات الكأس بملء الشاشة"
 }
