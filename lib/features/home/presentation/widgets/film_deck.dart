@@ -37,7 +37,8 @@ class _FilmDeckState extends ConsumerState<FilmDeck> {
 
   @override
   Widget build(BuildContext context) {
-    final films = (ref.watch(homeLatestMoviesProvider).valueOrNull ?? const <CinemanaItem>[])
+    final films = (ref.watch(homeLatestMoviesProvider).valueOrNull ??
+            const <CinemanaItem>[])
         .where((f) => f.cardImageUrl.isNotEmpty)
         .take(_limit)
         .toList();
@@ -50,7 +51,8 @@ class _FilmDeckState extends ConsumerState<FilmDeck> {
     final targetCardWidth = w > 800 ? (w * 0.46).clamp(420.0, 560.0) : w * 0.86;
     final fraction = (targetCardWidth / w).clamp(0.35, 0.92);
     if (_pages == null || (fraction - _lastFraction).abs() > 0.01) {
-      final initial = _pages?.hasClients == true ? (_pages!.page ?? 0).round() : _index;
+      final initial =
+          _pages?.hasClients == true ? (_pages!.page ?? 0).round() : _index;
       _pages?.dispose();
       _pages = PageController(viewportFraction: fraction, initialPage: initial);
       _lastFraction = fraction;
@@ -108,8 +110,14 @@ class _Handle extends StatelessWidget {
           height: 96,
           decoration: const BoxDecoration(
             color: Color(0xFFE50914),
-            borderRadius: BorderRadius.only(topLeft: Radius.circular(13), bottomLeft: Radius.circular(13)),
-            boxShadow: [BoxShadow(color: Color(0x66000000), blurRadius: 12, offset: Offset(-3, 3))],
+            borderRadius: BorderRadius.only(
+                topLeft: Radius.circular(13), bottomLeft: Radius.circular(13)),
+            boxShadow: [
+              BoxShadow(
+                  color: Color(0x66000000),
+                  blurRadius: 12,
+                  offset: Offset(-3, 3))
+            ],
           ),
           child: const Column(
             mainAxisAlignment: MainAxisAlignment.center,
@@ -155,14 +163,18 @@ class _Hand extends StatelessWidget {
             itemBuilder: (context, i) => AnimatedBuilder(
               animation: controller,
               builder: (context, child) {
-                final page = controller.position.haveDimensions ? (controller.page ?? index.toDouble()) : index.toDouble();
+                final page = controller.position.haveDimensions
+                    ? (controller.page ?? index.toDouble())
+                    : index.toDouble();
                 final d = (page - i).clamp(-1.5, 1.5);
                 // Cards either side lie back and tilt, the way a hand fans.
                 return Transform.rotate(
                   angle: d * 0.08,
                   child: Transform.scale(
                     scale: 1 - d.abs() * 0.12,
-                    child: Opacity(opacity: (1 - d.abs() * 0.4).clamp(0.0, 1.0), child: child),
+                    child: Opacity(
+                        opacity: (1 - d.abs() * 0.4).clamp(0.0, 1.0),
+                        child: child),
                   ),
                 );
               },
@@ -205,7 +217,8 @@ class _FilmCard extends StatelessWidget {
     final p = AppPalette.of(context);
     final dpr = MediaQuery.of(context).devicePixelRatio;
     // Use highest resolution image available: bestPosterUrl or imgUrl
-    final posterUrl = film.bestPosterUrl.isNotEmpty ? film.bestPosterUrl : film.cardImageUrl;
+    final posterUrl =
+        film.bestPosterUrl.isNotEmpty ? film.bestPosterUrl : film.cardImageUrl;
 
     return GestureDetector(
       onTap: () {
@@ -239,42 +252,6 @@ class _FilmCard extends StatelessWidget {
               errorWidget: (_, __, ___) => ColoredBox(
                 color: p.skeleton,
                 child: Icon(Icons.movie_rounded, color: p.textFaint, size: 40),
-              ),
-            ),
-            // Keeps the title readable over any poster.
-            const DecoratedBox(
-              decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  begin: Alignment.topCenter,
-                  end: Alignment.bottomCenter,
-                  colors: [Colors.transparent, Color(0xE6000000)],
-                  stops: [0.5, 1.0],
-                ),
-              ),
-            ),
-            Positioned(
-              left: 12,
-              right: 12,
-              bottom: 12,
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Row(
-                    children: [
-                      if (film.year.trim().isNotEmpty)
-                        Text(film.year.trim(),
-                            style: const TextStyle(color: Colors.white70, fontSize: 11.5, fontWeight: FontWeight.w700)),
-                      if (film.stars.trim().isNotEmpty) ...[
-                        const SizedBox(width: 10),
-                        const Icon(Icons.star_rounded, color: Color(0xFFFFB800), size: 14),
-                        const SizedBox(width: 3),
-                        Text(film.stars.trim(),
-                            style: const TextStyle(color: Colors.white, fontSize: 11.5, fontWeight: FontWeight.w800)),
-                      ],
-                    ],
-                  ),
-                ],
               ),
             ),
           ],

@@ -257,7 +257,6 @@ class _FranchiseCard extends ConsumerWidget {
     if (async.hasValue && films.length < DynamicFranchise.minParts)
       return const SizedBox.shrink();
 
-
     return FranchisePressable(
       onTap: films.isEmpty
           ? null
@@ -591,25 +590,6 @@ class _FranchiseFilmTileState extends State<FranchiseFilmTile> {
                 ),
               ),
 
-              // 2. Smooth Dark Gradient Overlay for perfect readability
-              const Positioned.fill(
-                child: DecoratedBox(
-                  decoration: BoxDecoration(
-                    gradient: LinearGradient(
-                      begin: Alignment.topCenter,
-                      end: Alignment.bottomCenter,
-                      colors: [
-                        Colors.transparent,
-                        Color(0x20000000),
-                        Color(0xB5000000),
-                        Color(0xF0000000),
-                      ],
-                      stops: [0.0, 0.42, 0.74, 1.0],
-                    ),
-                  ),
-                ),
-              ),
-
               // 3. Top Season / Part Badge (بطاقة الموسم النظيفة)
               PositionedDirectional(
                 top: 8,
@@ -672,50 +652,6 @@ class _FranchiseFilmTileState extends State<FranchiseFilmTile> {
                       fontWeight: FontWeight.w900,
                     ),
                   ),
-                ),
-              ),
-
-              // Center Play button on hover
-              if (_isHovered)
-              // 4. Content INSIDE the card (Year, Rating — the poster
-              //    carries the name)
-              Positioned(
-                left: 9,
-                right: 9,
-                bottom: 9,
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Row(
-                      children: [
-                        if (film.year.trim().isNotEmpty)
-                          Text(
-                            film.year.trim(),
-                            style: const TextStyle(
-                              color: Colors.white70,
-                              fontSize: 10,
-                              fontWeight: FontWeight.w700,
-                            ),
-                          ),
-                        if (film.stars.trim().isNotEmpty &&
-                            film.stars != '0.0') ...[
-                          const SizedBox(width: 7),
-                          const Icon(Icons.star_rounded,
-                              color: Color(0xFFFFB800), size: 12.5),
-                          const SizedBox(width: 2),
-                          Text(
-                            film.stars.trim(),
-                            style: const TextStyle(
-                              color: Colors.white,
-                              fontSize: 10,
-                              fontWeight: FontWeight.w800,
-                            ),
-                          ),
-                        ],
-                      ],
-                    ),
-                  ],
                 ),
               ),
             ],

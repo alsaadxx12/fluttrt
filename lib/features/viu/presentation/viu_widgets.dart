@@ -62,29 +62,6 @@ class ViuPosterCard extends StatelessWidget {
                     errorWidget: (_, __, ___) =>
                         const Icon(Icons.movie_rounded, color: Colors.white24),
                   ),
-                // Past the foot by two points: a gradient that stopped on the
-                // card's half-pixel edge left one bright row of the poster showing.
-                const Positioned(
-                  left: 0,
-                  right: 0,
-                  top: 0,
-                  bottom: -2,
-                  child: DecoratedBox(
-                    decoration: BoxDecoration(
-                      gradient: LinearGradient(
-                        begin: Alignment.topCenter,
-                        end: Alignment.bottomCenter,
-                        colors: [
-                          Colors.transparent,
-                          Colors.transparent,
-                          Color(0xB3000000),
-                          Color(0xF0000000)
-                        ],
-                        stops: [0, 0.45, 0.75, 1],
-                      ),
-                    ),
-                  ),
-                ),
                 // No name on the poster: the poster is the card.
               ],
             ),

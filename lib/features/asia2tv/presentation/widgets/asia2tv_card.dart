@@ -91,26 +91,6 @@ class Asia2TvCard extends StatelessWidget {
                           ),
                   ),
 
-                  // Gradient overlay at bottom of poster
-                  Positioned(
-                    bottom: 0,
-                    left: 0,
-                    right: 0,
-                    height: 50,
-                    child: DecoratedBox(
-                      decoration: BoxDecoration(
-                        gradient: LinearGradient(
-                          begin: Alignment.bottomCenter,
-                          end: Alignment.topCenter,
-                          colors: [
-                            Colors.black.withOpacity(0.85),
-                            Colors.transparent,
-                          ],
-                        ),
-                      ),
-                    ),
-                  ),
-
                   // Top badge: Year
                   if (item.year != null && item.year!.isNotEmpty)
                     Positioned(

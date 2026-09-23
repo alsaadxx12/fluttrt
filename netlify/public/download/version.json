@@ -1,15 +1,15 @@
 {
   "updateEnabled": true,
-  "versionCode": 2162,
-  "versionName": "1.0.156",
-  "apkUrl": "https://cineball.netlify.app/download/app.apk?v=162",
-  "apkUrlArm64": "https://cineball.netlify.app/download/app-arm64-v8a-release.apk?v=162",
-  "apkUrlArm32": "https://cineball.netlify.app/download/app-armeabi-v7a-release.apk?v=162",
-  "sha256": "5bf0b5aa05f13e0510afd72f5869d9dc3fb21b257400095630c8650ed3b3aa13",
-  "sha256Arm64": "5bf0b5aa05f13e0510afd72f5869d9dc3fb21b257400095630c8650ed3b3aa13",
-  "sha256Arm32": "77d6c6c9691e2eec984231641965dcddc23bab1ac13d279e45480fd74d8514ac",
-  "sizeBytes": 25495371,
+  "versionCode": 2183,
+  "versionName": "1.0.177",
+  "apkUrl": "https://cineball.netlify.app/download/app.apk?v=183",
+  "apkUrlArm64": "https://cineball.netlify.app/download/app-arm64-v8a-release.apk?v=183",
+  "apkUrlArm32": "https://cineball.netlify.app/download/app-armeabi-v7a-release.apk?v=183",
+  "sha256": "a54d66a44ec22ff220e49ac016af20b612e3d9b05eb6aac9aedd0404b93c6e53",
+  "sha256Arm64": "a54d66a44ec22ff220e49ac016af20b612e3d9b05eb6aac9aedd0404b93c6e53",
+  "sha256Arm32": "0bc4590253102e955c9a95e1e9db058926cc027e3f41c80ab6ec40915c32b8a3",
+  "sizeBytes": 25496497,
   "forceUpdate": false,
   "minSupportedVersion": 1,
-  "notes": "شكل جديد لنافذة البث برسوم Live TV وخلفية داكنة"
+  "notes": "صفحة رئيسية جديدة: بطاقات أصغر وأنظف بلا تسميات، قسم السلاسل الكبير، شريطان زجاجيان، وصور عريضة عالية الدقة للمسلسلات"
 }

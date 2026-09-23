@@ -133,11 +133,14 @@ class TmdbService {
     final q = title.trim();
     if (!TmdbConfig.isConfigured || q.isEmpty) return null;
     try {
+      // An Arabic title is matched against TMDB's Arabic translations, which
+      // is where a Turkish or Arabic series dubbed for the region is found.
+      final arabic = RegExp(r'[؀-ۿ]').hasMatch(q);
       final res = await _dio.get<Map<String, dynamic>>(
         '/search/multi',
         queryParameters: {
           'query': q,
-          'language': 'en-US',
+          'language': arabic ? 'ar-SA' : 'en-US',
           if (year != null && year.isNotEmpty) 'year': year,
           'include_adult': false,
         },

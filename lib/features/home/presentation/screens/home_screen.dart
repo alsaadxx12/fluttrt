@@ -1896,19 +1896,6 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
   /// colours and a border on every build of its row. As constants the same
   /// objects are handed to every card, and an unchanged const subtree is one
   /// Flutter can skip rebuilding outright.
-  static const BoxDecoration _posterScrim = BoxDecoration(
-    gradient: LinearGradient(
-      begin: Alignment.topCenter,
-      end: Alignment.bottomCenter,
-      colors: [
-        Colors.transparent,
-        Colors.transparent,
-        Color(0x59000000), // black at 35%
-        Color(0xEB000000), // black at 92%
-      ],
-      stops: [0.0, 0.40, 0.70, 1.0],
-    ),
-  );
 
   static const BoxDecoration _ratingBadge = BoxDecoration(
     color: Color(0xA6000000), // black at 65%
@@ -1958,19 +1945,6 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                   )
                 else
                   _buildPosterPlaceholder(),
-
-                // Gradient Overlay at bottom
-                // Two points past the foot on purpose. The card's height lands on a
-                // half device pixel, and a gradient that stops exactly there
-                // left the picture's last row unshaded: a pale hairline under
-                // every card, measured on the phone's own screen. Overshooting
-                // costs nothing; the clip takes the rest.
-                const Positioned(
-                    left: 0,
-                    right: 0,
-                    top: 0,
-                    bottom: -2,
-                    child: DecoratedBox(decoration: _posterScrim)),
 
                 // Rating Star Badge at Top Left
                 Positioned(
