@@ -33,8 +33,6 @@ class SportsService {
     }
   }
 
-
-
   /// Curated verified top channels across sports, news, and entertainment.
   /// The yassirtv "match=bein1" links now resolve to the direct player iframe
   /// URL via [resolveLiveStream], so ads from the surrounding page are avoided.
@@ -50,7 +48,8 @@ class SportsService {
     final trimmed = rawTime.trim();
 
     // 1. If already valid ISO-8601 with year/month
-    if (trimmed.contains('-') && (trimmed.contains('T') || trimmed.contains(' '))) {
+    if (trimmed.contains('-') &&
+        (trimmed.contains('T') || trimmed.contains(' '))) {
       final dt = DateTime.tryParse(trimmed);
       if (dt != null) {
         return dt.toUtc().toIso8601String();
@@ -67,7 +66,8 @@ class SportsService {
     }
 
     // 3. Match HH:MM with optional period (AM/PM or ص/م)
-    final match = RegExp(r'(\d{1,2}):(\d{2})\s*([a-zA-Z\u0600-\u06FF]+)?').firstMatch(trimmed);
+    final match = RegExp(r'(\d{1,2}):(\d{2})\s*([a-zA-Z\u0600-\u06FF]+)?')
+        .firstMatch(trimmed);
     if (match != null) {
       int h = int.tryParse(match.group(1) ?? '') ?? 0;
       final m = int.tryParse(match.group(2) ?? '') ?? 0;
@@ -80,7 +80,8 @@ class SportsService {
       }
 
       // Arabic feeds (Sir TV, Yalla Shoot, Cinamana) state times in Mecca/Doha/Baghdad time (UTC+3)
-      final utc = DateTime.utc(target.year, target.month, target.day, h, m).subtract(const Duration(hours: 3));
+      final utc = DateTime.utc(target.year, target.month, target.day, h, m)
+          .subtract(const Duration(hours: 3));
       return utc.toIso8601String();
     }
 
@@ -103,7 +104,9 @@ class SportsService {
       if (res.statusCode != 200 || res.data == null) return [];
       final html = res.data!;
 
-      final matchRegex = RegExp(r'<a\s+href="([^"]+)"[^>]*title="([^"]*)"[^>]*>([\s\S]*?)<\/a>', caseSensitive: false);
+      final matchRegex = RegExp(
+          r'<a\s+href="([^"]+)"[^>]*title="([^"]*)"[^>]*>([\s\S]*?)<\/a>',
+          caseSensitive: false);
       final matches = <SportMatchItem>[];
       int idCounter = 95000;
 
@@ -114,15 +117,41 @@ class SportsService {
 
         if (link.isEmpty || link == '#' || link.contains('albaadani')) continue;
 
-        final rightTeam = RegExp(r'class="right-team"[\s\S]*?class="team-name">([^<]+)<\/div>').firstMatch(inner)?.group(1)?.trim() ?? '';
-        final rightLogo = RegExp(r'class="right-team"[\s\S]*?src="([^"]+)"').firstMatch(inner)?.group(1)?.trim();
-        final leftTeam = RegExp(r'class="left-team"[\s\S]*?class="team-name">([^<]+)<\/div>').firstMatch(inner)?.group(1)?.trim() ?? '';
-        final leftLogo = RegExp(r'class="left-team"[\s\S]*?src="([^"]+)"').firstMatch(inner)?.group(1)?.trim();
-        final timeStr = RegExp(r'id="match-time">([^<]+)<\/div>').firstMatch(inner)?.group(1)?.trim() ?? '';
-        final score = RegExp(r'class="match-score">([^<]+)<\/div>').firstMatch(inner)?.group(1)?.trim();
+        final rightTeam =
+            RegExp(r'class="right-team"[\s\S]*?class="team-name">([^<]+)<\/div>')
+                    .firstMatch(inner)
+                    ?.group(1)
+                    ?.trim() ??
+                '';
+        final rightLogo = RegExp(r'class="right-team"[\s\S]*?src="([^"]+)"')
+            .firstMatch(inner)
+            ?.group(1)
+            ?.trim();
+        final leftTeam =
+            RegExp(r'class="left-team"[\s\S]*?class="team-name">([^<]+)<\/div>')
+                    .firstMatch(inner)
+                    ?.group(1)
+                    ?.trim() ??
+                '';
+        final leftLogo = RegExp(r'class="left-team"[\s\S]*?src="([^"]+)"')
+            .firstMatch(inner)
+            ?.group(1)
+            ?.trim();
+        final timeStr = RegExp(r'id="match-time">([^<]+)<\/div>')
+                .firstMatch(inner)
+                ?.group(1)
+                ?.trim() ??
+            '';
+        final score = RegExp(r'class="match-score">([^<]+)<\/div>')
+            .firstMatch(inner)
+            ?.group(1)
+            ?.trim();
 
         // Extract channel and tournament info
-        final infoSpans = RegExp(r'<li><span>([^<]+)<\/span><\/li>').allMatches(inner).map((s) => s.group(1)?.trim() ?? '').toList();
+        final infoSpans = RegExp(r'<li><span>([^<]+)<\/span><\/li>')
+            .allMatches(inner)
+            .map((s) => s.group(1)?.trim() ?? '')
+            .toList();
         String channelName = '';
         String leagueName = 'مباريات اليوم';
         if (infoSpans.length >= 3) {
@@ -146,17 +175,27 @@ class SportsService {
         final now = DateTime.now();
         idCounter++;
 
-        final primaryBroadcasterName = (channelName.isNotEmpty && channelName != 'غير معروف')
-            ? channelName
-            : 'قناة البث المباشر';
+        final primaryBroadcasterName =
+            (channelName.isNotEmpty && channelName != 'غير معروف')
+                ? channelName
+                : 'قناة البث المباشر';
 
         final parsedKickoff = parseTimeToUtcIso(timeStr, day: 'today');
         final initialMatch = SportMatchItem(
           id: idCounter,
-          kickoffAt: parsedKickoff.isNotEmpty ? parsedKickoff : now.toUtc().toIso8601String(),
-          status: (homeScore != null && awayScore != null && (homeScore > 0 || awayScore > 0)) ? 'live' : 'مباشر',
-          home: TeamInfo(name: rightTeam.isNotEmpty ? rightTeam : title, logo: rightLogo),
-          away: TeamInfo(name: leftTeam.isNotEmpty ? leftTeam : 'مباراة اليوم', logo: leftLogo),
+          kickoffAt: parsedKickoff.isNotEmpty
+              ? parsedKickoff
+              : now.toUtc().toIso8601String(),
+          status: (homeScore != null &&
+                  awayScore != null &&
+                  (homeScore > 0 || awayScore > 0))
+              ? 'live'
+              : 'مباشر',
+          home: TeamInfo(
+              name: rightTeam.isNotEmpty ? rightTeam : title, logo: rightLogo),
+          away: TeamInfo(
+              name: leftTeam.isNotEmpty ? leftTeam : 'مباراة اليوم',
+              logo: leftLogo),
           homeScore: homeScore,
           awayScore: awayScore,
           hasWatch: true,
@@ -174,7 +213,9 @@ class SportsService {
 
         matches.add(initialMatch.copyWith(
           broadcasters: resolvedBroadcasters,
-          broadcasterName: resolvedBroadcasters.isNotEmpty ? resolvedBroadcasters.first.name : primaryBroadcasterName,
+          broadcasterName: resolvedBroadcasters.isNotEmpty
+              ? resolvedBroadcasters.first.name
+              : primaryBroadcasterName,
         ));
       }
       return matches;
@@ -191,14 +232,17 @@ class SportsService {
   static final Map<String, String> _cleanedTeamNames = {};
 
   static bool teamsMatch(String a, String b) {
-    String clean(String raw) => _cleanedTeamNames.putIfAbsent(raw, () => _cleanTeamName(raw));
+    String clean(String raw) =>
+        _cleanedTeamNames.putIfAbsent(raw, () => _cleanTeamName(raw));
     return _teamsMatchClean(clean(a), clean(b));
   }
 
   static bool _teamsMatchClean(String c1, String c2) {
     if (c1.isEmpty || c2.isEmpty) return false;
     if (c1 == c2) return true;
-    if (c1.length >= 4 && c2.length >= 4 && (c1.contains(c2) || c2.contains(c1))) return true;
+    if (c1.length >= 4 &&
+        c2.length >= 4 &&
+        (c1.contains(c2) || c2.contains(c1))) return true;
     return false;
   }
 
@@ -227,9 +271,13 @@ class SportsService {
     String? preferredStream,
     String? preferredName,
   }) {
-    final pName = (preferredName != null && preferredName.isNotEmpty && preferredName != 'غير معروف')
+    final pName = (preferredName != null &&
+            preferredName.isNotEmpty &&
+            preferredName != 'غير معروف')
         ? preferredName
-        : (m.broadcasterName != null && m.broadcasterName!.isNotEmpty && m.broadcasterName != 'غير معروف'
+        : (m.broadcasterName != null &&
+                m.broadcasterName!.isNotEmpty &&
+                m.broadcasterName != 'غير معروف'
             ? m.broadcasterName!
             : null);
     final pStream = preferredStream ?? m.directUrl;
@@ -245,7 +293,6 @@ class SportsService {
     }
     return list;
   }
-
 
   /// Official comprehensive fixtures provider from 365Scores
   Future<List<LeagueGroup>> fetch365Matches({String day = 'today'}) async {
@@ -323,7 +370,9 @@ class SportsService {
 
         final compId = g['competitionId'];
         final compMap = comps[compId];
-        final rawLeague = compMap?['name']?.toString() ?? g['competitionDisplayName']?.toString() ?? 'مباريات اليوم';
+        final rawLeague = compMap?['name']?.toString() ??
+            g['competitionDisplayName']?.toString() ??
+            'مباريات اليوم';
 
         final statusGroup = g['statusGroup'];
         final statusText = g['statusText']?.toString().trim() ?? '';
@@ -343,7 +392,9 @@ class SportsService {
           awayScore = null;
         } else {
           // today
-          if (statusGroup == 4 || statusText.contains('انتهت') || statusText.contains('نهائي')) {
+          if (statusGroup == 4 ||
+              statusText.contains('انتهت') ||
+              statusText.contains('نهائي')) {
             status = 'finished';
             homeScore = (hComp['score'] as num?)?.toInt();
             awayScore = (aComp['score'] as num?)?.toInt();
@@ -371,7 +422,9 @@ class SportsService {
 
         final item = SportMatchItem(
           id: matchId,
-          kickoffAt: startTimeStr.isNotEmpty ? startTimeStr : DateTime.now().toUtc().toIso8601String(),
+          kickoffAt: startTimeStr.isNotEmpty
+              ? startTimeStr
+              : DateTime.now().toUtc().toIso8601String(),
           status: status,
           home: TeamInfo(name: hName, logo: hLogo),
           away: TeamInfo(name: aName, logo: aLogo),
@@ -446,15 +499,15 @@ class SportsService {
       if (t1 == t2) return true;
       if (t1.contains(t2) || t2.contains(t1)) return true;
       if (t1.length >= 4 && t2.length >= 4) {
-        if (t1.startsWith(t2.substring(0, 4)) || t2.startsWith(t1.substring(0, 4))) return true;
+        if (t1.startsWith(t2.substring(0, 4)) ||
+            t2.startsWith(t1.substring(0, 4))) return true;
       }
       return false;
     }
 
     return (matchSingle(ch1, ch2) && matchSingle(ca1, ca2)) ||
-           (matchSingle(ch1, ca2) && matchSingle(ca1, ch2));
+        (matchSingle(ch1, ca2) && matchSingle(ca1, ch2));
   }
-
 
   Future<List<SportMatchItem>> fetchLiveMatches({String day = 'today'}) async {
     if (day != 'today') return [];
@@ -508,12 +561,15 @@ class SportsService {
 
       for (int i = 1; i < blocks.length; i++) {
         final block = blocks[i];
-        final linkMatch = RegExp(r'<a\s+href="([^"]+)"\s+class="match-row"', caseSensitive: false).firstMatch(block);
+        final linkMatch = RegExp(r'<a\s+href="([^"]+)"\s+class="match-row"',
+                caseSensitive: false)
+            .firstMatch(block);
         if (linkMatch == null) continue;
         String link = linkMatch.group(1)?.trim() ?? '';
         if (link.isEmpty) continue;
         if (!link.startsWith('http')) {
-          link = 'https://www.korax90.co${link.startsWith('/') ? '' : '/'}$link';
+          link =
+              'https://www.korax90.co${link.startsWith('/') ? '' : '/'}$link';
         }
         if (!seenMatchLinks.add(link)) continue;
 
@@ -532,40 +588,69 @@ class SportsService {
         }
 
         final homeLogo = fixLogo(teamMatches[0].group(1)?.trim());
-        final homeName = teamMatches[0].group(3)?.replaceAll(RegExp(r'\s+'), ' ').trim() ?? '';
+        final homeName =
+            teamMatches[0].group(3)?.replaceAll(RegExp(r'\s+'), ' ').trim() ??
+                '';
         final awayLogo = fixLogo(teamMatches[1].group(1)?.trim());
-        final awayName = teamMatches[1].group(3)?.replaceAll(RegExp(r'\s+'), ' ').trim() ?? '';
+        final awayName =
+            teamMatches[1].group(3)?.replaceAll(RegExp(r'\s+'), ' ').trim() ??
+                '';
 
         if (homeName.isEmpty || awayName.isEmpty) continue;
-        final teamKey = '${homeName.trim().toLowerCase()}_${awayName.trim().toLowerCase()}';
+        final teamKey =
+            '${homeName.trim().toLowerCase()}_${awayName.trim().toLowerCase()}';
         if (!seenMatchTeams.add(teamKey)) continue;
 
         // Meta (score, time, status, league, day)
-        final scoreMatch = RegExp(r'<div class="score-time">\s*([\s\S]*?)\s*<\/div>', caseSensitive: false).firstMatch(block);
+        final scoreMatch = RegExp(
+                r'<div class="score-time">\s*([\s\S]*?)\s*<\/div>',
+                caseSensitive: false)
+            .firstMatch(block);
         final scoreTime = scoreMatch?.group(1)?.trim() ?? '';
 
-        final matchDayMatch = RegExp(r'<div class="match-day">\s*([\s\S]*?)\s*<\/div>', caseSensitive: false).firstMatch(block);
+        final matchDayMatch = RegExp(
+                r'<div class="match-day">\s*([\s\S]*?)\s*<\/div>',
+                caseSensitive: false)
+            .firstMatch(block);
         final matchDay = matchDayMatch?.group(1)?.trim() ?? '';
 
-        final statusBadgeMatch = RegExp(r'<div class="status-badge([^"]*)">\s*([\s\S]*?)\s*<\/div>', caseSensitive: false).firstMatch(block);
+        final statusBadgeMatch = RegExp(
+                r'<div class="status-badge([^"]*)">\s*([\s\S]*?)\s*<\/div>',
+                caseSensitive: false)
+            .firstMatch(block);
         final badgeClass = statusBadgeMatch?.group(1)?.trim() ?? '';
-        final badgeText = statusBadgeMatch?.group(2)?.replaceAll(RegExp(r'\s+'), ' ').trim() ?? '';
+        final badgeText = statusBadgeMatch
+                ?.group(2)
+                ?.replaceAll(RegExp(r'\s+'), ' ')
+                .trim() ??
+            '';
 
-        final isBadgeEnded = badgeClass.contains('status-ended') || badgeText.contains('انتهت');
-        final isBadgeLive = badgeClass.contains('status-live') || badgeText.contains('مباشر');
-        final isYesterdayMatch = matchDay.contains('أمس') || matchDay.contains('yesterday');
+        final isBadgeEnded =
+            badgeClass.contains('status-ended') || badgeText.contains('انتهت');
+        final isBadgeLive =
+            badgeClass.contains('status-live') || badgeText.contains('مباشر');
+        final isYesterdayMatch =
+            matchDay.contains('أمس') || matchDay.contains('yesterday');
 
         // When viewing today's or tomorrow's tab: If Kora x90 is displaying yesterday's matches (or ended matches)
         // because there are no matches scheduled, filter them out so the tab accurately reflects that there are no matches.
-        if ((day == 'today' || day == 'tomorrow') && (isYesterdayMatch || isBadgeEnded)) {
+        if ((day == 'today' || day == 'tomorrow') &&
+            (isYesterdayMatch || isBadgeEnded)) {
           continue;
         }
 
-        final dataStartMatch = RegExp(r'data-start="(\d+)"', caseSensitive: false).firstMatch(block);
+        final dataStartMatch =
+            RegExp(r'data-start="(\d+)"', caseSensitive: false)
+                .firstMatch(block);
         final dataStart = int.tryParse(dataStartMatch?.group(1) ?? '');
 
-        final leagueMatch = RegExp(r'<div class="league">\s*([\s\S]*?)\s*<\/div>', caseSensitive: false).firstMatch(block);
-        final rawLeague = leagueMatch?.group(1)?.replaceAll(RegExp(r'\s+'), ' ').trim() ?? 'مباريات اليوم';
+        final leagueMatch = RegExp(
+                r'<div class="league">\s*([\s\S]*?)\s*<\/div>',
+                caseSensitive: false)
+            .firstMatch(block);
+        final rawLeague =
+            leagueMatch?.group(1)?.replaceAll(RegExp(r'\s+'), ' ').trim() ??
+                'مباريات اليوم';
 
         // Parse status
         String status = 'scheduled';
@@ -575,7 +660,8 @@ class SportsService {
           status = 'scheduled';
         } else if (isBadgeLive) {
           status = 'live';
-        } else if (badgeClass.contains('status-countdown') || badgeText.contains('يبدأ')) {
+        } else if (badgeClass.contains('status-countdown') ||
+            badgeText.contains('يبدأ')) {
           status = 'scheduled';
         }
 
@@ -596,7 +682,9 @@ class SportsService {
         // Kickoff time
         String kickoffAt;
         if (dataStart != null && dataStart > 0) {
-          kickoffAt = DateTime.fromMillisecondsSinceEpoch(dataStart * 1000, isUtc: true).toIso8601String();
+          kickoffAt =
+              DateTime.fromMillisecondsSinceEpoch(dataStart * 1000, isUtc: true)
+                  .toIso8601String();
         } else if (scoreTime.contains(':')) {
           kickoffAt = parseTimeToUtcIso(scoreTime, day: day);
         } else {
@@ -606,7 +694,9 @@ class SportsService {
           } else if (day == 'tomorrow') {
             targetDate = now.add(const Duration(days: 1));
           }
-          kickoffAt = DateTime.utc(targetDate.year, targetDate.month, targetDate.day, 12, 0).toIso8601String();
+          kickoffAt = DateTime.utc(
+                  targetDate.year, targetDate.month, targetDate.day, 12, 0)
+              .toIso8601String();
         }
 
         // ID from URL suffix or counter
@@ -626,13 +716,16 @@ class SportsService {
         if (groupLeague.isEmpty) groupLeague = rawLeague;
 
         final isMatchLive = status == 'live';
-        final hasWatch = isMatchLive || (link.isNotEmpty && status != 'finished' && day != 'yesterday');
+        final hasWatch = isMatchLive ||
+            (link.isNotEmpty && status != 'finished' && day != 'yesterday');
         final item = SportMatchItem(
           id: matchId,
           kickoffAt: kickoffAt,
           status: status,
-          home: TeamInfo(name: homeName, logo: homeLogo.isNotEmpty ? homeLogo : null),
-          away: TeamInfo(name: awayName, logo: awayLogo.isNotEmpty ? awayLogo : null),
+          home: TeamInfo(
+              name: homeName, logo: homeLogo.isNotEmpty ? homeLogo : null),
+          away: TeamInfo(
+              name: awayName, logo: awayLogo.isNotEmpty ? awayLogo : null),
           homeScore: homeScore,
           awayScore: awayScore,
           hasWatch: hasWatch,
@@ -663,7 +756,8 @@ class SportsService {
   }
 
   /// Resolves direct stream servers for a Kora x90 match URL
-  Future<List<({String name, String streamUrl, String type, String frameUrl})>> resolveKoraX90Servers(String matchUrl) async {
+  Future<List<({String name, String streamUrl, String type, String frameUrl})>>
+      resolveKoraX90Servers(String matchUrl) async {
     try {
       final dio = createDio(BaseOptions(
         connectTimeout: const Duration(seconds: 10),
@@ -683,14 +777,17 @@ class SportsService {
         if (matchRes.statusCode != 200 || matchRes.data == null) return [];
         final matchHtml = matchRes.data!;
 
-        final frameMatches = RegExp(r'data-frame="([^"]+)"', caseSensitive: false).allMatches(matchHtml);
+        final frameMatches =
+            RegExp(r'data-frame="([^"]+)"', caseSensitive: false)
+                .allMatches(matchHtml);
         for (final m in frameMatches) {
           final u = m.group(1)?.trim() ?? '';
           if (u.startsWith('http')) frameUrls.add(u);
         }
       }
 
-      final results = <({String name, String streamUrl, String type, String frameUrl})>[];
+      final results =
+          <({String name, String streamUrl, String type, String frameUrl})>[];
 
       for (final frameUrl in frameUrls) {
         try {
@@ -708,8 +805,10 @@ class SportsService {
           if (frameRes.statusCode != 200 || frameRes.data == null) continue;
           final frameHtml = frameRes.data!;
 
-          final serversMatch = RegExp(r'const\s+servers\s*=\s*(\[[^;]+\]);').firstMatch(frameHtml);
-          final streamUrlMatch = RegExp(r'let\s+streamUrl\s*=\s*"([^"]+)";').firstMatch(frameHtml);
+          final serversMatch = RegExp(r'const\s+servers\s*=\s*(\[[^;]+\]);')
+              .firstMatch(frameHtml);
+          final streamUrlMatch =
+              RegExp(r'let\s+streamUrl\s*=\s*"([^"]+)";').firstMatch(frameHtml);
 
           if (serversMatch != null) {
             try {
@@ -721,13 +820,20 @@ class SportsService {
                   if (s is Map && s['url'] != null) {
                     final rawUrl = s['url'].toString();
                     final rawName = s['name']?.toString().trim() ?? '';
-                    final serverName = (rawName.isEmpty || rawName == 'عام' || rawName.contains('سيرفر عام'))
-                        ? (i == 0 ? 'سيرفر البث الرئيسي HD' : 'سيرفر ${i + 1} HD')
-                        : (rawName.startsWith('سيرفر') ? '$rawName HD' : 'سيرفر $rawName HD');
+                    final serverName = (rawName.isEmpty ||
+                            rawName == 'عام' ||
+                            rawName.contains('سيرفر عام'))
+                        ? (i == 0
+                            ? 'سيرفر البث الرئيسي HD'
+                            : 'سيرفر ${i + 1} HD')
+                        : (rawName.startsWith('سيرفر')
+                            ? '$rawName HD'
+                            : 'سيرفر $rawName HD');
                     results.add((
                       name: serverName,
                       streamUrl: rawUrl,
-                      type: s['type']?.toString() ?? (rawUrl.contains('.m3u8') ? 'hls' : 'iframe'),
+                      type: s['type']?.toString() ??
+                          (rawUrl.contains('.m3u8') ? 'hls' : 'iframe'),
                       frameUrl: frameUrl,
                     ));
                   }
@@ -768,11 +874,13 @@ class SportsService {
     }
   }
 
-  final Map<String, ({ResolvedLiveStream stream, DateTime timestamp})> _resolvedStreamsCache = {};
+  final Map<String, ({ResolvedLiveStream stream, DateTime timestamp})>
+      _resolvedStreamsCache = {};
 
   /// Resolves any channel page or albaplayer stream into a direct native HLS URL with proper token and headers.
   /// When [forceRefresh] is true, ignores cache and re-scrapes the live page to generate a fresh token.
-  Future<ResolvedLiveStream?> resolveLiveStream(String inputUrl, {bool forceRefresh = false}) async {
+  Future<ResolvedLiveStream?> resolveLiveStream(String inputUrl,
+      {bool forceRefresh = false}) async {
     final trimmed = inputUrl.trim();
     if (trimmed.isEmpty) return null;
 
@@ -794,17 +902,20 @@ class SportsService {
             streamUrl: s.streamUrl,
             headers: isHls
                 ? const {
-                    'User-Agent': 'Mozilla/5.0 (Linux; Android 14; SmartTV; SM-A266B) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+                    'User-Agent':
+                        'Mozilla/5.0 (Linux; Android 14; SmartTV; SM-A266B) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
                     'Referer': 'https://9.boomstreaming.com/',
                   }
                 : const {
-                    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
+                    'User-Agent':
+                        'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
                     'Referer': 'https://www.korax90.co/',
                   },
             sourcePageUrl: s.frameUrl,
             albaplayerUrl: s.streamUrl,
           );
-          _resolvedStreamsCache[trimmed] = (stream: res, timestamp: DateTime.now());
+          _resolvedStreamsCache[trimmed] =
+              (stream: res, timestamp: DateTime.now());
           return res;
         }
       }
@@ -815,13 +926,15 @@ class SportsService {
           final res = ResolvedLiveStream(
             streamUrl: trimmed,
             headers: const {
-              'User-Agent': 'Mozilla/5.0 (Linux; Android 14; SmartTV; SM-A266B) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+              'User-Agent':
+                  'Mozilla/5.0 (Linux; Android 14; SmartTV; SM-A266B) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
               'Referer': 'https://9.boomstreaming.com/',
             },
             sourcePageUrl: 'https://9.boomstreaming.com/',
             albaplayerUrl: trimmed,
           );
-          _resolvedStreamsCache[trimmed] = (stream: res, timestamp: DateTime.now());
+          _resolvedStreamsCache[trimmed] =
+              (stream: res, timestamp: DateTime.now());
           return res;
         }
 
@@ -829,13 +942,15 @@ class SportsService {
           connectTimeout: const Duration(seconds: 8),
           receiveTimeout: const Duration(seconds: 8),
           headers: {
-            'User-Agent': 'Mozilla/5.0 (Linux; Android 14; SmartTV; SM-A266B) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+            'User-Agent':
+                'Mozilla/5.0 (Linux; Android 14; SmartTV; SM-A266B) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
             'Referer': 'https://www.korax90.co/',
           },
         ));
         final frameRes = await frameDio.get<String>(trimmed);
         if (frameRes.statusCode == 200 && frameRes.data != null) {
-          final serversMatch = RegExp(r'const\s+servers\s*=\s*(\[[^;]+\]);').firstMatch(frameRes.data!);
+          final serversMatch = RegExp(r'const\s+servers\s*=\s*(\[[^;]+\]);')
+              .firstMatch(frameRes.data!);
           if (serversMatch != null) {
             try {
               final parsed = jsonDecode(serversMatch.group(1)!);
@@ -845,49 +960,63 @@ class SportsService {
                   final res = ResolvedLiveStream(
                     streamUrl: sUrl,
                     headers: const {
-                      'User-Agent': 'Mozilla/5.0 (Linux; Android 14; SmartTV; SM-A266B) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+                      'User-Agent':
+                          'Mozilla/5.0 (Linux; Android 14; SmartTV; SM-A266B) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
                       'Referer': 'https://9.boomstreaming.com/',
                     },
                     sourcePageUrl: trimmed,
                     albaplayerUrl: sUrl,
                   );
-                  _resolvedStreamsCache[trimmed] = (stream: res, timestamp: DateTime.now());
+                  _resolvedStreamsCache[trimmed] =
+                      (stream: res, timestamp: DateTime.now());
                   return res;
                 }
               }
             } catch (_) {}
           }
 
-          final streamUrlMatch = RegExp(r'let\s+streamUrl\s*=\s*"([^"]+)";').firstMatch(frameRes.data!);
+          final streamUrlMatch = RegExp(r'let\s+streamUrl\s*=\s*"([^"]+)";')
+              .firstMatch(frameRes.data!);
           if (streamUrlMatch != null) {
-            final hlsUrl = streamUrlMatch.group(1)!.replaceAll(r'\/', '/').trim();
+            final hlsUrl =
+                streamUrlMatch.group(1)!.replaceAll(r'\/', '/').trim();
             final res = ResolvedLiveStream(
               streamUrl: hlsUrl,
               headers: const {
-                'User-Agent': 'Mozilla/5.0 (Linux; Android 14; SmartTV; SM-A266B) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+                'User-Agent':
+                    'Mozilla/5.0 (Linux; Android 14; SmartTV; SM-A266B) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
                 'Referer': 'https://9.boomstreaming.com/',
               },
               sourcePageUrl: trimmed,
               albaplayerUrl: hlsUrl,
             );
-            _resolvedStreamsCache[trimmed] = (stream: res, timestamp: DateTime.now());
+            _resolvedStreamsCache[trimmed] =
+                (stream: res, timestamp: DateTime.now());
             return res;
           }
         }
       }
 
       // If already a direct HLS or Cloudflare R2 playlist
-      if (trimmed.contains('.m3u8') || trimmed.contains('.r2.dev') || trimmed.endsWith('.css') || trimmed.contains('/index.css')) {
-        final isBoom = trimmed.contains('boomstreaming.com') || trimmed.contains('korax90');
+      if (trimmed.contains('.m3u8') ||
+          trimmed.contains('.r2.dev') ||
+          trimmed.endsWith('.css') ||
+          trimmed.contains('/index.css')) {
+        final isBoom = trimmed.contains('boomstreaming.com') ||
+            trimmed.contains('korax90');
         final res = ResolvedLiveStream(
           streamUrl: trimmed,
           headers: {
-            'User-Agent': 'Mozilla/5.0 (Linux; Android 14; SmartTV; SM-A266B) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-            'Referer': isBoom ? 'https://9.boomstreaming.com/' : 'https://pl.matchlivehd.com/',
+            'User-Agent':
+                'Mozilla/5.0 (Linux; Android 14; SmartTV; SM-A266B) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+            'Referer': isBoom
+                ? 'https://9.boomstreaming.com/'
+                : 'https://pl.matchlivehd.com/',
           },
           sourcePageUrl: trimmed,
         );
-        _resolvedStreamsCache[trimmed] = (stream: res, timestamp: DateTime.now());
+        _resolvedStreamsCache[trimmed] =
+            (stream: res, timestamp: DateTime.now());
         return res;
       }
 
@@ -898,7 +1027,8 @@ class SportsService {
       if (trimmed.contains('yassirtv.com') || trimmed.contains('siiir.tv')) {
         final yasirResolved = await _resolveYasirTvPlayer(trimmed);
         if (yasirResolved != null) {
-          _resolvedStreamsCache[trimmed] = (stream: yasirResolved, timestamp: DateTime.now());
+          _resolvedStreamsCache[trimmed] =
+              (stream: yasirResolved, timestamp: DateTime.now());
           return yasirResolved;
         }
       }
@@ -915,7 +1045,8 @@ class SportsService {
           connectTimeout: const Duration(seconds: 8),
           receiveTimeout: const Duration(seconds: 8),
           headers: {
-            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
+            'User-Agent':
+                'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
             'Referer': 'https://cinamana.cc/',
           },
         ));
@@ -937,14 +1068,18 @@ class SportsService {
       }
 
       if (albaplayerUrl != null && albaplayerUrl.isNotEmpty) {
-        final cacheBuster = forceRefresh ? '&_t=${DateTime.now().millisecondsSinceEpoch}' : '';
-        final fetchUrl = albaplayerUrl.contains('?') ? '$albaplayerUrl$cacheBuster' : '$albaplayerUrl?_t=${DateTime.now().millisecondsSinceEpoch}';
+        final cacheBuster =
+            forceRefresh ? '&_t=${DateTime.now().millisecondsSinceEpoch}' : '';
+        final fetchUrl = albaplayerUrl.contains('?')
+            ? '$albaplayerUrl$cacheBuster'
+            : '$albaplayerUrl?_t=${DateTime.now().millisecondsSinceEpoch}';
 
         final albaDio = createDio(BaseOptions(
           connectTimeout: const Duration(seconds: 8),
           receiveTimeout: const Duration(seconds: 8),
           headers: {
-            'User-Agent': 'Mozilla/5.0 (Linux; Android 14; SmartTV; SM-A266B) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+            'User-Agent':
+                'Mozilla/5.0 (Linux; Android 14; SmartTV; SM-A266B) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
             'Referer': effectivePageUrl.isNotEmpty ? effectivePageUrl : pageUrl,
           },
         ));
@@ -964,12 +1099,14 @@ class SportsService {
           final resolved = ResolvedLiveStream(
             streamUrl: directStreamUrl,
             headers: const {
-              'User-Agent': 'Mozilla/5.0 (Linux; Android 14; SmartTV; SM-A266B) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+              'User-Agent':
+                  'Mozilla/5.0 (Linux; Android 14; SmartTV; SM-A266B) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
               'Referer': 'https://pl.matchlivehd.com/',
             },
             sourcePageUrl: pageUrl,
           );
-          _resolvedStreamsCache[trimmed] = (stream: resolved, timestamp: DateTime.now());
+          _resolvedStreamsCache[trimmed] =
+              (stream: resolved, timestamp: DateTime.now());
           return resolved;
         }
       }
@@ -986,7 +1123,8 @@ class SportsService {
         queryParameters: {'stream_id': streamId},
       );
       if (response.statusCode == 200 && response.data is Map<String, dynamic>) {
-        final streamInfo = StreamInfo.fromJson(response.data as Map<String, dynamic>);
+        final streamInfo =
+            StreamInfo.fromJson(response.data as Map<String, dynamic>);
         final directInfo = await _resolveDirectPlayer(streamInfo);
         return directInfo ?? streamInfo;
       }
@@ -1003,12 +1141,14 @@ class SportsService {
       final p = uri.queryParameters['p'] ?? '87351';
       if (match == null || match.isEmpty) return null;
 
-      final hardUrl = 'https://yassirtv.com/hard/2908c7d4425d$p.html?match=$match';
+      final hardUrl =
+          'https://yassirtv.com/hard/2908c7d4425d$p.html?match=$match';
       final dio = createDio(BaseOptions(
         connectTimeout: const Duration(seconds: 12),
         receiveTimeout: const Duration(seconds: 12),
         headers: {
-          'User-Agent': 'Mozilla/5.0 (Linux; Android 14; SmartTV; SM-A266B) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+          'User-Agent':
+              'Mozilla/5.0 (Linux; Android 14; SmartTV; SM-A266B) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
           'Referer': 'https://fabor-tv-player.me/',
         },
       ));
@@ -1016,7 +1156,8 @@ class SportsService {
       final res = await dio.get(hardUrl);
       if (res.statusCode == 200) {
         final content = res.data.toString();
-        final hostMatch = RegExp(r'https:\/\/([a-zA-Z0-9.-]+)\/playerv\d*\.php').firstMatch(content);
+        final hostMatch = RegExp(r'https:\/\/([a-zA-Z0-9.-]+)\/playerv\d*\.php')
+            .firstMatch(content);
         final keyMatch = RegExp(r'key=([a-zA-Z0-9]+)').firstMatch(content);
 
         if (hostMatch != null && keyMatch != null) {
@@ -1029,7 +1170,8 @@ class SportsService {
             url: directUrl,
             headers: {
               'Referer': 'https://yassirtv.com/',
-              'User-Agent': 'Mozilla/5.0 (Linux; Android 14; SmartTV; SM-A266B) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+              'User-Agent':
+                  'Mozilla/5.0 (Linux; Android 14; SmartTV; SM-A266B) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
             },
           );
         }
@@ -1050,7 +1192,8 @@ class SportsService {
         receiveTimeout: const Duration(seconds: 12),
         responseType: ResponseType.plain,
         headers: {
-          'User-Agent': 'Mozilla/5.0 (Linux; Android 14; SmartTV; SM-A266B) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+          'User-Agent':
+              'Mozilla/5.0 (Linux; Android 14; SmartTV; SM-A266B) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
           'Referer': 'https://yassirtv.com/',
         },
       ));
@@ -1083,7 +1226,8 @@ class SportsService {
 
       // Strategy 3: Reconstruct from host + key (old _resolveDirectPlayer approach)
       if (playerUrl == null || playerUrl.isEmpty) {
-        final hostMatch = RegExp(r'https://([a-zA-Z0-9.-]+)/playerv\d*\.php').firstMatch(html);
+        final hostMatch = RegExp(r'https://([a-zA-Z0-9.-]+)/playerv\d*\.php')
+            .firstMatch(html);
         final keyMatch = RegExp(r'key=([a-zA-Z0-9]+)').firstMatch(html);
         final matchParam = Uri.tryParse(pageUrl)?.queryParameters['match'];
         if (hostMatch != null && keyMatch != null && matchParam != null) {
@@ -1098,7 +1242,8 @@ class SportsService {
         return ResolvedLiveStream(
           streamUrl: playerUrl,
           headers: const {
-            'User-Agent': 'Mozilla/5.0 (Linux; Android 14; SmartTV; SM-A266B) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+            'User-Agent':
+                'Mozilla/5.0 (Linux; Android 14; SmartTV; SM-A266B) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
             'Referer': 'https://yassirtv.com/',
           },
           sourcePageUrl: pageUrl,
@@ -1120,13 +1265,52 @@ class SportsService {
         final info = res.data['info'];
         if (info is Map && info['tv_networks'] is List) {
           return (info['tv_networks'] as List)
-              .map((n) => (n is Map ? n['name']?.toString() : n?.toString()) ?? '')
+              .map((n) =>
+                  (n is Map ? n['name']?.toString() : n?.toString()) ?? '')
               .where((name) => name.isNotEmpty)
               .toList();
         }
       }
     } catch (_) {}
     return [];
+  }
+
+  /// True when the game found is the match asked about: at least one of
+  /// the match's teams is named among the game's competitors. Nothing to
+  /// compare with counts as agreement, so a caller that gave no names is
+  /// not refused.
+
+  static bool teamsAgree(
+      String? homeName, String? awayName, String? gameHome, String? gameAway) {
+    final asked =
+        [homeName, awayName].map(_teamKey).where((k) => k.isNotEmpty).toList();
+    if (asked.isEmpty) return true;
+    final found =
+        [gameHome, gameAway].map(_teamKey).where((k) => k.isNotEmpty).toList();
+    if (found.isEmpty) return false;
+    for (final a in asked) {
+      for (final f in found) {
+        if (a == f || a.contains(f) || f.contains(a)) return true;
+        final words = a.split(' ').where((w) => w.length > 2);
+        if (words.any((w) => f.contains(w))) return true;
+      }
+    }
+    return false;
+  }
+
+  /// A team's name as something two sources can agree on: no «نادي» or
+  /// «منتخب» in front, no FC behind, no definite article, lower case.
+  static String _teamKey(String? name) {
+    var s = (name ?? '').trim().toLowerCase();
+    if (s.isEmpty) return '';
+    s = s
+        .replaceAll(RegExp(r'^(نادي|نادى|فريق|منتخب)\s+'), '')
+        .replaceAll(RegExp(r'\s+(fc|cf|sc|u\d+)$'), '')
+        .replaceAll(RegExp(r'\bال'), '')
+        .replaceAll(RegExp(r'[^\p{L}\p{N} ]+', unicode: true), ' ')
+        .replaceAll(RegExp(r'\s+'), ' ')
+        .trim();
+    return s;
   }
 
   Future<String> _find365GameId(String? homeName, String? awayName) async {
@@ -1164,12 +1348,17 @@ class SportsService {
 
               final gRes = await gameDio.get(
                 'https://webws.365scores.com/web/games/current/',
-                queryParameters: {'competitors': cid, 'appTypeId': 5, 'langId': 27},
+                queryParameters: {
+                  'competitors': cid,
+                  'appTypeId': 5,
+                  'langId': 27
+                },
               );
               if (gRes.statusCode == 200 && gRes.data is Map) {
                 final games = gRes.data['games'] as List?;
                 if (games != null && games.isNotEmpty) {
-                  final other = (target == homeName ? awayName : homeName) ?? '';
+                  final other =
+                      (target == homeName ? awayName : homeName) ?? '';
                   final otherClean = other
                       .replaceAll(RegExp(r'^(نادي|نادى|فريق)\s+'), '')
                       .trim()
@@ -1177,17 +1366,28 @@ class SportsService {
 
                   for (final g in games) {
                     if (g is! Map) continue;
-                    final gHome = (g['homeCompetitor']?['name']?.toString() ?? '').toLowerCase();
-                    final gAway = (g['awayCompetitor']?['name']?.toString() ?? '').toLowerCase();
+                    final gHome =
+                        (g['homeCompetitor']?['name']?.toString() ?? '')
+                            .toLowerCase();
+                    final gAway =
+                        (g['awayCompetitor']?['name']?.toString() ?? '')
+                            .toLowerCase();
 
                     if (otherClean.isNotEmpty &&
                         (gHome.contains(otherClean) ||
-                         gAway.contains(otherClean) ||
-                         otherClean.split(' ').any((w) => w.length > 2 && (gHome.contains(w) || gAway.contains(w))))) {
+                            gAway.contains(otherClean) ||
+                            otherClean.split(' ').any((w) =>
+                                w.length > 2 &&
+                                (gHome.contains(w) || gAway.contains(w))))) {
                       return g['id'].toString();
                     }
                   }
-                  return games.first['id'].toString();
+                  // No game of this competitor is against the other team:
+                  // the competitor is the wrong one (a club that shares a
+                  // word with a country, say), not the game. Taking its
+                  // first game anyway put Senegal's line-up under Iraq v
+                  // Oman. Try the next competitor instead.
+                  continue;
                 }
               }
             }
@@ -1204,6 +1404,10 @@ class SportsService {
     String? homeName,
     String? awayName,
   }) async {
+    // The teams the caller asked about, kept apart from the names the
+    // game feed gives further down.
+    final askedHome = homeName;
+    final askedAway = awayName;
     try {
       String resolvedSourceId = sourceId ?? '';
       String? round;
@@ -1215,7 +1419,9 @@ class SportsService {
       // 1. Check auralocals match endpoint
       try {
         final res = await _dio.get('/match/$matchId');
-        if (res.statusCode == 200 && res.data is Map && res.data['match'] is Map) {
+        if (res.statusCode == 200 &&
+            res.data is Map &&
+            res.data['match'] is Map) {
           final m = res.data['match'] as Map<String, dynamic>;
           if (resolvedSourceId.isEmpty) {
             resolvedSourceId = m['source_id']?.toString() ?? '';
@@ -1235,10 +1441,15 @@ class SportsService {
               for (final raw in liveNow) {
                 if (raw is Map) {
                   final mId = raw['match_id'] ?? raw['id'];
-                  if (mId != null && (mId == matchId || mId.toString() == matchId.toString())) {
+                  if (mId != null &&
+                      (mId == matchId ||
+                          mId.toString() == matchId.toString())) {
                     final subRes = await _dio.get('/match/$mId');
-                    if (subRes.statusCode == 200 && subRes.data is Map && subRes.data['match'] is Map) {
-                      final mData = subRes.data['match'] as Map<String, dynamic>;
+                    if (subRes.statusCode == 200 &&
+                        subRes.data is Map &&
+                        subRes.data['match'] is Map) {
+                      final mData =
+                          subRes.data['match'] as Map<String, dynamic>;
                       resolvedSourceId = mData['source_id']?.toString() ?? '';
                       round ??= mData['round']?.toString();
                       stadium ??= mData['stadium']?.toString();
@@ -1262,6 +1473,10 @@ class SportsService {
       }
 
       // 2. Fetch game details from 365scores (Lineups, Events, Venue, Officials)
+      //
+      // Checked against the teams the match is actually between: a game
+      // whose competitors are neither of them is somebody else's match,
+      // whatever id led here, and its line-ups are not shown.
       final gameDio = createDio(BaseOptions(
         connectTimeout: const Duration(seconds: 10),
         receiveTimeout: const Duration(seconds: 10),
@@ -1285,14 +1500,17 @@ class SportsService {
       TeamLineup? homeLineup;
       TeamLineup? awayLineup;
 
-      if (gameRes.statusCode == 200 && gameRes.data is Map && gameRes.data['game'] is Map) {
+      if (gameRes.statusCode == 200 &&
+          gameRes.data is Map &&
+          gameRes.data['game'] is Map) {
         final game = gameRes.data['game'] as Map<String, dynamic>;
 
         if (stadium == null && game['venue'] is Map) {
           stadium = game['venue']['name']?.toString();
         }
 
-        if (game['officials'] is List && (game['officials'] as List).isNotEmpty) {
+        if (game['officials'] is List &&
+            (game['officials'] as List).isNotEmpty) {
           referee = (game['officials'] as List)[0]['name']?.toString();
         }
 
@@ -1304,8 +1522,12 @@ class SportsService {
         if (game['members'] is List) {
           for (final m in game['members']) {
             if (m is Map) {
-              final id = m['id'] is int ? m['id'] as int : int.tryParse(m['id']?.toString() ?? '');
-              final athId = m['athleteId'] is int ? m['athleteId'] as int : int.tryParse(m['athleteId']?.toString() ?? '');
+              final id = m['id'] is int
+                  ? m['id'] as int
+                  : int.tryParse(m['id']?.toString() ?? '');
+              final athId = m['athleteId'] is int
+                  ? m['athleteId'] as int
+                  : int.tryParse(m['athleteId']?.toString() ?? '');
               final name = m['name']?.toString() ?? '';
               final shortName = m['shortName']?.toString() ?? '';
 
@@ -1325,6 +1547,17 @@ class SportsService {
 
         final homeCompetitor = game['homeCompetitor'] as Map<String, dynamic>?;
         final awayCompetitor = game['awayCompetitor'] as Map<String, dynamic>?;
+        if (!teamsAgree(
+          askedHome,
+          askedAway,
+          homeCompetitor?['name']?.toString(),
+          awayCompetitor?['name']?.toString(),
+        )) {
+          debugPrint('[sports] 365scores game $resolvedSourceId is '
+              '${homeCompetitor?['name']} v ${awayCompetitor?['name']}, '
+              'not $askedHome v $askedAway - line-ups dropped');
+          return null;
+        }
         final homeId = homeCompetitor?['id'];
         final homeName = homeCompetitor?['name']?.toString() ?? 'صاحب الأرض';
         final awayName = awayCompetitor?['name']?.toString() ?? 'الضيف';
@@ -1333,19 +1566,35 @@ class SportsService {
         if (game['events'] is List) {
           for (final e in game['events']) {
             if (e is Map) {
-              final time = (e['gameTimeDisplay'] ?? "${e['gameTime'] ?? ''}'").toString();
-              final eventType = e['eventType'] is Map ? e['eventType']['name']?.toString() ?? '' : '';
-              final typeId = e['eventType'] is Map ? e['eventType']['id'] : null;
-              final subTypeId = e['eventType'] is Map ? e['eventType']['subTypeId'] : null;
-              final pId = e['playerId'] is int ? e['playerId'] as int : int.tryParse(e['playerId']?.toString() ?? '');
-              final pName = (pId != null ? membersMap[pId] : null) ?? e['athleteName']?.toString() ?? '';
+              final time = (e['gameTimeDisplay'] ?? "${e['gameTime'] ?? ''}'")
+                  .toString();
+              final eventType = e['eventType'] is Map
+                  ? e['eventType']['name']?.toString() ?? ''
+                  : '';
+              final typeId =
+                  e['eventType'] is Map ? e['eventType']['id'] : null;
+              final subTypeId =
+                  e['eventType'] is Map ? e['eventType']['subTypeId'] : null;
+              final pId = e['playerId'] is int
+                  ? e['playerId'] as int
+                  : int.tryParse(e['playerId']?.toString() ?? '');
+              final pName = (pId != null ? membersMap[pId] : null) ??
+                  e['athleteName']?.toString() ??
+                  '';
               final compId = e['competitorId'];
               final isHome = compId == homeId;
 
               final lowerType = eventType.toLowerCase();
-              final isGoal = typeId == 1 || lowerType.contains('goal') || eventType.contains('هدف');
-              final isCard = typeId == 2 || typeId == 3 || lowerType.contains('card') || eventType.contains('بطاقة');
-              final isSub = typeId == 4 || lowerType.contains('sub') || eventType.contains('تبديل');
+              final isGoal = typeId == 1 ||
+                  lowerType.contains('goal') ||
+                  eventType.contains('هدف');
+              final isCard = typeId == 2 ||
+                  typeId == 3 ||
+                  lowerType.contains('card') ||
+                  eventType.contains('بطاقة');
+              final isSub = typeId == 4 ||
+                  lowerType.contains('sub') ||
+                  eventType.contains('تبديل');
 
               String localizedTypeName;
               if (isGoal) {
@@ -1357,7 +1606,9 @@ class SportsService {
                   localizedTypeName = 'هدف';
                 }
               } else if (isCard) {
-                if (typeId == 3 || lowerType.contains('red') || eventType.contains('حمراء')) {
+                if (typeId == 3 ||
+                    lowerType.contains('red') ||
+                    eventType.contains('حمراء')) {
                   localizedTypeName = 'بطاقة حمراء';
                 } else {
                   localizedTypeName = 'بطاقة صفراء';
@@ -1369,13 +1620,16 @@ class SportsService {
               } else if (typeId == 6 || lowerType.contains('missed')) {
                 localizedTypeName = 'ركلة جزاء ضائعة';
               } else {
-                localizedTypeName = eventType.isNotEmpty ? eventType : 'حدث في المباراة';
+                localizedTypeName =
+                    eventType.isNotEmpty ? eventType : 'حدث في المباراة';
               }
 
               String? extraName;
-              if (e['extraPlayers'] is List && (e['extraPlayers'] as List).isNotEmpty) {
+              if (e['extraPlayers'] is List &&
+                  (e['extraPlayers'] as List).isNotEmpty) {
                 final ex = (e['extraPlayers'] as List)[0];
-                final exId = ex is int ? ex : int.tryParse(ex?.toString() ?? '');
+                final exId =
+                    ex is int ? ex : int.tryParse(ex?.toString() ?? '');
                 if (exId != null && membersMap.containsKey(exId)) {
                   extraName = membersMap[exId];
                 }
@@ -1400,29 +1654,52 @@ class SportsService {
           final id = m['id'] is int ? m['id'] as int : 0;
           final name = membersMap[id] ?? m['name']?.toString() ?? '';
           final shortName = membersShortMap[id] ?? m['shortName']?.toString();
-          final jerseyNum = m['jerseyNumber'] is int ? m['jerseyNumber'] as int : int.tryParse(m['jerseyNumber']?.toString() ?? '');
-          final pos = m['positionName']?.toString() ?? (m['position'] is Map ? m['position']['name']?.toString() : null) ?? m['line']?.toString();
+          final jerseyNum = m['jerseyNumber'] is int
+              ? m['jerseyNumber'] as int
+              : int.tryParse(m['jerseyNumber']?.toString() ?? '');
+          final pos = m['positionName']?.toString() ??
+              (m['position'] is Map
+                  ? m['position']['name']?.toString()
+                  : null) ??
+              m['line']?.toString();
           final isStarter = m['status'] == 1;
-          final athId = membersAthleteMap[id] ?? (m['athleteId'] is int ? m['athleteId'] as int : int.tryParse(m['athleteId']?.toString() ?? ''));
-          final rating = (m['ranking'] is num) ? (m['ranking'] as num).toDouble() : null;
-          final feedRank = m['popularityRank'] is int ? m['popularityRank'] as int : 0;
+          final athId = membersAthleteMap[id] ??
+              (m['athleteId'] is int
+                  ? m['athleteId'] as int
+                  : int.tryParse(m['athleteId']?.toString() ?? ''));
+          final rating =
+              (m['ranking'] is num) ? (m['ranking'] as num).toDouble() : null;
+          final feedRank =
+              m['popularityRank'] is int ? m['popularityRank'] as int : 0;
           final popularityRank = feedRank > 0 ? feedRank : membersOrderMap[id];
 
           int line = 2;
           double fieldSide = 50.0;
           if (m['yardFormation'] is Map) {
             final yf = m['yardFormation'] as Map;
-            line = yf['line'] is int ? yf['line'] as int : int.tryParse(yf['line']?.toString() ?? '2') ?? 2;
-            fieldSide = (yf['fieldSide'] is num) ? (yf['fieldSide'] as num).toDouble() : 50.0;
+            line = yf['line'] is int
+                ? yf['line'] as int
+                : int.tryParse(yf['line']?.toString() ?? '2') ?? 2;
+            fieldSide = (yf['fieldSide'] is num)
+                ? (yf['fieldSide'] as num).toDouble()
+                : 50.0;
           } else if (pos != null) {
             final pLower = pos.toLowerCase();
-            if (pLower.contains('حارس') || pLower.contains('goal') || pLower.contains('gk')) {
+            if (pLower.contains('حارس') ||
+                pLower.contains('goal') ||
+                pLower.contains('gk')) {
               line = 1;
-            } else if (pLower.contains('مدافع') || pLower.contains('def') || pLower.contains('ظهير')) {
+            } else if (pLower.contains('مدافع') ||
+                pLower.contains('def') ||
+                pLower.contains('ظهير')) {
               line = 2;
-            } else if (pLower.contains('وسط') || pLower.contains('mid') || pLower.contains('جناح')) {
+            } else if (pLower.contains('وسط') ||
+                pLower.contains('mid') ||
+                pLower.contains('جناح')) {
               line = 3;
-            } else if (pLower.contains('مهاجم') || pLower.contains('forw') || pLower.contains('att')) {
+            } else if (pLower.contains('مهاجم') ||
+                pLower.contains('forw') ||
+                pLower.contains('att')) {
               line = 4;
             }
           }
@@ -1465,7 +1742,9 @@ class SportsService {
             final count = needed.clamp(0, subs.length);
             for (var i = 0; i < count; i++) {
               final p = subs[i];
-              final line = (i == 0 && starters.isEmpty) ? 1 : (i <= 4 ? 2 : (i <= 7 ? 3 : 4));
+              final line = (i == 0 && starters.isEmpty)
+                  ? 1
+                  : (i <= 4 ? 2 : (i <= 7 ? 3 : 4));
               final fieldSide = 15.0 + (i % 4) * 25.0;
               starters.add(PlayerLineupItem(
                 id: p.id,
@@ -1473,7 +1752,12 @@ class SportsService {
                 name: p.name,
                 shortName: p.shortName,
                 jerseyNumber: p.jerseyNumber ?? (i + 1),
-                position: p.position ?? (line == 1 ? 'حارس مرمى' : (line == 2 ? 'مدافع' : (line == 3 ? 'وسط' : 'مهاجم'))),
+                position: p.position ??
+                    (line == 1
+                        ? 'حارس مرمى'
+                        : (line == 2
+                            ? 'مدافع'
+                            : (line == 3 ? 'وسط' : 'مهاجم'))),
                 isStarter: true,
                 line: p.line > 0 ? p.line : line,
                 fieldSide: p.fieldSide > 0 ? p.fieldSide : fieldSide,
@@ -1484,7 +1768,9 @@ class SportsService {
             subs.removeRange(0, count);
           }
 
-          final coach = homeCompetitor['coach'] is Map ? homeCompetitor['coach']['name']?.toString() : null;
+          final coach = homeCompetitor['coach'] is Map
+              ? homeCompetitor['coach']['name']?.toString()
+              : null;
           homeLineup = TeamLineup(
             teamName: homeName,
             formation: formation ?? '4-3-3',
@@ -1496,7 +1782,9 @@ class SportsService {
           // Fallback: Populate squad members for home team from game members
           final squad = <PlayerLineupItem>[];
           for (final m in game['members']) {
-            if (m is Map && (m['competitorId'] == homeId || m['competitorId']?.toString() == homeId?.toString())) {
+            if (m is Map &&
+                (m['competitorId'] == homeId ||
+                    m['competitorId']?.toString() == homeId?.toString())) {
               squad.add(parseMember(m));
             }
           }
@@ -1512,7 +1800,10 @@ class SportsService {
               name: p.name,
               shortName: p.shortName,
               jerseyNumber: p.jerseyNumber ?? (i + 1),
-              position: p.position ?? (line == 1 ? 'حارس مرمى' : (line == 2 ? 'مدافع' : (line == 3 ? 'وسط' : 'مهاجم'))),
+              position: p.position ??
+                  (line == 1
+                      ? 'حارس مرمى'
+                      : (line == 2 ? 'مدافع' : (line == 3 ? 'وسط' : 'مهاجم'))),
               isStarter: true,
               line: p.line > 0 ? p.line : line,
               fieldSide: p.fieldSide > 0 ? p.fieldSide : fieldSide,
@@ -1556,7 +1847,9 @@ class SportsService {
             final count = needed.clamp(0, subs.length);
             for (var i = 0; i < count; i++) {
               final p = subs[i];
-              final line = (i == 0 && starters.isEmpty) ? 1 : (i <= 4 ? 2 : (i <= 7 ? 3 : 4));
+              final line = (i == 0 && starters.isEmpty)
+                  ? 1
+                  : (i <= 4 ? 2 : (i <= 7 ? 3 : 4));
               final fieldSide = 15.0 + (i % 4) * 25.0;
               starters.add(PlayerLineupItem(
                 id: p.id,
@@ -1564,7 +1857,12 @@ class SportsService {
                 name: p.name,
                 shortName: p.shortName,
                 jerseyNumber: p.jerseyNumber ?? (i + 1),
-                position: p.position ?? (line == 1 ? 'حارس مرمى' : (line == 2 ? 'مدافع' : (line == 3 ? 'وسط' : 'مهاجم'))),
+                position: p.position ??
+                    (line == 1
+                        ? 'حارس مرمى'
+                        : (line == 2
+                            ? 'مدافع'
+                            : (line == 3 ? 'وسط' : 'مهاجم'))),
                 isStarter: true,
                 line: p.line > 0 ? p.line : line,
                 fieldSide: p.fieldSide > 0 ? p.fieldSide : fieldSide,
@@ -1575,7 +1873,9 @@ class SportsService {
             subs.removeRange(0, count);
           }
 
-          final coach = awayCompetitor['coach'] is Map ? awayCompetitor['coach']['name']?.toString() : null;
+          final coach = awayCompetitor['coach'] is Map
+              ? awayCompetitor['coach']['name']?.toString()
+              : null;
           awayLineup = TeamLineup(
             teamName: awayName,
             formation: formation ?? '4-2-3-1',
@@ -1587,7 +1887,9 @@ class SportsService {
           // Fallback: Populate squad members for away team from game members
           final squad = <PlayerLineupItem>[];
           for (final m in game['members']) {
-            if (m is Map && (m['competitorId'] == awayId || m['competitorId']?.toString() == awayId?.toString())) {
+            if (m is Map &&
+                (m['competitorId'] == awayId ||
+                    m['competitorId']?.toString() == awayId?.toString())) {
               squad.add(parseMember(m));
             }
           }
@@ -1603,7 +1905,10 @@ class SportsService {
               name: p.name,
               shortName: p.shortName,
               jerseyNumber: p.jerseyNumber ?? (i + 1),
-              position: p.position ?? (line == 1 ? 'حارس مرمى' : (line == 2 ? 'مدافع' : (line == 3 ? 'وسط' : 'مهاجم'))),
+              position: p.position ??
+                  (line == 1
+                      ? 'حارس مرمى'
+                      : (line == 2 ? 'مدافع' : (line == 3 ? 'وسط' : 'مهاجم'))),
               isStarter: true,
               line: p.line > 0 ? p.line : line,
               fieldSide: p.fieldSide > 0 ? p.fieldSide : fieldSide,
@@ -1625,7 +1930,11 @@ class SportsService {
         // Designate Captains with gold (C) mark
         if (homeLineup != null && homeLineup.starters.isNotEmpty) {
           final startersList = List<PlayerLineupItem>.from(homeLineup.starters);
-          final capIdx = startersList.indexWhere((p) => p.popularityRank == 1 || p.jerseyNumber == 4 || p.jerseyNumber == 8 || p.jerseyNumber == 10);
+          final capIdx = startersList.indexWhere((p) =>
+              p.popularityRank == 1 ||
+              p.jerseyNumber == 4 ||
+              p.jerseyNumber == 8 ||
+              p.jerseyNumber == 10);
           final idx = capIdx >= 0 ? capIdx : (startersList.length > 3 ? 3 : 0);
           final p = startersList[idx];
           startersList[idx] = PlayerLineupItem(
@@ -1654,7 +1963,11 @@ class SportsService {
 
         if (awayLineup != null && awayLineup.starters.isNotEmpty) {
           final startersList = List<PlayerLineupItem>.from(awayLineup.starters);
-          final capIdx = startersList.indexWhere((p) => p.popularityRank == 1 || p.jerseyNumber == 4 || p.jerseyNumber == 8 || p.jerseyNumber == 10);
+          final capIdx = startersList.indexWhere((p) =>
+              p.popularityRank == 1 ||
+              p.jerseyNumber == 4 ||
+              p.jerseyNumber == 8 ||
+              p.jerseyNumber == 10);
           final idx = capIdx >= 0 ? capIdx : (startersList.length > 3 ? 3 : 0);
           final p = startersList[idx];
           startersList[idx] = PlayerLineupItem(
@@ -1689,7 +2002,9 @@ class SportsService {
           'https://webws.365scores.com/web/game/stats/',
           queryParameters: {'games': resolvedSourceId, 'langId': 27},
         );
-        if (statsRes.statusCode == 200 && statsRes.data is Map && statsRes.data['statistics'] is List) {
+        if (statsRes.statusCode == 200 &&
+            statsRes.data is Map &&
+            statsRes.data['statistics'] is List) {
           final stats = statsRes.data['statistics'] as List;
           final Map<String, Map<String, dynamic>> grouped = {};
           for (final s in stats) {
@@ -1704,7 +2019,8 @@ class SportsService {
               if (isHome) {
                 grouped[name]!['home'] = val;
                 if (s['valuePercentage'] is num) {
-                  grouped[name]!['pct'] = (s['valuePercentage'] as num).toDouble();
+                  grouped[name]!['pct'] =
+                      (s['valuePercentage'] as num).toDouble();
                 }
               } else {
                 grouped[name]!['away'] = val;
@@ -1756,4 +2072,3 @@ class SportsService {
     }
   }
 }
-

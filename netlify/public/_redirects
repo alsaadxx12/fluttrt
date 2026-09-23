@@ -1,2 +1,5 @@
 # The site root opens the download page.
 /    /download/    302
+
+# The generic download is the arm64 file itself, not a second 25 MB copy of it.
+/download/app.apk    /download/app-arm64-v8a-release.apk    200

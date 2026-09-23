@@ -52,7 +52,8 @@ class LocalStreamServer {
     if (dir == null) {
       try {
         final base = await getTemporaryDirectory();
-        dir = Directory('${base.path}${Platform.pathSeparator}cineball_cast_cache');
+        dir = Directory(
+            '${base.path}${Platform.pathSeparator}cineball_cast_cache');
       } catch (_) {
         // Off the phone — a test, a desktop — there is no plugin to ask.
         dir = Directory(
@@ -146,6 +147,8 @@ class LocalStreamServer {
       if (source.mkv != null) suffix = '.mkv';
     }
 
+    source.token = token;
+    source.base = 'http://$host:${server.port}';
     _sources[token] = source;
     _lastToken = token;
     _fetched.remove(token);
@@ -162,7 +165,8 @@ class LocalStreamServer {
   int? get lastLength {
     final source = _lastToken == null ? null : _sources[_lastToken];
     if (source == null) return null;
-    return source.mkv?.length ?? source.layout?.length ??
+    return source.mkv?.length ??
+        source.layout?.length ??
         (source.total > 0 ? source.total : null);
   }
 
@@ -198,7 +202,14 @@ class LocalStreamServer {
     if (type.contains('mp4')) return '.mp4';
 
     final path = (Uri.tryParse(url)?.path ?? '').toLowerCase();
-    for (final known in const ['.m3u8', '.mkv', '.webm', '.mp4', '.mov', '.avi']) {
+    for (final known in const [
+      '.m3u8',
+      '.mkv',
+      '.webm',
+      '.mp4',
+      '.mov',
+      '.avi'
+    ]) {
       if (path.endsWith(known)) return known;
     }
     return '.mp4';
@@ -230,10 +241,12 @@ class LocalStreamServer {
       // its subtitle - with nothing to say why.
       for (var attempt = 1; attempt <= _attempts; attempt++) {
         try {
-          final response = await _openUpstream(source, range: 'bytes=$start-$endInclusive');
+          final response =
+              await _openUpstream(source, range: 'bytes=$start-$endInclusive');
           if (response.statusCode >= 400) return null;
           if (total == 0) {
-            final contentRange = response.headers.value(HttpHeaders.contentRangeHeader);
+            final contentRange =
+                response.headers.value(HttpHeaders.contentRangeHeader);
             if (contentRange != null && contentRange.contains('/')) {
               total = int.tryParse(contentRange.split('/').last) ?? 0;
             }
@@ -267,7 +280,8 @@ class LocalStreamServer {
       final file = await Mp4FastStart.read(fetch: range, totalSize: total);
       if (file == null) return;
 
-      final text = subtitle ?? (subtitleFuture == null ? null : await subtitleFuture);
+      final text =
+          subtitle ?? (subtitleFuture == null ? null : await subtitleFuture);
       final cues = text == null ? const <SrtCue>[] : SrtCue.parse(text);
       if (cues.isNotEmpty) {
         final movie = Mp4Movie.parse(file.moov);
@@ -280,7 +294,8 @@ class LocalStreamServer {
               '${mkv.subtitleCount} subtitle lines, ${mkv.length} bytes');
           return;
         }
-        debugPrint('[cast] could not remux; serving the mp4 without its subtitle');
+        debugPrint(
+            '[cast] could not remux; serving the mp4 without its subtitle');
       }
 
       if (file.indexFirst) return;
@@ -306,8 +321,10 @@ class LocalStreamServer {
   void _warmFront(_Source source) {
     final cache = source.cache;
     if (cache == null || source.total <= 0) return;
-    unawaited(_readSource(source, 0, min(SourceCache.chunk, source.total) - 1, planning: true)
-        .then<void>((_) {}, onError: (Object e) => debugPrint('[cast] warming the front: $e')));
+    unawaited(_readSource(source, 0, min(SourceCache.chunk, source.total) - 1,
+            planning: true)
+        .then<void>((_) {},
+            onError: (Object e) => debugPrint('[cast] warming the front: $e')));
   }
 
   /// Gives [source] a file on the phone to fill in, when there is
@@ -367,6 +384,7 @@ class LocalStreamServer {
     String method = 'GET',
     String? range,
     bool Function()? abandoned,
+    String? url,
   }) async {
     Object? last;
     for (var attempt = 1; attempt <= _attempts; attempt++) {
@@ -374,14 +392,17 @@ class LocalStreamServer {
       try {
         final request = await _client.openUrl(
           method,
-          source.resolved ?? Uri.parse(source.url),
+          url != null
+              ? Uri.parse(url)
+              : (source.resolved ?? Uri.parse(source.url)),
         );
         request.followRedirects = true;
         request.maxRedirects = 5;
         source.headers.forEach(request.headers.set);
         if (range != null) request.headers.set(HttpHeaders.rangeHeader, range);
-        final response = await request.close().timeout(const Duration(seconds: 20));
-        if (response.redirects.isNotEmpty) {
+        final response =
+            await request.close().timeout(const Duration(seconds: 20));
+        if (url == null && response.redirects.isNotEmpty) {
           source.resolved = response.redirects.last.location;
         }
         if (response.statusCode >= 500 && attempt < _attempts) {
@@ -466,7 +487,8 @@ class LocalStreamServer {
         includeLoopback: false,
       );
       return pickLanAddress({
-        for (final i in interfaces) i.name: [for (final a in i.addresses) a.address],
+        for (final i in interfaces)
+          i.name: [for (final a in i.addresses) a.address],
       });
     } catch (e) {
       debugPrint('[cast] interfaces: $e');
@@ -534,8 +556,11 @@ class LocalStreamServer {
   Future<void> _handle(HttpRequest request) async {
     final path = request.uri.pathSegments;
     // The extension is for the set's benefit, not ours; the token is what
-    // identifies the stream.
-    final token = path.length == 2 && path.first == 's'
+    // identifies the stream. `/s/<token>.<ext>` is the stream itself;
+    // `/p/<token>?u=…` is one piece of a live playlist, fetched on the
+    // set's behalf from the address the playlist named.
+    final piece = path.length == 2 && path.first == 'p';
+    final token = path.length == 2 && (path.first == 's' || piece)
         ? path[1].split('.').first
         : null;
     final source = token == null ? null : _sources[token];
@@ -549,9 +574,18 @@ class LocalStreamServer {
     debugPrint('[cast] the television asked for '
         '${request.method} ${request.uri.path} '
         'range=${request.headers.value(HttpHeaders.rangeHeader) ?? "-"}');
-    if (request.method != 'HEAD') _prefetch(source);
 
     try {
+      if (piece) {
+        final u = request.uri.queryParameters['u'] ?? '';
+        if (u.isEmpty) {
+          await _replyEmpty(request, HttpStatus.notFound);
+          return;
+        }
+        await _relayPiece(request, source, u);
+        return;
+      }
+      if (request.method != 'HEAD') _prefetch(source);
       await _relay(request, source);
     } catch (e) {
       debugPrint('[cast] relay: $e');
@@ -559,6 +593,160 @@ class LocalStreamServer {
         await _replyEmpty(request, HttpStatus.badGateway);
       } catch (_) {}
     }
+  }
+
+  // ---------------------------------------------------------- live playlists
+  //
+  // A live channel is an HLS playlist: a text file naming the pieces of the
+  // stream, which a player fetches one after another. Handed the playlist
+  // as it is, a television resolves those names against the phone's
+  // address and gets nothing - or, when the names are absolute, goes to a
+  // CDN that wants https and a Referer it cannot send. So the playlist is
+  // read here and rewritten: every piece it names becomes an address on
+  // the phone, and the phone fetches the real piece, headers and all.
+
+  /// True when the stream is an HLS playlist rather than a file.
+  static bool isPlaylist(String? mime, String url) {
+    if ((mime ?? '').toLowerCase().contains('mpegurl')) return true;
+    final path = Uri.tryParse(url)?.path.toLowerCase() ?? '';
+    return path.endsWith('.m3u8') || path.endsWith('.m3u');
+  }
+
+  /// The relay the app puts in front of sources that refuse a plain fetch.
+  static const String _relayPrefix = 'https://cineball.netlify.app/relay?u=';
+
+  /// The address the pieces of [url] resolve against: the real one, even
+  /// when [url] goes through the relay.
+  static String _originOf(String url) {
+    if (url.startsWith(_relayPrefix)) {
+      return Uri.decodeQueryComponent(url.substring(_relayPrefix.length));
+    }
+    return url;
+  }
+
+  /// [absolute], fetched the way the playlist itself was: through the
+  /// relay when the playlist came through it.
+  static String _viaSameRoute(String playlistUrl, String absolute) {
+    if (playlistUrl.startsWith(_relayPrefix) &&
+        !absolute.startsWith(_relayPrefix)) {
+      return '$_relayPrefix${Uri.encodeQueryComponent(absolute)}';
+    }
+    return absolute;
+  }
+
+  /// The playlist with every piece it names pointed at [pieceUrl].
+  ///
+  /// Plain lines are pieces or nested playlists; `URI="…"` attributes on
+  /// keys, maps and alternate renditions name pieces too. Relative names
+  /// are resolved against [base] first.
+  @visibleForTesting
+  static String rewritePlaylist(
+    String text,
+    String base,
+    String Function(String absolute) pieceUrl,
+  ) {
+    final baseUri = Uri.parse(base);
+    String absolute(String ref) => baseUri.resolve(ref.trim()).toString();
+    final uriAttr = RegExp(r'URI="([^"]+)"');
+    final out = StringBuffer();
+    for (final raw in const LineSplitter().convert(text)) {
+      final line = raw.trimRight();
+      if (line.isEmpty) {
+        out.writeln();
+        continue;
+      }
+      if (line.startsWith('#')) {
+        out.writeln(line.replaceAllMapped(
+          uriAttr,
+          (m) => 'URI="${pieceUrl(absolute(m.group(1)!))}"',
+        ));
+        continue;
+      }
+      out.writeln(pieceUrl(absolute(line)));
+    }
+    return out.toString();
+  }
+
+  /// Serves the playlist at [url], rewritten.
+  Future<void> _relayPlaylist(
+      HttpRequest request, _Source source, String url) async {
+    final response = await _openUpstream(source, url: url);
+    final builder = BytesBuilder(copy: false);
+    await for (final chunk in response) {
+      builder.add(chunk);
+      if (builder.length > 4 * 1024 * 1024) break;
+    }
+    final text = utf8.decode(builder.takeBytes(), allowMalformed: true);
+    // Where the playlist really came from: the CDN's final address after
+    // its redirects, or the original address behind the relay.
+    final landed = response.redirects.isNotEmpty
+        ? response.redirects.last.location.toString()
+        : url;
+    final base = _originOf(landed);
+    final token = source.token;
+    final rewritten = rewritePlaylist(
+      text,
+      base,
+      (absolute) => '${source.base}/p/$token?u='
+          '${Uri.encodeQueryComponent(_viaSameRoute(url, absolute))}',
+    );
+    final bytes = utf8.encode(rewritten);
+    final socket = await _open(request, HttpStatus.ok, {
+      'Content-Type': 'application/vnd.apple.mpegurl',
+      'Content-Length': '${bytes.length}',
+      'Cache-Control': 'no-cache',
+      'transferMode.dlna.org': 'Streaming',
+    });
+    if (request.method != 'HEAD') socket.add(bytes);
+    await socket.flush();
+    await socket.close();
+    debugPrint(
+        '[cast] playlist ${bytes.length} bytes, ${rewritten.split("\n").where((l) => l.isNotEmpty && !l.startsWith("#")).length} pieces');
+  }
+
+  /// Serves one piece named by a playlist: a nested playlist is rewritten
+  /// like the first, anything else is passed through as it comes.
+  Future<void> _relayPiece(
+      HttpRequest request, _Source source, String url) async {
+    if (isPlaylist(null, _originOf(url))) {
+      return _relayPlaylist(request, source, url);
+    }
+    final range = request.headers.value(HttpHeaders.rangeHeader);
+    final response = await _openUpstream(
+      source,
+      url: url,
+      method: request.method == 'HEAD' ? 'HEAD' : 'GET',
+      range: range,
+    );
+    final upstreamType =
+        response.headers.value(HttpHeaders.contentTypeHeader) ?? '';
+    // A piece that turns out to be a playlist after all (no extension in
+    // its name) is rewritten rather than handed over raw.
+    if (upstreamType.toLowerCase().contains('mpegurl')) {
+      await response.drain<void>().catchError((Object _) {});
+      return _relayPlaylist(request, source, url);
+    }
+    final headers = <String, String>{
+      'Content-Type': upstreamType.isEmpty ? 'video/mp2t' : upstreamType,
+      'Accept-Ranges': 'bytes',
+      'transferMode.dlna.org': 'Streaming',
+    };
+    void carry(String wire, String name) {
+      final value = response.headers.value(name);
+      if (value != null) headers[wire] = value;
+    }
+
+    carry('Content-Length', HttpHeaders.contentLengthHeader);
+    carry('Content-Range', HttpHeaders.contentRangeHeader);
+    final socket = await _open(request, response.statusCode, headers);
+    if (request.method == 'HEAD') {
+      await socket.close();
+      return;
+    }
+    var sent = 0;
+    final outcome = await _pump(response, socket, (n) => sent += n);
+    debugPrint(
+        '[cast] piece sent=${(sent / 1e6).toStringAsFixed(2)}MB -> $outcome');
   }
 
   // ------------------------------------------------------------- the wire
@@ -660,6 +848,9 @@ class LocalStreamServer {
     if (mkv != null) return _relayMkv(request, source, mkv);
     final layout = source.layout;
     if (layout != null) return _relayRearranged(request, source, layout);
+    if (isPlaylist(source.mime, source.url)) {
+      return _relayPlaylist(request, source, source.url);
+    }
 
     // A television almost always asks what it is about to fetch before
     // fetching it, and some refuse to play at all if that first answer is
@@ -675,7 +866,8 @@ class LocalStreamServer {
     if (head && source.total > 0) {
       final bounds = _bounds(range, source.total);
       if (bounds == null) {
-        final socket = await _open(request, HttpStatus.requestedRangeNotSatisfiable, {
+        final socket =
+            await _open(request, HttpStatus.requestedRangeNotSatisfiable, {
           'Content-Range': 'bytes */${source.total}',
           'Content-Length': '0',
         });
@@ -703,7 +895,8 @@ class LocalStreamServer {
     if (!head && source.total > 0) {
       final bounds = _bounds(range, source.total);
       if (bounds == null) {
-        final socket = await _open(request, HttpStatus.requestedRangeNotSatisfiable, {
+        final socket =
+            await _open(request, HttpStatus.requestedRangeNotSatisfiable, {
           'Content-Range': 'bytes */${source.total}',
           'Content-Length': '0',
         });
@@ -740,6 +933,7 @@ class LocalStreamServer {
       final value = response.headers.value(name);
       if (value != null) headers[wire] = value;
     }
+
     carry('Content-Length', HttpHeaders.contentLengthHeader);
     carry('Content-Range', HttpHeaders.contentRangeHeader);
 
@@ -753,7 +947,8 @@ class LocalStreamServer {
     var sent = 0;
     final outcome = await _pump(response, socket, (n) => sent += n);
     final seconds = DateTime.now().difference(started).inMilliseconds / 1000;
-    debugPrint('[cast] served range=${range ?? "-"} status=${response.statusCode} '
+    debugPrint(
+        '[cast] served range=${range ?? "-"} status=${response.statusCode} '
         'sent=${(sent / 1e6).toStringAsFixed(2)}MB in ${seconds.toStringAsFixed(1)}s -> $outcome');
   }
 
@@ -817,12 +1012,14 @@ class LocalStreamServer {
   /// requested stretch is served in windows: the source ranges of one
   /// window are fetched (coalesced, since they nearly abut), the window is
   /// put together in memory, sent, and the next one is already on its way.
-  Future<void> _relayMkv(HttpRequest request, _Source source, MkvLayout mkv) async {
+  Future<void> _relayMkv(
+      HttpRequest request, _Source source, MkvLayout mkv) async {
     final total = mkv.length;
     final rangeHeader = request.headers.value(HttpHeaders.rangeHeader);
     final bounds = _bounds(rangeHeader, total);
     if (bounds == null) {
-      final socket = await _open(request, HttpStatus.requestedRangeNotSatisfiable, {
+      final socket =
+          await _open(request, HttpStatus.requestedRangeNotSatisfiable, {
         'Content-Range': 'bytes */$total',
         'Content-Length': '0',
       });
@@ -830,7 +1027,8 @@ class LocalStreamServer {
       return;
     }
     final (from, to) = bounds;
-    final status = rangeHeader != null ? HttpStatus.partialContent : HttpStatus.ok;
+    final status =
+        rangeHeader != null ? HttpStatus.partialContent : HttpStatus.ok;
     final socket = await _open(request, status, {
       ..._mediaHeaders('video/x-matroska'),
       'Content-Length': '${to - from + 1}',
@@ -862,11 +1060,13 @@ class LocalStreamServer {
     Socket socket,
     int from,
     int to,
-    Future<Uint8List> Function(int from, int to, bool Function() abandoned) read, {
+    Future<Uint8List> Function(int from, int to, bool Function() abandoned)
+        read, {
     required String log,
   }) async {
     var closed = false;
-    unawaited(socket.done.then<void>((_) => closed = true, onError: (Object _) => closed = true));
+    unawaited(socket.done.then<void>((_) => closed = true,
+        onError: (Object _) => closed = true));
 
     final started = DateTime.now();
     var sent = 0;
@@ -973,7 +1173,10 @@ class LocalStreamServer {
     final fetched = <(int, Uint8List)>[];
     for (final run in runs) {
       if (abandoned()) throw const _Abandoned();
-      fetched.add((run.$1, await _readSource(source, run.$1, run.$2, abandoned: abandoned)));
+      fetched.add((
+        run.$1,
+        await _readSource(source, run.$1, run.$2, abandoned: abandoned)
+      ));
     }
 
     final out = Uint8List(to - from + 1);
@@ -1030,12 +1233,13 @@ class LocalStreamServer {
   /// offset, streamed through untouched. A range that straddles the two is
   /// served from both in turn, which is what a set does when it seeks.
   Future<void> _relayRearranged(
-    HttpRequest request, _Source source, Mp4Layout layout) async {
+      HttpRequest request, _Source source, Mp4Layout layout) async {
     final total = layout.length;
     final rangeHeader = request.headers.value(HttpHeaders.rangeHeader);
     final bounds = _bounds(rangeHeader, total);
     if (bounds == null) {
-      final socket = await _open(request, HttpStatus.requestedRangeNotSatisfiable, {
+      final socket =
+          await _open(request, HttpStatus.requestedRangeNotSatisfiable, {
         'Content-Range': 'bytes */$total',
         'Content-Length': '0',
       });
@@ -1044,7 +1248,8 @@ class LocalStreamServer {
     }
     final (from, to) = bounds;
     final length = to - from + 1;
-    final status = rangeHeader != null ? HttpStatus.partialContent : HttpStatus.ok;
+    final status =
+        rangeHeader != null ? HttpStatus.partialContent : HttpStatus.ok;
 
     final headers = <String, String>{
       ..._mediaHeaders('video/mp4'),
@@ -1126,6 +1331,11 @@ class _Source {
 
   /// What the set is told the stream is.
   String? mime;
+
+  /// The token the stream is served under, and the server's own address,
+  /// for the pieces of a rewritten playlist.
+  String token = '';
+  String base = '';
 
   /// How long the source is, once it has said; zero until then.
   int total = 0;

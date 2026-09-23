@@ -60,9 +60,12 @@ def main():
             old = {}
 
     if has_split:
-        # Copy arm64 as primary download and as app.apk fallback
+        # arm64 is the primary download. app.apk is NOT a second copy any
+        # more: netlify/public/_redirects serves it from the arm64 file, so
+        # a deploy uploads 25 MB less - the upload was timing out.
         shutil.copyfile(APK_ARM64_SRC, APK_ARM64_DST)
-        shutil.copyfile(APK_ARM64_SRC, APK_MAIN_DST)
+        if os.path.exists(APK_MAIN_DST):
+            os.remove(APK_MAIN_DST)
         sha_arm64, size_arm64 = file_sha256_and_size(APK_ARM64_DST)
 
         sha_arm32 = None

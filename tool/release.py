@@ -103,6 +103,35 @@ def signed_by_release_key(path):
     return 'CN=Android Debug' not in out
 
 
+def publish(name, code):
+    """netlify deploy, tried three times.
+
+    The upload is fifty megabytes over a line that drops; Netlify's own
+    'connect_read timeout reached' during 'CDN diffing files' is the usual
+    failure, and a second try normally goes through. Nothing is half-published
+    when it fails: a deploy only goes live once every file has arrived.
+    """
+    import time
+    if not shutil.which('netlify'):
+        print('\nnetlify CLI not found (npm install -g netlify-cli). Publish by hand instead:')
+        print('  upload the folder  netlify/public  in the Deploys tab, or run\n'
+              '  cd netlify && netlify deploy --prod --dir=public')
+        return
+    for attempt in range(1, 4):
+        print(f'\n== publish to Netlify (attempt {attempt} of 3)')
+        rc = subprocess.call(['netlify', 'deploy', '--prod', '--dir=netlify/public',
+                              '--message', f'{name} ({code})'],
+                             cwd=ROOT, shell=(os.name == 'nt'))
+        if rc == 0:
+            print(f'\nDone. Users on older builds will see {name} ({code}) within seconds of opening the app.')
+            return
+        if attempt < 3:
+            print(f'   upload failed (exit {rc}); trying again in 20 seconds...')
+            time.sleep(20)
+    raise SystemExit('publish to Netlify failed three times. The build is fine; when the line is '
+                     'better run:  python tool/release.py --deploy-only')
+
+
 def update_url_inside(path):
     """The update host compiled into the app, read back out of the APK."""
     host = json.load(open(MANIFEST, encoding='utf-8'))['apkUrl'].split('/')[2].split('?')[0]
@@ -123,8 +152,16 @@ def main():
     ap.add_argument('--min', type=int, default=None)
     ap.add_argument('--disable', action='store_true')
     ap.add_argument('--deploy', action='store_true')
+    ap.add_argument('--deploy-only', action='store_true',
+                    help='no bump, no build: publish what is already in netlify/public')
     ap.add_argument('--dry-run', action='store_true')
     args = ap.parse_args()
+
+    if args.deploy_only:
+        # The build and the manifest are already done; only the upload failed.
+        current = json.load(open(MANIFEST, encoding='utf-8'))
+        publish(current.get('versionName', '?'), current.get('versionCode', '?'))
+        return
 
     name, code = bump(args)
     if args.dry_run:
@@ -178,18 +215,15 @@ def main():
     print('\n== copy the APK and write version.json')
     release_manifest.main()
 
-    host = update_url_inside(os.path.join(DL, 'app.apk'))
+    host = update_url_inside(os.path.join(DL, 'app-arm64-v8a-release.apk'))
     if host:
         print(f'the app looks for updates at: {host}  (matches version.json)')
     else:
         print('WARNING: the update host in version.json was not found inside the APK. '
               'Check lib/features/update/update_config.dart before publishing.')
 
-    if args.deploy and shutil.which('netlify'):
-        run(['netlify', 'deploy', '--prod', '--dir=netlify/public'],
-            'publish to Netlify',
-            cwd=ROOT)
-        print(f'\nDone. Users on older builds will see {name} ({code}) within seconds of opening the app.')
+    if args.deploy:
+        publish(name, code)
     else:
         if args.deploy:
             print('\nnetlify CLI not found (npm install -g netlify-cli). Publish by hand instead:')

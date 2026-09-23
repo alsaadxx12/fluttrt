@@ -46,7 +46,8 @@ class CastController extends StateNotifier<CastState> {
   /// own the moment it opens. A set not yet seen by the search is looked
   /// for first; a search that finds nothing ends the attempt quietly.
   Future<void> connectToLast(CastDevice last) async {
-    state = state.copyWith(note: 'جارٍ الاتصال بآخر شاشة: ${last.name}…', clearError: true);
+    state = state.copyWith(
+        note: 'جارٍ الاتصال بآخر شاشة: ${last.name}…', clearError: true);
     if (last.transport == CastTransport.dlna) {
       try {
         await _dlna.discoverDevices();
@@ -72,7 +73,8 @@ class CastController extends StateNotifier<CastState> {
   /// Told where the film on the screen has got to, every few seconds and
   /// at every stop — for the history page, which lives elsewhere and
   /// should not be a thing the casting code knows about.
-  void Function(String videoId, Duration position, Duration? duration, {bool now})? onProgress;
+  void Function(String videoId, Duration position, Duration? duration,
+      {bool now})? onProgress;
 
   Future<void> _letGo() async {
     if (state.device == null) return;
@@ -162,9 +164,15 @@ class CastController extends StateNotifier<CastState> {
     bool alsoOnCast(CastDevice d) {
       final name = _plainName(d.name);
       if (name.isEmpty) return false;
-      return castNames.any((c) => c == name || c.contains(name) || name.contains(c));
+      return castNames
+          .any((c) => c == name || c.contains(name) || name.contains(c));
     }
-    return [...cast, for (final d in dlna) if (!alsoOnCast(d)) d];
+
+    return [
+      ...cast,
+      for (final d in dlna)
+        if (!alsoOnCast(d)) d
+    ];
   }
 
   static String _plainName(String name) => name
@@ -336,9 +344,12 @@ class CastController extends StateNotifier<CastState> {
   Future<void> _rememberWhereItIs({bool force = false}) async {
     final media = state.media;
     if (media == null || media.isLive) return;
-    if (!force && DateTime.now().difference(_lastSaved) < const Duration(seconds: 5)) return;
+    if (!force &&
+        DateTime.now().difference(_lastSaved) < const Duration(seconds: 5))
+      return;
     _lastSaved = DateTime.now();
-    await ResumeStore.save(media.mediaId, state.position, duration: state.duration);
+    await ResumeStore.save(media.mediaId, state.position,
+        duration: state.duration);
     onProgress?.call(media.mediaId, state.position, state.duration, now: force);
   }
 
@@ -348,8 +359,13 @@ class CastController extends StateNotifier<CastState> {
   /// Nothing happens when no device is connected: a page may call this
   /// freely and let the viewer decide whether to cast.
   Future<void> cast(CastMedia media) async {
-    if (!state.isConnected) return;
-    final swapping = state.media != null && state.media!.mediaId != media.mediaId;
+    if (!state.isConnected) {
+      debugPrint(
+          '[cast] cast(${media.mediaId}) with nothing connected (status ${state.status.name})');
+      return;
+    }
+    final swapping =
+        state.media != null && state.media!.mediaId != media.mediaId;
     state = state.copyWith(
       media: media,
       position: media.position,
@@ -415,7 +431,8 @@ class CastController extends StateNotifier<CastState> {
   Future<void> stopMedia() async {
     await _rememberWhereItIs(force: true);
     await _active?.stop();
-    state = state.copyWith(clearMedia: true, isPlaying: false, position: Duration.zero);
+    state = state.copyWith(
+        clearMedia: true, isPlaying: false, position: Duration.zero);
     unawaited(CastNotification.hide());
   }
 
@@ -430,7 +447,8 @@ class CastController extends StateNotifier<CastState> {
     final media = state.media;
     final softer = media?.softer;
     if (media == null || softer == null || _recovering) return;
-    if (DateTime.now().difference(_lastStepDown) < const Duration(seconds: 90)) return;
+    if (DateTime.now().difference(_lastStepDown) < const Duration(seconds: 90))
+      return;
     _lastStepDown = DateTime.now();
     final next = media.copyWith(
       streamUrl: softer.url,
@@ -438,8 +456,10 @@ class CastController extends StateNotifier<CastState> {
       position: state.position,
       quality: '${softer.height}p · الإنترنت أبطأ من اللازم، تم التخفيف',
     );
-    debugPrint('[cast] link too slow at ${media.height}p; sending ${softer.height}p from ${state.position}');
-    state = state.copyWith(note: 'الإنترنت بطيء — التبديل إلى ${softer.height}p من نفس الدقيقة…');
+    debugPrint(
+        '[cast] link too slow at ${media.height}p; sending ${softer.height}p from ${state.position}');
+    state = state.copyWith(
+        note: 'الإنترنت بطيء — التبديل إلى ${softer.height}p من نفس الدقيقة…');
     try {
       await cast(next);
     } catch (e) {
@@ -500,7 +520,8 @@ class CastController extends StateNotifier<CastState> {
       final service = _serviceFor(device);
       for (var attempt = 1; attempt <= _recoverAttempts; attempt++) {
         state = state.copyWith(
-          note: 'انقطع الاتصال بالتلفاز، إعادة الربط ($attempt من $_recoverAttempts)…',
+          note:
+              'انقطع الاتصال بالتلفاز، إعادة الربط ($attempt من $_recoverAttempts)…',
           clearError: true,
         );
         try {
@@ -526,7 +547,8 @@ class CastController extends StateNotifier<CastState> {
         }
         await Future<void>.delayed(Duration(seconds: 2 * attempt));
       }
-      state = const CastState(error: 'انقطع الاتصال بالتلفاز ولم تنجح إعادة الربط');
+      state =
+          const CastState(error: 'انقطع الاتصال بالتلفاز ولم تنجح إعادة الربط');
     } finally {
       _recovering = false;
     }
@@ -547,7 +569,8 @@ class CastController extends StateNotifier<CastState> {
 
 final castControllerProvider = StateNotifierProvider<CastController, CastState>(
   (ref) {
-    final controller = CastController(WebCastService(), GoogleCastService(), DlnaCastService());
+    final controller = CastController(
+        WebCastService(), GoogleCastService(), DlnaCastService());
     // Where the film on the screen has got to goes into the history too.
     controller.onProgress = (videoId, position, duration, {bool now = false}) {
       ref.read(watchHistoryProvider.notifier).updatePosition(
@@ -581,7 +604,8 @@ final localNetworkProvider = FutureProvider.autoDispose<LocalNetworkStatus>(
 /// Discovery runs only while something is watching this — the sheet, in
 /// practice — because a Cast scan is a steady trickle of multicast traffic
 /// and there is no reason to keep it up behind a closed sheet.
-final castTelevisionsProvider = StreamProvider.autoDispose<List<CastDevice>>((ref) {
+final castTelevisionsProvider =
+    StreamProvider.autoDispose<List<CastDevice>>((ref) {
   final controller = ref.watch(castControllerProvider.notifier);
   controller.startDiscovery();
   ref.onDispose(controller.stopDiscovery);
