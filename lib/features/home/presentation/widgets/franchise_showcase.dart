@@ -47,7 +47,11 @@ class FranchisesShowcase extends StatelessWidget {
               const SizedBox(width: 8),
               Text(
                 _titles[section]!,
-                style: TextStyle(color: p.text, fontSize: 18, fontWeight: FontWeight.w900, letterSpacing: -0.3),
+                style: TextStyle(
+                    color: p.text,
+                    fontSize: 18,
+                    fontWeight: FontWeight.w900,
+                    letterSpacing: -0.3),
               ),
             ],
           ),
@@ -56,7 +60,8 @@ class FranchisesShowcase extends StatelessWidget {
         // Page-coloured strip (the gaps between cards are just the page).
         ColoredBox(
           color: p.bg,
-          child: SizedBox(height: 315, child: _FranchiseCarousel(franchises: franchises)),
+          child: SizedBox(
+              height: 250, child: _FranchiseCarousel(franchises: franchises)),
         ),
       ],
     );
@@ -153,14 +158,16 @@ class _FranchiseCarouselState extends State<_FranchiseCarousel> {
     return LayoutBuilder(
       builder: (context, box) {
         // One card plus its gap per page, so the gaps are even.
-        final fraction = ((_FranchiseCard.width + 18) / box.maxWidth).clamp(0.1, 1.0);
+        final fraction =
+            ((_FranchiseCard.width + 18) / box.maxWidth).clamp(0.1, 1.0);
         final defaultInitial = _middleIndex;
         if (_controller == null || (fraction - _fraction).abs() > 0.001) {
           final page = _controller?.hasClients == true
               ? (_controller!.page ?? defaultInitial.toDouble()).round()
               : defaultInitial;
           _controller?.dispose();
-          _controller = PageController(viewportFraction: fraction, initialPage: page);
+          _controller =
+              PageController(viewportFraction: fraction, initialPage: page);
           _fraction = fraction;
         }
         final controller = _controller!;
@@ -239,7 +246,7 @@ class _FranchiseCard extends ConsumerWidget {
     this.onReturned,
   });
 
-  static const width = 252.0;
+  static const width = 200.0;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -247,7 +254,8 @@ class _FranchiseCard extends ConsumerWidget {
     final async = ref.watch(franchiseFilmsProvider(franchise.id));
     final films = async.valueOrNull ?? const <CinemanaItem>[];
     // Nothing of this series on Cinemana: no card.
-    if (async.hasValue && films.length < DynamicFranchise.minParts) return const SizedBox.shrink();
+    if (async.hasValue && films.length < DynamicFranchise.minParts)
+      return const SizedBox.shrink();
 
     final partsCountLabel = films.isNotEmpty
         ? FilmFranchise.countLabel(films)
@@ -258,7 +266,8 @@ class _FranchiseCard extends ConsumerWidget {
           ? null
           : () async {
               await Navigator.of(context, rootNavigator: true).push(
-                MaterialPageRoute(builder: (_) => FranchiseScreen(franchise: franchise)),
+                MaterialPageRoute(
+                    builder: (_) => FranchiseScreen(franchise: franchise)),
               );
               onReturned?.call();
             },
@@ -282,39 +291,33 @@ class _FranchiseCard extends ConsumerWidget {
                       ? const PosterFanPlaceholder()
                       : PosterFan(films: films),
                 ),
+                // No words under the fan: the posters say what the series
+                // is, and the button says what to do. The count is the
+                // tooltip's, for whoever holds the button.
                 Padding(
-                  padding: const EdgeInsets.fromLTRB(14, 4, 14, 14),
+                  padding: const EdgeInsets.fromLTRB(12, 2, 12, 10),
                   child: Row(
+                    mainAxisAlignment: MainAxisAlignment.end,
                     children: [
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              partsCountLabel,
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                              style: TextStyle(color: p.textMuted, fontSize: 12, fontWeight: FontWeight.w700),
-                            ),
-                          ],
+                      Tooltip(
+                        message: partsCountLabel,
+                        child: Container(
+                          width: 34,
+                          height: 34,
+                          decoration: BoxDecoration(
+                            color: const Color(0xFFE50914),
+                            shape: BoxShape.circle,
+                            boxShadow: [
+                              BoxShadow(
+                                color: const Color(0xFFE50914).withOpacity(0.4),
+                                blurRadius: 8,
+                                offset: const Offset(0, 3),
+                              ),
+                            ],
+                          ),
+                          child: const Icon(Icons.play_arrow_rounded,
+                              color: Colors.white, size: 22),
                         ),
-                      ),
-                      const SizedBox(width: 8),
-                      Container(
-                        width: 38,
-                        height: 38,
-                        decoration: BoxDecoration(
-                          color: const Color(0xFFE50914),
-                          shape: BoxShape.circle,
-                          boxShadow: [
-                            BoxShadow(
-                              color: const Color(0xFFE50914).withOpacity(0.4),
-                              blurRadius: 8,
-                              offset: const Offset(0, 3),
-                            ),
-                          ],
-                        ),
-                        child: const Icon(Icons.play_arrow_rounded, color: Colors.white, size: 24),
                       ),
                     ],
                   ),
@@ -345,7 +348,8 @@ class PosterFan extends StatelessWidget {
         .toList();
     final picks = <CinemanaItem>[latest, ...behind];
     const w = 134.0, h = 201.0;
-    Widget poster(CinemanaItem f, double angle, double dx, double dy, double scale, double shade) =>
+    Widget poster(CinemanaItem f, double angle, double dx, double dy,
+            double scale, double shade) =>
         Transform.translate(
           offset: Offset(dx, dy),
           child: Transform.rotate(
@@ -375,18 +379,21 @@ class PosterFan extends StatelessWidget {
                       placeholder: (_, __) => Container(
                         color: const Color(0xFF161E2E),
                         child: const Center(
-                          child: Icon(Icons.movie_filter_rounded, color: Colors.white24, size: 24),
+                          child: Icon(Icons.movie_filter_rounded,
+                              color: Colors.white24, size: 24),
                         ),
                       ),
                       errorWidget: (_, __, ___) => Container(
                         color: const Color(0xFF161E2E),
                         child: const Center(
-                          child: Icon(Icons.movie_filter_rounded, color: Colors.white24, size: 24),
+                          child: Icon(Icons.movie_filter_rounded,
+                              color: Colors.white24, size: 24),
                         ),
                       ),
                     ),
                     // The two behind sit a little in shadow.
-                    if (shade > 0) ColoredBox(color: Colors.black.withOpacity(shade)),
+                    if (shade > 0)
+                      ColoredBox(color: Colors.black.withOpacity(shade)),
                   ],
                 ),
               ),
@@ -402,7 +409,8 @@ class PosterFan extends StatelessWidget {
         clipBehavior: Clip.none,
         children: [
           if (three) poster(picks[2], 10 * math.pi / 180, 56, 8, 0.88, 0.22),
-          if (picks.length > 1) poster(picks[1], -10 * math.pi / 180, -56, 8, 0.88, 0.22),
+          if (picks.length > 1)
+            poster(picks[1], -10 * math.pi / 180, -56, 8, 0.88, 0.22),
           poster(picks[0], 0, 0, 0, 1.0, 0),
         ],
       ),
@@ -417,7 +425,8 @@ class PosterFanPlaceholder extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     const w = 134.0, h = 201.0;
-    Widget slot(double angle, double dx, double dy, double scale) => Transform.translate(
+    Widget slot(double angle, double dx, double dy, double scale) =>
+        Transform.translate(
           offset: Offset(dx, dy),
           child: Transform.rotate(
             angle: angle,
@@ -431,7 +440,8 @@ class PosterFanPlaceholder extends StatelessWidget {
                   borderRadius: BorderRadius.circular(14),
                 ),
                 child: const Center(
-                  child: Icon(Icons.movie_filter_rounded, color: Colors.white24, size: 28),
+                  child: Icon(Icons.movie_filter_rounded,
+                      color: Colors.white24, size: 28),
                 ),
               ),
             ),
@@ -457,7 +467,8 @@ class PosterFanPlaceholder extends StatelessWidget {
 class FranchisePressable extends StatefulWidget {
   final Widget child;
   final VoidCallback? onTap;
-  const FranchisePressable({super.key, required this.child, required this.onTap});
+  const FranchisePressable(
+      {super.key, required this.child, required this.onTap});
 
   @override
   State<FranchisePressable> createState() => _PressableState();
@@ -502,17 +513,25 @@ class FranchiseScreen extends ConsumerWidget {
         title: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text('سلسلة ${franchise.name}', style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w900)),
+            Text('سلسلة ${franchise.name}',
+                style:
+                    const TextStyle(fontSize: 17, fontWeight: FontWeight.w900)),
             if (films.isNotEmpty)
               Text('${FilmFranchise.countLabel(films)} · الأحدث أولاً',
-                  style: TextStyle(fontSize: 11.5, color: p.textMuted, fontWeight: FontWeight.w600)),
+                  style: TextStyle(
+                      fontSize: 11.5,
+                      color: p.textMuted,
+                      fontWeight: FontWeight.w600)),
           ],
         ),
       ),
       body: async.isLoading && films.isEmpty
-          ? const Center(child: CircularProgressIndicator(color: Color(0xFFE50914)))
+          ? const Center(
+              child: CircularProgressIndicator(color: Color(0xFFE50914)))
           : films.isEmpty
-              ? Center(child: Text('تعذّر تحميل السلسلة', style: TextStyle(color: p.textMuted)))
+              ? Center(
+                  child: Text('تعذّر تحميل السلسلة',
+                      style: TextStyle(color: p.textMuted)))
               : LayoutBuilder(
                   builder: (context, constraints) {
                     final width = constraints.maxWidth;
@@ -525,11 +544,12 @@ class FranchiseScreen extends ConsumerWidget {
                         crossAxisCount: count,
                         mainAxisSpacing: 14,
                         crossAxisSpacing: 12,
-                        childAspectRatio: 0.67, // Standard 2:3 poster aspect ratio
+                        childAspectRatio:
+                            0.67, // Standard 2:3 poster aspect ratio
                       ),
                       itemCount: films.length,
-                      itemBuilder: (context, i) =>
-                          FranchiseFilmTile(film: films[i], number: films.length - i),
+                      itemBuilder: (context, i) => FranchiseFilmTile(
+                          film: films[i], number: films.length - i),
                     );
                   },
                 ),
@@ -540,7 +560,8 @@ class FranchiseScreen extends ConsumerWidget {
 class FranchiseFilmTile extends StatefulWidget {
   final CinemanaItem film;
   final int number;
-  const FranchiseFilmTile({super.key, required this.film, required this.number});
+  const FranchiseFilmTile(
+      {super.key, required this.film, required this.number});
 
   @override
   State<FranchiseFilmTile> createState() => _FranchiseFilmTileState();
@@ -556,7 +577,8 @@ class _FranchiseFilmTileState extends State<FranchiseFilmTile> {
     final number = widget.number;
     final dpr = MediaQuery.of(context).devicePixelRatio;
     // High-resolution image: bestPosterUrl or imgUrl
-    final posterUrl = film.bestPosterUrl.isNotEmpty ? film.bestPosterUrl : film.cardImageUrl;
+    final posterUrl =
+        film.bestPosterUrl.isNotEmpty ? film.bestPosterUrl : film.cardImageUrl;
 
     return MouseRegion(
       onEnter: (_) => setState(() => _isHovered = true),
@@ -567,7 +589,9 @@ class _FranchiseFilmTileState extends State<FranchiseFilmTile> {
         ),
         child: AnimatedContainer(
           duration: const Duration(milliseconds: 180),
-          transform: _isHovered ? (Matrix4.identity()..translate(0, -4)) : Matrix4.identity(),
+          transform: _isHovered
+              ? (Matrix4.identity()..translate(0, -4))
+              : Matrix4.identity(),
           decoration: BoxDecoration(
             color: p.card,
             borderRadius: BorderRadius.circular(14),
@@ -594,7 +618,8 @@ class _FranchiseFilmTileState extends State<FranchiseFilmTile> {
                 placeholder: (_, __) => ColoredBox(color: p.skeleton),
                 errorWidget: (_, __, ___) => ColoredBox(
                   color: p.skeleton,
-                  child: Icon(Icons.movie_rounded, color: p.textFaint, size: 36),
+                  child:
+                      Icon(Icons.movie_rounded, color: p.textFaint, size: 36),
                 ),
               ),
 
@@ -622,9 +647,12 @@ class _FranchiseFilmTileState extends State<FranchiseFilmTile> {
                 top: 8,
                 start: 8,
                 child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
                   decoration: BoxDecoration(
-                    color: film.isSeries ? const Color(0xFF2563EB) : const Color(0xFFE50914),
+                    color: film.isSeries
+                        ? const Color(0xFF2563EB)
+                        : const Color(0xFFE50914),
                     borderRadius: BorderRadius.circular(6),
                     boxShadow: [
                       BoxShadow(
@@ -661,7 +689,8 @@ class _FranchiseFilmTileState extends State<FranchiseFilmTile> {
                 top: 8,
                 end: 8,
                 child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 2),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 5, vertical: 2),
                   decoration: BoxDecoration(
                     color: Colors.black.withOpacity(0.7),
                     borderRadius: BorderRadius.circular(4),
@@ -695,7 +724,8 @@ class _FranchiseFilmTileState extends State<FranchiseFilmTile> {
                         ),
                       ],
                     ),
-                    child: const Icon(Icons.play_arrow_rounded, color: Colors.white, size: 28),
+                    child: const Icon(Icons.play_arrow_rounded,
+                        color: Colors.white, size: 28),
                   ),
                 ),
 
@@ -720,9 +750,11 @@ class _FranchiseFilmTileState extends State<FranchiseFilmTile> {
                               fontWeight: FontWeight.w700,
                             ),
                           ),
-                        if (film.stars.trim().isNotEmpty && film.stars != '0.0') ...[
+                        if (film.stars.trim().isNotEmpty &&
+                            film.stars != '0.0') ...[
                           const SizedBox(width: 7),
-                          const Icon(Icons.star_rounded, color: Color(0xFFFFB800), size: 12.5),
+                          const Icon(Icons.star_rounded,
+                              color: Color(0xFFFFB800), size: 12.5),
                           const SizedBox(width: 2),
                           Text(
                             film.stars.trim(),

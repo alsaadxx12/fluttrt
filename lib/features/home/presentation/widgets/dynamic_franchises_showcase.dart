@@ -42,7 +42,11 @@ class DynamicFranchisesShowcase extends ConsumerWidget {
               const SizedBox(width: 8),
               Text(
                 _titles[section]!,
-                style: TextStyle(color: p.text, fontSize: 18, fontWeight: FontWeight.w900, letterSpacing: -0.3),
+                style: TextStyle(
+                    color: p.text,
+                    fontSize: 18,
+                    fontWeight: FontWeight.w900,
+                    letterSpacing: -0.3),
               ),
             ],
           ),
@@ -51,10 +55,11 @@ class DynamicFranchisesShowcase extends ConsumerWidget {
         ColoredBox(
           color: p.bg,
           child: SizedBox(
-            height: 315,
+            height: 250,
             child: feed.items.isEmpty
                 ? const _LoadingDeck()
-                : _DynCarousel(section: section, items: feed.items, done: feed.done),
+                : _DynCarousel(
+                    section: section, items: feed.items, done: feed.done),
           ),
         ),
       ],
@@ -81,7 +86,8 @@ class _LoadingDeck extends StatelessWidget {
           color: p.bg,
           borderRadius: BorderRadius.circular(18),
         ),
-        child: const Column(children: [Expanded(child: PosterFanPlaceholder())]),
+        child:
+            const Column(children: [Expanded(child: PosterFanPlaceholder())]),
       ),
     );
   }
@@ -93,7 +99,8 @@ class _DynCarousel extends ConsumerStatefulWidget {
   final FranchiseSection section;
   final List<DynamicFranchise> items;
   final bool done;
-  const _DynCarousel({required this.section, required this.items, required this.done});
+  const _DynCarousel(
+      {required this.section, required this.items, required this.done});
 
   @override
   ConsumerState<_DynCarousel> createState() => _DynCarouselState();
@@ -190,8 +197,9 @@ class _DynCarouselState extends ConsumerState<_DynCarousel> {
   }
 
   /// The page the deck is showing, for deciding whether more are needed.
-  int get _currentIndex =>
-      _controller?.hasClients == true ? (_controller!.page ?? 0).round() : _middleIndex;
+  int get _currentIndex => _controller?.hasClients == true
+      ? (_controller!.page ?? 0).round()
+      : _middleIndex;
 
   @override
   Widget build(BuildContext context) {
@@ -205,7 +213,8 @@ class _DynCarouselState extends ConsumerState<_DynCarousel> {
               ? (_controller!.page ?? defaultInitial.toDouble()).round()
               : defaultInitial;
           _controller?.dispose();
-          _controller = PageController(viewportFraction: fraction, initialPage: page);
+          _controller =
+              PageController(viewportFraction: fraction, initialPage: page);
           _fraction = fraction;
         }
         final controller = _controller!;
@@ -285,7 +294,8 @@ class _LoaderCard extends StatelessWidget {
         borderRadius: BorderRadius.circular(18),
       ),
       child: const Center(
-        child: CircularProgressIndicator(color: Color(0xFFE50914), strokeWidth: 2.4),
+        child: CircularProgressIndicator(
+            color: Color(0xFFE50914), strokeWidth: 2.4),
       ),
     );
   }
@@ -303,7 +313,7 @@ class _DynCard extends ConsumerStatefulWidget {
     this.onReturned,
   });
 
-  static const width = 252.0;
+  static const width = 200.0;
 
   @override
   ConsumerState<_DynCard> createState() => _DynCardState();
@@ -327,7 +337,10 @@ class _DynCardState extends ConsumerState<_DynCard> {
     if (widget.franchise.partsResolved) return;
     final id = widget.franchise.id;
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (mounted) ref.read(franchiseFeedProvider(widget.section).notifier).resolveParts(id);
+      if (mounted)
+        ref
+            .read(franchiseFeedProvider(widget.section).notifier)
+            .resolveParts(id);
     });
   }
 
@@ -343,7 +356,9 @@ class _DynCardState extends ConsumerState<_DynCard> {
     return FranchisePressable(
       onTap: () async {
         await Navigator.of(context, rootNavigator: true).push(
-          MaterialPageRoute(builder: (_) => DynamicFranchiseScreen(section: widget.section, franchise: f)),
+          MaterialPageRoute(
+              builder: (_) => DynamicFranchiseScreen(
+                  section: widget.section, franchise: f)),
         );
         widget.onReturned?.call();
       },
@@ -364,39 +379,33 @@ class _DynCardState extends ConsumerState<_DynCard> {
             Column(
               children: [
                 Expanded(child: PosterFan(films: parts)),
+                // No words under the fan: the posters say what the series
+                // is, and the button says what to do. The count is the
+                // tooltip's, for whoever holds the button.
                 Padding(
-                  padding: const EdgeInsets.fromLTRB(14, 4, 14, 14),
+                  padding: const EdgeInsets.fromLTRB(12, 2, 12, 10),
                   child: Row(
+                    mainAxisAlignment: MainAxisAlignment.end,
                     children: [
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              label,
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                              style: TextStyle(color: p.textMuted, fontSize: 12, fontWeight: FontWeight.w700),
-                            ),
-                          ],
+                      Tooltip(
+                        message: label,
+                        child: Container(
+                          width: 34,
+                          height: 34,
+                          decoration: BoxDecoration(
+                            color: const Color(0xFFE50914),
+                            shape: BoxShape.circle,
+                            boxShadow: [
+                              BoxShadow(
+                                color: const Color(0xFFE50914).withOpacity(0.4),
+                                blurRadius: 8,
+                                offset: const Offset(0, 3),
+                              ),
+                            ],
+                          ),
+                          child: const Icon(Icons.play_arrow_rounded,
+                              color: Colors.white, size: 22),
                         ),
-                      ),
-                      const SizedBox(width: 8),
-                      Container(
-                        width: 38,
-                        height: 38,
-                        decoration: BoxDecoration(
-                          color: const Color(0xFFE50914),
-                          shape: BoxShape.circle,
-                          boxShadow: [
-                            BoxShadow(
-                              color: const Color(0xFFE50914).withOpacity(0.4),
-                              blurRadius: 8,
-                              offset: const Offset(0, 3),
-                            ),
-                          ],
-                        ),
-                        child: const Icon(Icons.play_arrow_rounded, color: Colors.white, size: 24),
                       ),
                     ],
                   ),
@@ -415,13 +424,18 @@ class _DynCardState extends ConsumerState<_DynCard> {
 class DynamicFranchiseScreen extends ConsumerWidget {
   final FranchiseSection section;
   final DynamicFranchise franchise;
-  const DynamicFranchiseScreen({super.key, required this.section, required this.franchise});
+  const DynamicFranchiseScreen(
+      {super.key, required this.section, required this.franchise});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final p = AppPalette.of(context);
     final feed = ref.watch(franchiseFeedProvider(section));
-    final live = feed.items.where((f) => f.id == franchise.id).cast<DynamicFranchise?>().firstOrNull ?? franchise;
+    final live = feed.items
+            .where((f) => f.id == franchise.id)
+            .cast<DynamicFranchise?>()
+            .firstOrNull ??
+        franchise;
     if (!live.partsResolved) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         ref.read(franchiseFeedProvider(section).notifier).resolveParts(live.id);
@@ -438,10 +452,17 @@ class DynamicFranchiseScreen extends ConsumerWidget {
         title: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text('سلسلة ${live.name}', style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w900)),
+            Text('سلسلة ${live.name}',
+                style:
+                    const TextStyle(fontSize: 17, fontWeight: FontWeight.w900)),
             Text(
-              live.partsResolved ? '${FilmFranchise.countLabel(films)} · الأحدث أولاً' : 'جارٍ جلب الأجزاء…',
-              style: TextStyle(fontSize: 11.5, color: p.textMuted, fontWeight: FontWeight.w600),
+              live.partsResolved
+                  ? '${FilmFranchise.countLabel(films)} · الأحدث أولاً'
+                  : 'جارٍ جلب الأجزاء…',
+              style: TextStyle(
+                  fontSize: 11.5,
+                  color: p.textMuted,
+                  fontWeight: FontWeight.w600),
             ),
           ],
         ),
@@ -458,7 +479,8 @@ class DynamicFranchiseScreen extends ConsumerWidget {
               childAspectRatio: 0.67,
             ),
             itemCount: films.length,
-            itemBuilder: (context, i) => FranchiseFilmTile(film: films[i], number: films.length - i),
+            itemBuilder: (context, i) =>
+                FranchiseFilmTile(film: films[i], number: films.length - i),
           );
         },
       ),

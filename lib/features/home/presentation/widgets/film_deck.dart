@@ -147,7 +147,7 @@ class _Hand extends StatelessWidget {
       mainAxisSize: MainAxisSize.min,
       children: [
         SizedBox(
-          height: 380,
+          height: 300,
           child: PageView.builder(
             controller: controller,
             onPageChanged: onIndex,
@@ -229,8 +229,8 @@ class _FilmCard extends StatelessWidget {
               cacheManager: appImageCache,
               fit: BoxFit.cover,
               filterQuality: FilterQuality.high,
-              // The card is 380 lp tall at 2:3; decode at its own pixel width.
-              memCacheWidth: (380 * 2 / 3 * dpr).round(),
+              // The card is 300 lp tall at 2:3; decode at its own pixel width.
+              memCacheWidth: (300 * 2 / 3 * dpr).round(),
               fadeInDuration: Duration.zero,
               fadeOutDuration: Duration.zero,
               placeholderFadeInDuration: Duration.zero,

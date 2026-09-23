@@ -16,11 +16,14 @@ class HomeClip {
   final String? poster;
   final String? year;
 
-  const HomeClip({required this.videoId, required this.title, this.poster, this.year});
+  const HomeClip(
+      {required this.videoId, required this.title, this.poster, this.year});
 
   /// YouTube's own still for the clip, used when the library has no artwork.
-  String get thumbnail => 'https://img.youtube.com/vi/$videoId/maxresdefault.jpg';
-  String get fallbackThumbnail => 'https://img.youtube.com/vi/$videoId/hqdefault.jpg';
+  String get thumbnail =>
+      'https://img.youtube.com/vi/$videoId/maxresdefault.jpg';
+  String get fallbackThumbnail =>
+      'https://img.youtube.com/vi/$videoId/hqdefault.jpg';
 }
 
 /// The id inside any of the shapes a YouTube link takes, or null when the
@@ -34,11 +37,13 @@ String? youtubeIdOf(String? url) {
   String? id;
   if (host == 'youtu.be') {
     id = uri.pathSegments.isEmpty ? null : uri.pathSegments.first;
-  } else if (host.endsWith('youtube.com') || host.endsWith('youtube-nocookie.com')) {
+  } else if (host.endsWith('youtube.com') ||
+      host.endsWith('youtube-nocookie.com')) {
     id = uri.queryParameters['v'];
     if (id == null && uri.pathSegments.length >= 2) {
       final first = uri.pathSegments.first;
-      if (first == 'embed' || first == 'v' || first == 'shorts') id = uri.pathSegments[1];
+      if (first == 'embed' || first == 'v' || first == 'shorts')
+        id = uri.pathSegments[1];
     }
   }
   if (id == null) return null;
@@ -53,7 +58,8 @@ List<HomeClip> clipsFrom(List<CinemanaItem> items, {int limit = 12}) {
   for (final i in items) {
     final id = youtubeIdOf(i.trailerUrl);
     if (id == null || !seen.add(id)) continue;
-    final title = i.arTitle.trim().isNotEmpty ? i.arTitle.trim() : i.enTitle.trim();
+    final title =
+        i.arTitle.trim().isNotEmpty ? i.arTitle.trim() : i.enTitle.trim();
     if (title.isEmpty) continue;
     out.add(HomeClip(
       videoId: id,
@@ -71,8 +77,12 @@ final homeClipsProvider = FutureProvider<List<HomeClip>>((ref) async {
   final service = CinemanaService();
   // Films and series both, so the row is not all one kind.
   final lists = await Future.wait([
-    service.fetchLatestMoviesRelease(itemsPerPage: 30).catchError((_) => <CinemanaItem>[]),
-    service.fetchLatestSeriesRelease(itemsPerPage: 20).catchError((_) => <CinemanaItem>[]),
+    service
+        .fetchLatestMoviesRelease(itemsPerPage: 30)
+        .catchError((_) => <CinemanaItem>[]),
+    service
+        .fetchLatestSeriesRelease(itemsPerPage: 20)
+        .catchError((_) => <CinemanaItem>[]),
   ]);
   return clipsFrom([...lists[0], ...lists[1]]);
 });
@@ -136,7 +146,7 @@ class _ClipsShowcaseState extends ConsumerState<ClipsShowcase> {
         return _shell(
           p,
           child: SizedBox(
-            height: 178,
+            height: 122,
             child: ListView.separated(
               padding: const EdgeInsets.symmetric(horizontal: 16),
               scrollDirection: Axis.horizontal,
@@ -185,7 +195,11 @@ class _ClipsShowcaseState extends ConsumerState<ClipsShowcase> {
                 ),
                 Text(
                   'لقطات ومقاطع',
-                  style: TextStyle(color: p.text, fontSize: 18, fontWeight: FontWeight.w900, letterSpacing: -0.3),
+                  style: TextStyle(
+                      color: p.text,
+                      fontSize: 18,
+                      fontWeight: FontWeight.w900,
+                      letterSpacing: -0.3),
                 ),
                 const SizedBox(width: 8),
                 Icon(Icons.movie_filter_rounded, size: 17, color: p.textFaint),
@@ -197,7 +211,7 @@ class _ClipsShowcaseState extends ConsumerState<ClipsShowcase> {
       );
 
   Widget _loadingRow(AppPalette p) => SizedBox(
-        height: 178,
+        height: 122,
         child: ListView.separated(
           padding: const EdgeInsets.symmetric(horizontal: 16),
           scrollDirection: Axis.horizontal,
@@ -208,8 +222,9 @@ class _ClipsShowcaseState extends ConsumerState<ClipsShowcase> {
             borderRadius: BorderRadius.circular(16),
             child: Shimmer(
               base: p.skeleton,
-              highlight: p.isDark ? const Color(0xFF1E2636) : const Color(0xFFF4F7FC),
-              child: const SizedBox(width: 260, height: 178),
+              highlight:
+                  p.isDark ? const Color(0xFF1E2636) : const Color(0xFFF4F7FC),
+              child: const SizedBox(width: 208, height: 117),
             ),
           ),
         ),
@@ -234,45 +249,40 @@ class _ClipCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final p = AppPalette.of(context);
-    const width = 260.0;
+    const width = 208.0;
     final dpr = MediaQuery.of(context).devicePixelRatio;
 
     if (isPlaying && controller != null) {
+      // The player alone, with its close mark laid over the corner: no
+      // words under it, the same as the still.
       return SizedBox(
         width: width,
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            ClipRRect(
-              borderRadius: BorderRadius.circular(16),
-              child: SizedBox(
-                width: width,
-                height: width * 9 / 16,
-                child: YoutubePlayer(controller: controller!, aspectRatio: 16 / 9),
+        height: width * 9 / 16,
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(16),
+          child: Stack(
+            fit: StackFit.expand,
+            children: [
+              YoutubePlayer(controller: controller!, aspectRatio: 16 / 9),
+              PositionedDirectional(
+                top: 4,
+                end: 4,
+                child: Material(
+                  color: Colors.black54,
+                  shape: const CircleBorder(),
+                  clipBehavior: Clip.antiAlias,
+                  child: InkWell(
+                    onTap: onStop,
+                    child: const Padding(
+                      padding: EdgeInsets.all(5),
+                      child: Icon(Icons.close_rounded,
+                          size: 16, color: Colors.white),
+                    ),
+                  ),
+                ),
               ),
-            ),
-            const SizedBox(height: 8),
-            Row(
-              children: [
-                Expanded(
-                  child: Text(
-                    clip.title,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: TextStyle(color: p.text, fontSize: 12.5, fontWeight: FontWeight.w800),
-                  ),
-                ),
-                InkWell(
-                  onTap: onStop,
-                  borderRadius: BorderRadius.circular(20),
-                  child: Padding(
-                    padding: const EdgeInsets.all(4),
-                    child: Icon(Icons.close_rounded, size: 17, color: p.textFaint),
-                  ),
-                ),
-              ],
-            ),
-          ],
+            ],
+          ),
         ),
       );
     }
@@ -297,7 +307,9 @@ class _ClipCard extends StatelessWidget {
                   fit: StackFit.expand,
                   children: [
                     CachedNetworkImage(
-                      imageUrl: clip.poster?.isNotEmpty == true ? clip.poster! : clip.thumbnail,
+                      imageUrl: clip.poster?.isNotEmpty == true
+                          ? clip.poster!
+                          : clip.thumbnail,
                       cacheManager: appImageCache,
                       fit: BoxFit.cover,
                       filterQuality: FilterQuality.high,
@@ -309,7 +321,9 @@ class _ClipCard extends StatelessWidget {
                       useOldImageOnUrlChange: true,
                       placeholder: (_, __) => Shimmer(
                         base: p.skeleton,
-                        highlight: p.isDark ? const Color(0xFF1E2636) : const Color(0xFFF4F7FC),
+                        highlight: p.isDark
+                            ? const Color(0xFF1E2636)
+                            : const Color(0xFFF4F7FC),
                         child: const SizedBox.expand(),
                       ),
                       errorWidget: (_, __, ___) => CachedNetworkImage(
@@ -342,24 +356,20 @@ class _ClipCard extends StatelessWidget {
                         decoration: BoxDecoration(
                           color: const Color(0xFFE50914).withOpacity(0.92),
                           shape: BoxShape.circle,
-                          boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.35), blurRadius: 12)],
+                          boxShadow: [
+                            BoxShadow(
+                                color: Colors.black.withOpacity(0.35),
+                                blurRadius: 12)
+                          ],
                         ),
-                        child: const Icon(Icons.play_arrow_rounded, color: Colors.white, size: 30),
+                        child: const Icon(Icons.play_arrow_rounded,
+                            color: Colors.white, size: 30),
                       ),
                     ),
                   ],
                 ),
               ),
             ),
-            const SizedBox(height: 8),
-            Text(
-              clip.title,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: TextStyle(color: p.text, fontSize: 12.5, fontWeight: FontWeight.w800),
-            ),
-            if (clip.year != null)
-              Text(clip.year!, style: TextStyle(color: p.textFaint, fontSize: 10.5, fontWeight: FontWeight.w700)),
           ],
         ),
       ),

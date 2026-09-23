@@ -1780,7 +1780,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
         // Horizontal List of Movie Posters
         if (items.isNotEmpty)
           SizedBox(
-            height: 195,
+            height: 156,
             child: WheelScroll(
               builder: (controller) => ListView.separated(
               // Keeps the row's offset while the section is recycled.
@@ -1791,7 +1791,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
               physics: const ClampingScrollPhysics(),
               itemCount: items.length,
               separatorBuilder: (_, __) => const SizedBox(width: 12),
-              // 130 wide plus the 12 of the separator: the motion needs to
+              // 104 wide plus the 12 of the separator: the motion needs to
               // know where a card sits without measuring it.
               itemBuilder: (context, index) => CardEntrance(
                 group: 'row-$title',
@@ -1799,8 +1799,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                 child: CarouselFocus(
                   controller: controller,
                   index: index,
-                  extent: 142,
-                  width: 130,
+                  extent: 116,
+                  width: 104,
                   child: _buildRealMoviePosterCard(items[index]),
                 ),
               ),
@@ -1809,7 +1809,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
           )
         else if (isLoading)
           SizedBox(
-            height: 195,
+            height: 156,
             child: ListView.separated(
               padding: const EdgeInsets.symmetric(horizontal: 16),
               scrollDirection: Axis.horizontal,
@@ -1821,7 +1821,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                 child: Shimmer(
                   base: _p.skeleton,
                   highlight: _p.isDark ? const Color(0xFF1E2636) : const Color(0xFFF4F7FC),
-                  child: const SizedBox(width: 130, height: 195),
+                  child: const SizedBox(width: 104, height: 156),
                 ),
               ),
             ),
@@ -1885,21 +1885,21 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
         openCatalogueItem(context, movie);
       },
       child: SizedBox(
-        width: 130,
+        width: 104,
         child: ClipRRect(
-          borderRadius: BorderRadius.circular(16),
+          borderRadius: BorderRadius.circular(14),
           child: Stack(
             fit: StackFit.expand,
             children: [
-              // Medium-size poster from the disk cache (130x195 is exactly 2:3,
+              // Medium-size poster from the disk cache (104x156 is exactly 2:3,
               // so nothing is cropped)
               if (poster.isNotEmpty)
                 CachedNetworkImage(
-                  imageUrl: movie.imageForWidth(_decodeWidthFor(130).toDouble(), hiRes: preferFullArtwork),
+                  imageUrl: movie.imageForWidth(_decodeWidthFor(104).toDouble(), hiRes: preferFullArtwork),
                   cacheManager: appImageCache,
                   fit: BoxFit.cover,
                   filterQuality: FilterQuality.high,
-                  memCacheWidth: _hiResDecodeWidth(130),
+                  memCacheWidth: _hiResDecodeWidth(104),
                   fadeInDuration: Duration.zero,
                   fadeOutDuration: Duration.zero,
                   placeholderFadeInDuration: Duration.zero,
@@ -2029,10 +2029,10 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
         ),
         const SizedBox(height: 12),
 
-        // Horizontal List of Large Wide Cards (~270w x 165h)
+        // Horizontal List of Wide Cards (224w x 138h)
         if (items.isNotEmpty)
           SizedBox(
-            height: 172,
+            height: 138,
             child: ListView.separated(
               // Keeps the row's offset while the section is recycled.
               key: PageStorageKey('wide-$title'),
@@ -2049,7 +2049,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
           )
         else if (isLoading)
           SizedBox(
-            height: 172,
+            height: 138,
             child: ListView.separated(
               padding: const EdgeInsets.symmetric(horizontal: 16),
               scrollDirection: Axis.horizontal,
@@ -2058,7 +2058,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
               separatorBuilder: (_, __) => const SizedBox(width: 14),
               // A flat block the size of the card: reads as "already there".
               itemBuilder: (_, __) => Container(
-                width: 280,
+                width: 224,
                 decoration: BoxDecoration(
                   color: _p.skeleton,
                   borderRadius: BorderRadius.circular(16),
@@ -2091,8 +2091,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     // A wide card: the poster takes 45% of the width, whole and uncropped
     // enough at 2:3, and the other 55% is the story — a big title with its
     // genre and year right under it, and one clear play button at the foot.
-    const double cardW = 280;
-    const double cardH = 172;
+    const double cardW = 224;
+    const double cardH = 138;
     const double posterW = cardW * 0.45;
     final poster = series.cardImageUrl;
     final seasonNum = int.tryParse(series.season) ?? 0;
