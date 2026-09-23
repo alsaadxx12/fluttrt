@@ -20,7 +20,7 @@ void main() {
                 text.toLowerCase().contains('oman')) {
               // ignore: avoid_print
               print(
-                  '$name: ${m.home.name} v ${m.away.name} kickoffAt=${m.kickoffAt} status=${m.status} minute=${m.minute} league=${m.league} id=${m.id}');
+                  '$name: ${m.home.name} v ${m.away.name} kickoffAt=${m.kickoffAt} status=${m.status} minute=${m.minute} score=${m.homeScore}-${m.awayScore} league=${m.league} id=${m.id}');
             }
           }
         }

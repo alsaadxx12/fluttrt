@@ -650,27 +650,31 @@ class SportsService {
         groupedByLeague.putIfAbsent(groupLeague, () => []).add(item);
       }
 
-      // Matches the page gave no kick-off time for get it from 365scores,
-      // which knows when every game began and how far into it we are.
-      final unknown = groupedByLeague.values.expand((l) => l).where((m) => m.kickoffAt.isEmpty).length;
-      if (unknown > 0) {
+      // The page is behind on a game in play: it showed 0-0 through the
+      // first half of Iraq v Oman while the score was 1-0, and it gives no
+      // kick-off time once the score is up. 365scores knows the score, the
+      // minute and the kick-off of every game, so a game in play (or one
+      // the page gave no time for) is corrected from its record.
+      final all = groupedByLeague.values.expand((l) => l).toList();
+      final wanting = all.where((m) => m.kickoffAt.isEmpty || m.status == 'live').length;
+      if (wanting > 0) {
         final reference = <SportMatchItem>[];
         try {
           for (final g in await fetch365Matches(day: day)) {
             reference.addAll(g.matches);
           }
         } catch (e) {
-          debugPrint('[sports] 365 kick-off times: $e');
+          debugPrint('[sports] 365 reference: $e');
         }
-        var filled = 0;
+        var corrected = 0;
         for (final list in groupedByLeague.values) {
           for (var i = 0; i < list.length; i++) {
-            final fixed = fillKickoff(list[i], reference, agree: matchesTeams);
-            if (fixed.kickoffAt.isNotEmpty && list[i].kickoffAt.isEmpty) filled++;
+            final fixed = fillFrom365(list[i], reference, agree: matchesTeams);
+            if (!identical(fixed, list[i])) corrected++;
             list[i] = fixed;
           }
         }
-        debugPrint('[sports] $unknown matches without a kick-off time on the page; $filled filled from 365scores');
+        debugPrint('[sports] $wanting matches in play or without a time; $corrected corrected from 365scores');
       }
 
       int leagueCounter = 1;
@@ -690,22 +694,40 @@ class SportsService {
     }
   }
 
-  /// [item] with its kick-off time (and the minute of play, when it has
-  /// none) taken from the record in [reference] for the same fixture.
-  /// Unchanged when it already has a time or no record agrees.
-  static SportMatchItem fillKickoff(
+  /// [item] corrected from the record in [reference] for the same fixture:
+  /// a missing kick-off time and minute of play are taken from it, and for
+  /// a game in play its score is the record's, which is the live one. The
+  /// same object comes back when no record agrees or nothing changes.
+  static SportMatchItem fillFrom365(
     SportMatchItem item,
     List<SportMatchItem> reference, {
     required bool Function(String h1, String a1, String h2, String a2) agree,
   }) {
-    if (item.kickoffAt.isNotEmpty) return item;
-    for (final other in reference) {
-      if (other.kickoffAt.isEmpty) continue;
-      if (agree(item.home.name, item.away.name, other.home.name, other.away.name)) {
-        return item.copyWith(kickoffAt: other.kickoffAt, minute: item.minute ?? other.minute);
+    SportMatchItem? other;
+    for (final candidate in reference) {
+      if (agree(item.home.name, item.away.name, candidate.home.name, candidate.away.name)) {
+        other = candidate;
+        break;
       }
     }
-    return item;
+    if (other == null) return item;
+
+    final inPlay = item.status == 'live' || other.status == 'live';
+    final liveScore = inPlay && other.homeScore != null && other.awayScore != null;
+    final kickoff = item.kickoffAt.isEmpty && other.kickoffAt.isNotEmpty ? other.kickoffAt : null;
+    final minute = item.minute == null && (inPlay || item.kickoffAt.isEmpty) ? other.minute : null;
+    // The page can still say «live» after the whistle; the record's
+    // «finished» is the later word.
+    final ended = item.status == 'live' && other.status == 'finished';
+    final scoreChanged = liveScore && (other.homeScore != item.homeScore || other.awayScore != item.awayScore);
+    if (kickoff == null && minute == null && !ended && !scoreChanged) return item;
+    return item.copyWith(
+      kickoffAt: kickoff,
+      minute: minute,
+      status: ended ? 'finished' : null,
+      homeScore: liveScore ? other.homeScore : null,
+      awayScore: liveScore ? other.awayScore : null,
+    );
   }
 
   /// Resolves direct stream servers for a Kora x90 match URL
