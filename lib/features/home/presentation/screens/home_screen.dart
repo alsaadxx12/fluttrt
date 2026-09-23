@@ -1948,7 +1948,16 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                   _buildPosterPlaceholder(),
 
                 // Gradient Overlay at bottom
-                const Positioned.fill(
+                // Two points past the foot on purpose. The card's height lands on a
+                // half device pixel, and a gradient that stops exactly there
+                // left the picture's last row unshaded: a pale hairline under
+                // every card, measured on the phone's own screen. Overshooting
+                // costs nothing; the clip takes the rest.
+                const Positioned(
+                    left: 0,
+                    right: 0,
+                    top: 0,
+                    bottom: -2,
                     child: DecoratedBox(decoration: _posterScrim)),
 
                 // Rating Star Badge at Top Left

@@ -100,7 +100,13 @@ class OtherFilmCard extends StatelessWidget {
                     placeholder: (_, __) => const SizedBox.shrink(),
                     errorWidget: (_, __, ___) => const Icon(Icons.movie_rounded, color: Colors.white24),
                   ),
-                const Positioned.fill(
+                // Past the foot by two points: a gradient that stopped on the
+                  // card's half-pixel edge left one bright row of the poster showing.
+                  const Positioned(
+                  left: 0,
+                  right: 0,
+                  top: 0,
+                  bottom: -2,
                   child: DecoratedBox(
                     decoration: BoxDecoration(
                       gradient: LinearGradient(
