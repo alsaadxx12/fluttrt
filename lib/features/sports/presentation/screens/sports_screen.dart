@@ -274,12 +274,6 @@ class _SportsScreenState extends ConsumerState<SportsScreen> {
                       },
                     ),
                   ),
-
-                  // Day Selector: أمس | اليوم | الغد
-                  Padding(
-                    padding: const EdgeInsets.fromLTRB(14, 0, 14, 10),
-                    child: _buildDaySelector(ref, selectedDay, isDark),
-                  ),
                 ],
               ),
             ),
@@ -311,87 +305,6 @@ class _SportsScreenState extends ConsumerState<SportsScreen> {
               ),
             ),
           ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildDaySelector(WidgetRef ref, String currentDay, bool isDark) {
-    final days = [
-      ('yesterday', 'مباريات الأمس', Icons.history_rounded),
-      ('today', 'مباريات اليوم', Icons.today_rounded),
-      ('tomorrow', 'مباريات الغد', Icons.event_note_rounded),
-    ];
-
-    return Container(
-      padding: const EdgeInsets.all(4),
-      decoration: BoxDecoration(
-        color: isDark ? const Color(0xFF192032) : const Color(0xFFF1F5F9),
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(
-          color: isDark ? const Color(0xFF26324D) : const Color(0xFFE2E8F0),
-        ),
-      ),
-      child: Row(
-        children: [
-          for (final (dayKey, dayTitle, dayIcon) in days) ...[
-            Expanded(
-              child: GestureDetector(
-                behavior: HitTestBehavior.opaque,
-                onTap: () {
-                  if (currentDay != dayKey) {
-                    ref.read(sportsDayProvider.notifier).state = dayKey;
-                    ref.read(sportsLeagueFilterProvider.notifier).state = null;
-                  }
-                },
-                child: AnimatedContainer(
-                  duration: const Duration(milliseconds: 200),
-                  curve: Curves.easeInOut,
-                  padding: const EdgeInsets.symmetric(vertical: 8),
-                  decoration: BoxDecoration(
-                    color: currentDay == dayKey
-                        ? (dayKey == 'today'
-                            ? const Color(0xFFE50914)
-                            : (isDark ? const Color(0xFF2C3854) : Colors.white))
-                        : Colors.transparent,
-                    borderRadius: BorderRadius.circular(10),
-                    boxShadow: currentDay == dayKey
-                        ? [
-                            BoxShadow(
-                              color: (dayKey == 'today' ? const Color(0xFFE50914) : Colors.black).withOpacity(0.12),
-                              blurRadius: 6,
-                              offset: const Offset(0, 2),
-                            )
-                          ]
-                        : null,
-                  ),
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Icon(
-                        dayIcon,
-                        size: 15,
-                        color: currentDay == dayKey
-                            ? (dayKey == 'today' ? Colors.white : (isDark ? Colors.white : const Color(0xFF0F172A)))
-                            : (isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B)),
-                      ),
-                      const SizedBox(width: 6),
-                      Text(
-                        dayTitle,
-                        style: TextStyle(
-                          fontSize: 12.5,
-                          fontWeight: currentDay == dayKey ? FontWeight.w900 : FontWeight.w600,
-                          color: currentDay == dayKey
-                              ? (dayKey == 'today' ? Colors.white : (isDark ? Colors.white : const Color(0xFF0F172A)))
-                              : (isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B)),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-            ),
-          ],
         ],
       ),
     );
