@@ -10,6 +10,7 @@ import 'package:media_kit_video/media_kit_video.dart';
 import 'package:video_player/video_player.dart';
 import 'package:youtube_downloader/presentation/widgets/app_search_field.dart';
 
+import '../../sports/presentation/providers/alkass_provider.dart';
 import '../data/shahid_models.dart';
 import 'shahid_providers.dart';
 
@@ -64,12 +65,16 @@ class _ShahidPlayerScreenState extends ConsumerState<ShahidPlayerScreen> {
     });
     await old?.dispose();
 
-    // Fresh address each time (playlists can rotate); fall back to the one
-    // checked when the list loaded.
+    // Fresh address each time (playlists can rotate, and an Alkass address
+    // carries a token that runs out); fall back to the one checked when
+    // the list loaded.
     final fromShahid = channel.pageUrl.contains('shahid.mbc.net');
+    final fromAlkass = channel.pageUrl.contains('alkass.net');
     final url = (fromShahid
             ? await ref.read(shahidServiceProvider).fetchStreamUrl(channel.id)
-            : null) ??
+            : fromAlkass
+                ? await ref.read(alkassServiceProvider).streamFor(channel.id)
+                : null) ??
         channel.streamUrl;
     if (!mounted || token != _openToken) return;
     if (url == null) {
@@ -224,9 +229,8 @@ class _ShahidPlayerScreenState extends ConsumerState<ShahidPlayerScreen> {
   Widget _playerArea() {
     final v = _video;
     final isDesktop = Platform.isWindows || Platform.isLinux || Platform.isMacOS;
-    final buffering = isDesktop
-        ? (_loading || (_desktopPlayer?.state.buffering ?? false))
-        : (v != null && v.value.isBuffering);
+    final buffering =
+        isDesktop ? (_loading || (_desktopPlayer?.state.buffering ?? false)) : (v != null && v.value.isBuffering);
 
     return MouseRegion(
       onHover: (_) {
@@ -259,8 +263,7 @@ class _ShahidPlayerScreenState extends ConsumerState<ShahidPlayerScreen> {
                     child: VideoPlayer(v),
                   ),
                 ),
-              if (_loading || (buffering && _error == null))
-                const CircularProgressIndicator(color: Color(0xFFE50914)),
+              if (_loading || (buffering && _error == null)) const CircularProgressIndicator(color: Color(0xFFE50914)),
               if (_error != null)
                 Column(
                   mainAxisSize: MainAxisSize.min,
@@ -347,12 +350,8 @@ class _ShahidPlayerScreenState extends ConsumerState<ShahidPlayerScreen> {
     );
   }
 
-  static String _norm(String s) => s
-      .toLowerCase()
-      .replaceAll(RegExp('[أإآ]'), 'ا')
-      .replaceAll('ة', 'ه')
-      .replaceAll('ى', 'ي')
-      .trim();
+  static String _norm(String s) =>
+      s.toLowerCase().replaceAll(RegExp('[أإآ]'), 'ا').replaceAll('ة', 'ه').replaceAll('ى', 'ي').trim();
 
   /// Two big tiles per row. Shahid's own 16:9 tiles fill the card; other
   /// channels' logos are shown whole. Channels sharing a logo get their name.
@@ -482,34 +481,34 @@ class _ShahidPlayerScreenState extends ConsumerState<ShahidPlayerScreen> {
               ),
               AspectRatio(aspectRatio: 16 / 9, child: _playerArea()),
               if (others.isNotEmpty) ...[
-              Padding(
-                padding: const EdgeInsets.fromLTRB(16, 14, 16, 8),
-                child: Row(
-                  children: [
-                    const Text(
-                      'قنوات أخرى',
-                      style: TextStyle(color: Colors.black87, fontSize: 16, fontWeight: FontWeight.w900),
-                    ),
-                    const SizedBox(width: 12),
-                    // Search the channels by name - the shared flat pill.
-                    Expanded(
-                      child: AppSearchField(
-                        controller: _search,
-                        hintText: 'ابحث عن قناة',
-                        onChanged: (v) => setState(() => _query = v),
-                        onClear: () => setState(() => _query = ''),
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(16, 14, 16, 8),
+                  child: Row(
+                    children: [
+                      const Text(
+                        'قنوات أخرى',
+                        style: TextStyle(color: Colors.black87, fontSize: 16, fontWeight: FontWeight.w900),
                       ),
-                    ),
-                  ],
+                      const SizedBox(width: 12),
+                      // Search the channels by name - the shared flat pill.
+                      Expanded(
+                        child: AppSearchField(
+                          controller: _search,
+                          hintText: 'ابحث عن قناة',
+                          onChanged: (v) => setState(() => _query = v),
+                          onClear: () => setState(() => _query = ''),
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
-              ),
-              Expanded(child: _otherChannelsGrid(others)),
+                Expanded(child: _otherChannelsGrid(others)),
+              ],
             ],
-          ],
+          ),
         ),
-      ),
-    );
-  }
+      );
+    }
 
     return CallbackShortcuts(
       bindings: {

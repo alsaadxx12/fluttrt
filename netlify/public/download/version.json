@@ -1,15 +1,15 @@
 {
   "updateEnabled": true,
-  "versionCode": 2188,
-  "versionName": "1.0.182",
-  "apkUrl": "https://cineball.netlify.app/download/app.apk?v=188",
-  "apkUrlArm64": "https://cineball.netlify.app/download/app-arm64-v8a-release.apk?v=188",
-  "apkUrlArm32": "https://cineball.netlify.app/download/app-armeabi-v7a-release.apk?v=188",
-  "sha256": "5ef9b4048a961908f4eb986fc2bcce7aad8175eb0ed425219b9e80eb7f7eec1d",
-  "sha256Arm64": "5ef9b4048a961908f4eb986fc2bcce7aad8175eb0ed425219b9e80eb7f7eec1d",
-  "sha256Arm32": "1f8dde00e658db08e5750022c570cab079d7907db3df858a95cf506a382c3ca9",
-  "sizeBytes": 25507254,
+  "versionCode": 2189,
+  "versionName": "1.0.183",
+  "apkUrl": "https://cineball.netlify.app/download/app.apk?v=189",
+  "apkUrlArm64": "https://cineball.netlify.app/download/app-arm64-v8a-release.apk?v=189",
+  "apkUrlArm32": "https://cineball.netlify.app/download/app-armeabi-v7a-release.apk?v=189",
+  "sha256": "94f1da18b0186b5bc5c2e884ca2503df4b1d47ef4e75bf729c89625806ed41a2",
+  "sha256Arm64": "94f1da18b0186b5bc5c2e884ca2503df4b1d47ef4e75bf729c89625806ed41a2",
+  "sha256Arm32": "f10db755ccd610593cfa5f4b6cbf8122c45ac491f0b15205fd156b80926a8601",
+  "sizeBytes": 25512173,
   "forceUpdate": false,
   "minSupportedVersion": 1,
-  "notes": "بث المباريات على التلفاز أقرب ما يمكن إلى المباشر"
+  "notes": "توقيت المباريات الجارية صحيح، ودقيقة اللعب تظهر"
 }

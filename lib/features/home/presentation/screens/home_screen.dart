@@ -35,6 +35,7 @@ import '../widgets/dynamic_franchises_showcase.dart';
 import 'package:youtube_downloader/features/cinemana/data/cinemana_franchises.dart';
 import 'package:youtube_downloader/features/sports/presentation/widgets/glowing_crest.dart';
 import '../../../../presentation/widgets/card_motion.dart';
+import '../widgets/alkass_channels_row.dart';
 import '../../../../presentation/widgets/reveal.dart';
 import '../../../sports/data/match_merge.dart';
 import '../../../sports/data/match_order.dart';
@@ -440,6 +441,12 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
             },
           ),
         ),
+
+    (_) => const SizedBox(height: 24),
+
+    // Alkass's free channels: the marks in a row, a tap plays the channel.
+    (_) => const RepaintBoundary(child: AlkassChannelsRow()),
+    (_) => const SizedBox(height: 24),
 
     // Subscription plans.
     (_) => const RepaintBoundary(child: SubscriptionPlansShowcase()),
