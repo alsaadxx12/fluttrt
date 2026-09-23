@@ -27,7 +27,7 @@ class _Asia2TvCategoryScreenState extends ConsumerState<Asia2TvCategoryScreen>
 
   static const List<Asia2TvCategory> _categories = [
     Asia2TvCategory.korean,
-    Asia2TvCategory.japanese,
+    // No Japanese tab: the source's Japanese section is empty.
     Asia2TvCategory.chinese,
     Asia2TvCategory.thai,
     Asia2TvCategory.completed,
