@@ -87,10 +87,13 @@ class _CastSheetState extends ConsumerState<_CastSheet> {
       // it is given, and a modal sheet is given the whole screen to fill —
       // so «at least half» became «all of it», and the sheet climbed to the
       // top. A height says what it means.
-      height: MediaQuery.of(context).size.height * 0.5,
-      decoration: BoxDecoration(
-        color: p.card,
-        borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+      // Six tenths of the screen: room for the animation at the size it is
+      // shown now and two or three screens under it.
+      height: MediaQuery.of(context).size.height * 0.62,
+      decoration: const BoxDecoration(
+        // Black to the edges, the same ground the animation is drawn for.
+        color: Colors.black,
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
       ),
       padding:
           EdgeInsets.only(bottom: MediaQuery.of(context).viewInsets.bottom),
@@ -594,8 +597,8 @@ class _CastMark extends StatelessWidget {
   /// Smaller, when there are words to make room for under it.
   final bool compact;
 
-  static const double _full = 185;
-  static const double _small = 148;
+  static const double _full = 250;
+  static const double _small = 190;
 
   @override
   Widget build(BuildContext context) {
@@ -618,24 +621,11 @@ class _CastMark extends StatelessWidget {
         child: Center(
           child: GestureDetector(
             onLongPress: () => CastDiagnosticsPage.open(context),
-            // A black plate, a shade darker than the sheet, with a faint red
-            // glow: the live-tv animation is drawn for a dark ground.
-            child: Container(
+            // Straight onto the black sheet, no plate: the animation is
+            // drawn for a dark ground and is the whole head of the sheet.
+            child: SizedBox(
               width: size,
               height: size,
-              decoration: BoxDecoration(
-                color: Colors.black,
-                borderRadius: BorderRadius.circular(32),
-                border: Border.all(color: Colors.white.withOpacity(0.06)),
-                boxShadow: [
-                  BoxShadow(
-                    color: const Color(0xFFE50914).withOpacity(0.18),
-                    blurRadius: 28,
-                    offset: const Offset(0, 8),
-                  ),
-                ],
-              ),
-              padding: const EdgeInsets.all(8),
               child: Lottie.asset(
                 'assets/animations/live_tv.json',
                 repeat: true,
@@ -644,7 +634,7 @@ class _CastMark extends StatelessWidget {
                 errorBuilder: (_, __, ___) => const Icon(
                   Icons.tv_rounded,
                   color: Color(0xFFE50914),
-                  size: 68,
+                  size: 96,
                 ),
               ),
             ),
