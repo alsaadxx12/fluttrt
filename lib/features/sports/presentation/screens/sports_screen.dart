@@ -1250,8 +1250,6 @@ class _SportsScreenState extends ConsumerState<SportsScreen> {
   }
 
   Widget _buildStatusPill(SportMatchItem match, bool isDark) {
-    final kickoffTime = _formatKickoff(match.kickoffAt);
-
     if (match.isLive || match.status == 'live') {
       return Container(
         padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
@@ -1275,17 +1273,6 @@ class _SportsScreenState extends ConsumerState<SportsScreen> {
                 color: Color(0xFFFF334B),
               ),
             ),
-            if (kickoffTime.isNotEmpty) ...[
-              const SizedBox(width: 5),
-              Text(
-                '• $kickoffTime',
-                style: TextStyle(
-                  fontSize: 10.5,
-                  fontWeight: FontWeight.w600,
-                  color: isDark ? Colors.white70 : Colors.black87,
-                ),
-              ),
-            ],
           ],
         ),
       );
@@ -1305,44 +1292,14 @@ class _SportsScreenState extends ConsumerState<SportsScreen> {
                 color: isDark ? Colors.white54 : Colors.black45,
               ),
             ),
-            if (kickoffTime.isNotEmpty) ...[
-              const SizedBox(width: 5),
-              Text(
-                '• $kickoffTime',
-                style: TextStyle(
-                  fontSize: 10.5,
-                  fontWeight: FontWeight.w600,
-                  color: isDark ? Colors.white70 : Colors.black87,
-                ),
-              ),
-            ],
           ],
         ),
       );
     }
 
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(
-            Icons.schedule_rounded,
-            size: 12,
-            color: isDark ? Colors.white70 : const Color(0xFF475569),
-          ),
-          const SizedBox(width: 4),
-          Text(
-            kickoffTime.isNotEmpty ? kickoffTime : 'لم تبدأ بعد',
-            style: TextStyle(
-              fontSize: 11,
-              fontWeight: FontWeight.w700,
-              color: isDark ? Colors.white : const Color(0xFF0F172A),
-            ),
-          ),
-        ],
-      ),
-    );
+    // Still to come: the time is in the middle of the card already; the
+    // corner says nothing twice.
+    return const SizedBox.shrink();
   }
 
   Widget _buildNewsCard(SportNewsItem news, bool isDark) {
