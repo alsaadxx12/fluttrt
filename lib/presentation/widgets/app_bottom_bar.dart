@@ -1,3 +1,5 @@
+import 'dart:ui' show ImageFilter;
+
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
 import 'package:go_router/go_router.dart';
@@ -46,48 +48,58 @@ class AppBottomBar extends StatelessWidget {
       extraTop: archHeight + 6,
       child: SizedBox(
         height: totalHeight,
-        child: CustomPaint(
-          painter: _CurvedBarPainter(
-            backgroundColor: bg,
-            borderColor: line,
-            archHeight: archHeight,
-            archWidth: archWidth,
-          ),
-          child: Padding(
-            padding: EdgeInsets.only(bottom: bottomInset),
-            child: SizedBox(
-              height: barHeight,
-              child: Row(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  Expanded(
-                    child: _BarItem(
-                      icon: Icons.home_rounded,
-                      idleIcon: Icons.home_outlined,
-                      label: 'الرئيسية',
-                      active: homeActive,
-                      inactiveColor: inactive,
-                      onTap: () => context.go('/'),
-                    ),
+        // Glass, the way iOS draws its tab bar: the page shows through a
+        // blur under a tint of its own colour. The clip follows the arch,
+        // so the blur stops where the bar does.
+        child: ClipPath(
+          clipper:
+              _CurvedBarClipper(archHeight: archHeight, archWidth: archWidth),
+          child: BackdropFilter(
+            filter: ImageFilter.blur(sigmaX: 22, sigmaY: 22),
+            child: CustomPaint(
+              painter: _CurvedBarPainter(
+                backgroundColor: bg.withOpacity(0.72),
+                borderColor: line,
+                archHeight: archHeight,
+                archWidth: archWidth,
+              ),
+              child: Padding(
+                padding: EdgeInsets.only(bottom: bottomInset),
+                child: SizedBox(
+                  height: barHeight,
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      Expanded(
+                        child: _BarItem(
+                          icon: Icons.home_rounded,
+                          idleIcon: Icons.home_outlined,
+                          label: 'الرئيسية',
+                          active: homeActive,
+                          inactiveColor: inactive,
+                          onTap: () => context.go('/'),
+                        ),
+                      ),
+                      Expanded(
+                        child: _ReelsItem(
+                          active: reelsActive,
+                          inactiveColor: inactive,
+                          onTap: () => context.go('/reels'),
+                        ),
+                      ),
+                      Expanded(
+                        child: _BarItem(
+                          icon: Icons.bookmark_rounded,
+                          idleIcon: Icons.bookmark_border_rounded,
+                          label: 'قائمتي',
+                          active: listActive,
+                          inactiveColor: inactive,
+                          onTap: () => context.go('/my-list'),
+                        ),
+                      ),
+                    ],
                   ),
-                  Expanded(
-                    child: _ReelsItem(
-                      active: reelsActive,
-                      inactiveColor: inactive,
-                      onTap: () => context.go('/reels'),
-                    ),
-                  ),
-                  Expanded(
-                    child: _BarItem(
-                      icon: Icons.bookmark_rounded,
-                      idleIcon: Icons.bookmark_border_rounded,
-                      label: 'قائمتي',
-                      active: listActive,
-                      inactiveColor: inactive,
-                      onTap: () => context.go('/my-list'),
-                    ),
-                  ),
-                ],
+                ),
               ),
             ),
           ),
@@ -95,6 +107,23 @@ class AppBottomBar extends StatelessWidget {
       ),
     );
   }
+}
+
+/// The bar's outline, arch included, as a clip: the blur behind the bar is
+/// cut to the same shape the painter fills.
+class _CurvedBarClipper extends CustomClipper<Path> {
+  const _CurvedBarClipper({required this.archHeight, required this.archWidth});
+
+  final double archHeight;
+  final double archWidth;
+
+  @override
+  Path getClip(Size size) => _CurvedBarPainter.outline(size,
+      archHeight: archHeight, archWidth: archWidth);
+
+  @override
+  bool shouldReclip(covariant _CurvedBarClipper old) =>
+      old.archHeight != archHeight || old.archWidth != archWidth;
 }
 
 /// Custom painter that draws the bottom navigation bar background and its top border
@@ -112,35 +141,53 @@ class _CurvedBarPainter extends CustomPainter {
   final double archHeight;
   final double archWidth;
 
-  @override
-  void paint(Canvas canvas, Size size) {
+  /// The closed outline of the bar: flat top with the arch rising in the
+  /// middle, down the sides and along the bottom.
+  static Path outline(Size size,
+      {required double archHeight, required double archWidth}) {
     final w = size.width;
     final h = size.height;
     final cx = w / 2;
     final halfArch = archWidth / 2;
     final startX = cx - halfArch;
     final endX = cx + halfArch;
-
-    // Full closed path for background fill
-    final bgPath = Path()
+    return Path()
       ..moveTo(0, 0)
       ..lineTo(startX, 0)
       // Left curve sloping smoothly up to peak
       ..cubicTo(
-        startX + halfArch * 0.45, 0,
-        cx - halfArch * 0.45, -archHeight,
-        cx, -archHeight,
+        startX + halfArch * 0.45,
+        0,
+        cx - halfArch * 0.45,
+        -archHeight,
+        cx,
+        -archHeight,
       )
       // Right curve sloping smoothly down to flat
       ..cubicTo(
-        cx + halfArch * 0.45, -archHeight,
-        endX - halfArch * 0.45, 0,
-        endX, 0,
+        cx + halfArch * 0.45,
+        -archHeight,
+        endX - halfArch * 0.45,
+        0,
+        endX,
+        0,
       )
       ..lineTo(w, 0)
       ..lineTo(w, h)
       ..lineTo(0, h)
       ..close();
+  }
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final w = size.width;
+    final cx = w / 2;
+    final halfArch = archWidth / 2;
+    final startX = cx - halfArch;
+    final endX = cx + halfArch;
+
+    // Full closed path for background fill
+    final bgPath = outline(size, archHeight: archHeight, archWidth: archWidth);
 
     final bgPaint = Paint()
       ..color = backgroundColor
@@ -152,14 +199,20 @@ class _CurvedBarPainter extends CustomPainter {
       ..moveTo(0, 0)
       ..lineTo(startX, 0)
       ..cubicTo(
-        startX + halfArch * 0.45, 0,
-        cx - halfArch * 0.45, -archHeight,
-        cx, -archHeight,
+        startX + halfArch * 0.45,
+        0,
+        cx - halfArch * 0.45,
+        -archHeight,
+        cx,
+        -archHeight,
       )
       ..cubicTo(
-        cx + halfArch * 0.45, -archHeight,
-        endX - halfArch * 0.45, 0,
-        endX, 0,
+        cx + halfArch * 0.45,
+        -archHeight,
+        endX - halfArch * 0.45,
+        0,
+        endX,
+        0,
       )
       ..lineTo(w, 0);
 
@@ -252,7 +305,8 @@ class _BarItem extends StatefulWidget {
   State<_BarItem> createState() => _BarItemState();
 }
 
-class _BarItemState extends State<_BarItem> with SingleTickerProviderStateMixin {
+class _BarItemState extends State<_BarItem>
+    with SingleTickerProviderStateMixin {
   late final AnimationController _c = AnimationController(
     vsync: this,
     duration: _switchDuration,
@@ -266,8 +320,8 @@ class _BarItemState extends State<_BarItem> with SingleTickerProviderStateMixin 
   /// the icon hovering for most of the animation and then drops it at the
   /// last moment, which looks like a fault; easing in lets it leave at once
   /// and settle.
-  late final Animation<double> _settle =
-      CurvedAnimation(parent: _c, curve: Curves.easeOutBack, reverseCurve: Curves.easeInCubic);
+  late final Animation<double> _settle = CurvedAnimation(
+      parent: _c, curve: Curves.easeOutBack, reverseCurve: Curves.easeInCubic);
 
   /// Colour and the dot resolve straight, with no overshoot: a colour that
   /// overshoots goes somewhere that is not in the palette.
@@ -306,7 +360,8 @@ class _BarItemState extends State<_BarItem> with SingleTickerProviderStateMixin 
             builder: (context, _) {
               final settle = _settle.value.clamp(0.0, 1.2);
               final tint = _tint.value.clamp(0.0, 1.0);
-              final color = Color.lerp(widget.inactiveColor, Colors.white, tint)!;
+              final color =
+                  Color.lerp(widget.inactiveColor, Colors.white, tint)!;
 
               return Column(
                 mainAxisAlignment: MainAxisAlignment.center,
@@ -378,8 +433,8 @@ class _ReelsItemState extends State<_ReelsItem>
     value: widget.active ? 1 : 0,
   );
 
-  late final Animation<double> _t =
-      CurvedAnimation(parent: _c, curve: Curves.easeOutBack, reverseCurve: Curves.easeInCubic);
+  late final Animation<double> _t = CurvedAnimation(
+      parent: _c, curve: Curves.easeOutBack, reverseCurve: Curves.easeInCubic);
 
   @override
   void didUpdateWidget(covariant _ReelsItem old) {
@@ -423,40 +478,41 @@ class _ReelsItemState extends State<_ReelsItem>
                     child: child,
                   ),
                   child: DecoratedBox(
-                  decoration: BoxDecoration(
-                    gradient: const LinearGradient(
-                      colors: [
-                        Color(0xFFFF2A3A),
-                        AppColors.primary,
-                        Color(0xFFB80710),
+                    decoration: BoxDecoration(
+                      gradient: const LinearGradient(
+                        colors: [
+                          Color(0xFFFF2A3A),
+                          AppColors.primary,
+                          Color(0xFFB80710),
+                        ],
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
+                      ),
+                      shape: BoxShape.circle,
+                      border: Border.all(
+                        color: Colors.white.withOpacity(0.18),
+                        width: 1.5,
+                      ),
+                      boxShadow: [
+                        BoxShadow(
+                          color: AppColors.primary
+                              .withOpacity(active ? 0.55 : 0.35),
+                          blurRadius: active ? 12 : 8,
+                          offset: const Offset(0, 4),
+                        ),
                       ],
-                      begin: Alignment.topLeft,
-                      end: Alignment.bottomRight,
                     ),
-                    shape: BoxShape.circle,
-                    border: Border.all(
-                      color: Colors.white.withOpacity(0.18),
-                      width: 1.5,
-                    ),
-                    boxShadow: [
-                      BoxShadow(
-                        color: AppColors.primary.withOpacity(active ? 0.55 : 0.35),
-                        blurRadius: active ? 12 : 8,
-                        offset: const Offset(0, 4),
-                      ),
-                    ],
-                  ),
-                  child: const SizedBox(
-                    width: _ReelsItem._disc,
-                    height: _ReelsItem._disc,
-                    child: Center(
-                      child: Icon(
-                        Icons.play_arrow_rounded,
-                        size: 30,
-                        color: Colors.white,
+                    child: const SizedBox(
+                      width: _ReelsItem._disc,
+                      height: _ReelsItem._disc,
+                      child: Center(
+                        child: Icon(
+                          Icons.play_arrow_rounded,
+                          size: 30,
+                          color: Colors.white,
+                        ),
                       ),
                     ),
-                  ),
                   ),
                 ),
               ),

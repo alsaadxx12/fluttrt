@@ -75,7 +75,7 @@ class OtherFilmCard extends StatelessWidget {
       child: SizedBox(
         width: width,
         child: ClipRRect(
-          borderRadius: BorderRadius.circular(16),
+          borderRadius: BorderRadius.circular(10),
           child: AspectRatio(
             aspectRatio: 2 / 3,
             child: Stack(
@@ -185,7 +185,7 @@ class OtherFilmsSection extends ConsumerWidget {
                       width: 104,
                       decoration: BoxDecoration(
                         color: AppPalette.of(context).skeleton,
-                        borderRadius: BorderRadius.circular(16),
+                        borderRadius: BorderRadius.circular(10),
                       ),
                     )
                   : OtherFilmCard(film: films[i]),

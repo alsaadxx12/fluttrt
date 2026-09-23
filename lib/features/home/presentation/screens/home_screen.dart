@@ -39,7 +39,6 @@ import '../../../sports/data/match_merge.dart';
 import '../../../sports/data/match_order.dart';
 import '../widgets/film_deck.dart';
 import '../../../../core/video/desktop_video.dart';
-import '../../../trailers/presentation/trailers_showcase.dart';
 import 'package:youtube_downloader/core/scroll/app_scroll_physics.dart';
 import 'package:youtube_downloader/features/update/presentation/update_controller.dart';
 import 'package:youtube_downloader/features/subscription/presentation/providers/subscription_provider.dart';
@@ -121,19 +120,26 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     }
   }
 
-
-
   /// The wide cover art for [m], or '' when Cinemana has none.
-  static String _heroWideCover(CinemanaItem m) =>
-      (m.backdropUrl != null && m.backdropUrl!.isNotEmpty && m.backdropUrl!.contains('cover')) ? m.backdropUrl! : '';
+  static String _heroWideCover(CinemanaItem m) => (m.backdropUrl != null &&
+          m.backdropUrl!.isNotEmpty &&
+          m.backdropUrl!.contains('cover'))
+      ? m.backdropUrl!
+      : '';
 
   /// The artwork a hero slide draws for [m]. The slide and the precache both
   /// ask here, so they always name the same file.
   static String _heroImageUrl(CinemanaItem m, bool isDesktop) {
     final wideCover = _heroWideCover(m);
-    final highResPoster = (m.imgUrl != null && m.imgUrl!.isNotEmpty) ? m.imgUrl! : m.bestPosterUrl;
+    final highResPoster = (m.imgUrl != null && m.imgUrl!.isNotEmpty)
+        ? m.imgUrl!
+        : m.bestPosterUrl;
     return isDesktop
-        ? (wideCover.isNotEmpty ? wideCover : (m.bestBackdropUrl.isNotEmpty ? m.bestBackdropUrl : highResPoster))
+        ? (wideCover.isNotEmpty
+            ? wideCover
+            : (m.bestBackdropUrl.isNotEmpty
+                ? m.bestBackdropUrl
+                : highResPoster))
         : (highResPoster.isNotEmpty ? highResPoster : m.bestBackdropUrl);
   }
 
@@ -175,10 +181,12 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
         precacheImage(base, context).catchError((_) {});
         if (_heroWideCover(m).isEmpty) {
           // The poster's blurred backdrop is a 400px decode of the same file.
-          precacheImage(ResizeImage(base, width: 400), context).catchError((_) {});
+          precacheImage(ResizeImage(base, width: 400), context)
+              .catchError((_) {});
         }
       } else {
-        precacheImage(ResizeImage(base, width: _decodeWidthFor(width)), context).catchError((_) {});
+        precacheImage(ResizeImage(base, width: _decodeWidthFor(width)), context)
+            .catchError((_) {});
       }
     }
   }
@@ -205,7 +213,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
   /// indicator.
   Future<void> _refreshHome() async {
     HttpCache.instance.markStale();
-    Future<void> quiet(Future<Object?> f) => f.then<void>((_) {}, onError: (_, __) {});
+    Future<void> quiet(Future<Object?> f) =>
+        f.then<void>((_) {}, onError: (_, __) {});
     await Future.wait<void>([
       quiet(ref.refresh(heroBannerMoviesProvider.future)),
       quiet(ref.refresh(homeFeaturedProvider.future)),
@@ -256,7 +265,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     final raw = rawKickoff.trim();
     DateTime? dt = DateTime.tryParse(raw);
     if (dt == null) {
-      final match = RegExp(r'(\d{1,2}):(\d{2})\s*([a-zA-Z\u0600-\u06FF]+)?').firstMatch(raw);
+      final match = RegExp(r'(\d{1,2}):(\d{2})\s*([a-zA-Z\u0600-\u06FF]+)?')
+          .firstMatch(raw);
       if (match != null) {
         int h = int.tryParse(match.group(1) ?? '') ?? 0;
         final m = int.tryParse(match.group(2) ?? '') ?? 0;
@@ -267,7 +277,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
           if (h == 12) h = 0;
         }
         final now = DateTime.now();
-        dt = DateTime.utc(now.year, now.month, now.day, h, m).subtract(const Duration(hours: 3));
+        dt = DateTime.utc(now.year, now.month, now.day, h, m)
+            .subtract(const Duration(hours: 3));
       }
     }
     if (dt == null) {
@@ -279,7 +290,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     final period = h >= 12 ? 'م' : 'ص';
     final h12 = h == 0 ? 12 : (h > 12 ? h - 12 : h);
     final timeStr = '$h12:$min $period';
-    final dateStr = '${local.day.toString().padLeft(2, '0')}/${local.month.toString().padLeft(2, '0')}';
+    final dateStr =
+        '${local.day.toString().padLeft(2, '0')}/${local.month.toString().padLeft(2, '0')}';
     return {'time': timeStr, 'date': dateStr};
   }
 
@@ -428,12 +440,6 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
           ),
         ),
 
-    // Official film trailers from TMDB, right after the matches.
-    // Phone only: hidden on TV, desktop, and when TMDB is unset.
-    (_) => const RepaintBoundary(child: TrailersShowcase()),
-
-    (_) => const SizedBox(height: 4),
-
     // Subscription plans.
     (_) => const RepaintBoundary(child: SubscriptionPlansShowcase()),
 
@@ -472,7 +478,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
           provider: exclusiveLatestSeriesProvider,
           title: 'أحدث المسلسلات الحصرية',
           badge: 'حصري',
-          onViewAll: () => context.push('/exclusive', extra: ExclusiveCategory.series),
+          onViewAll: () =>
+              context.push('/exclusive', extra: ExclusiveCategory.series),
         ),
 
     (_) => const SizedBox(height: 24),
@@ -481,14 +488,16 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     (_) => _posterRowSection(
           provider: exclusiveLatestMoviesProvider,
           title: 'أحدث الأفلام الحصرية',
-          onViewAll: () => context.push('/exclusive', extra: ExclusiveCategory.movies),
+          onViewAll: () =>
+              context.push('/exclusive', extra: ExclusiveCategory.movies),
         ),
 
     (_) => const SizedBox(height: 24),
 
     // The big film series, each complete and in order.
     // Live, endless film franchises (seeded with the curated ones).
-    (_) => const RepaintBoundary(child: DynamicFranchisesShowcase(section: FranchiseSection.films)),
+    (_) => const RepaintBoundary(
+        child: DynamicFranchisesShowcase(section: FranchiseSection.films)),
     (_) => const SizedBox(height: 24),
 
     // أحدث المسلسلات الآسيوية (كورية، يابانية، صينية…)
@@ -534,7 +543,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     (_) => const SizedBox(height: 24),
 
     // Anime franchises: each franchise's series and films together.
-    (_) => const RepaintBoundary(child: DynamicFranchisesShowcase(section: FranchiseSection.anime)),
+    (_) => const RepaintBoundary(
+        child: DynamicFranchisesShowcase(section: FranchiseSection.anime)),
     (_) => const SizedBox(height: 12),
 
     // 6. Most viewed.
@@ -566,7 +576,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     (_) => const SizedBox(height: 24),
 
     // TV-series universes (spin-offs and sequels together).
-    (_) => const RepaintBoundary(child: FranchisesShowcase(section: FranchiseSection.series)),
+    (_) => const RepaintBoundary(
+        child: FranchisesShowcase(section: FranchiseSection.series)),
     (_) => const SizedBox(height: 12),
 
     // 9. Viu: Arabic / Korean / Turkish series and free films, played in the
@@ -596,116 +607,130 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
       value: (isDark ? SystemUiOverlayStyle.light : SystemUiOverlayStyle.dark)
           .copyWith(statusBarColor: Colors.transparent),
       child: ColoredBox(
-      color: bgColor,
-      child: Stack(
-        children: [
-          // Main Scrollable Content
-          RefreshIndicator(
-            color: const Color(0xFFE50914),
-            backgroundColor: _p.card,
-            strokeWidth: 2.4,
-            displacement: 48,
-            // The spinner drops in below the floating bar, never under it.
-            edgeOffset: topBarHeight,
-            triggerMode: RefreshIndicatorTriggerMode.anywhere,
-            onRefresh: _refreshHome,
-            child: NotificationListener<ScrollNotification>(
-              onNotification: (n) {
-                if (n.depth == 0) _barScrolled.value = n.metrics.pixels > 6;
-                return false;
-              },
-              child: CustomScrollView(
-              key: const PageStorageKey('home'),
-              physics: kAppDefaultScrollPhysics,
-              cacheExtent: 600,
-              slivers: [
-                // 1. Full-Bleed Hero Movie Section (Screen-filling, Crystal
-                // Clear, Latest 20, Interactive & Pausable). Its own Consumer:
-                // the banner feed landing repaints the hero and nothing else.
-                SliverToBoxAdapter(
-                  child: RepaintBoundary(
-                    child: Consumer(
-                      builder: (context, ref, _) {
-                        final bannerAsync = ref.watch(heroBannerMoviesProvider);
-                        final featuredAsync = ref.watch(homeFeaturedProvider);
-                        // Hero Section: Strictly official Cinemana banners
-                        // ("الإصدارات الجديدة"). The banner feed alone: while it
-                        // loads the hero keeps its skeleton rather than showing
-                        // the featured titles and then swapping them out.
-                        final heroMovies = bannerAsync.when(
-                          data: (b) => b.take(20).toList(),
-                          loading: () => const <CinemanaItem>[],
-                          error: (_, __) =>
-                              (featuredAsync.valueOrNull ?? const <CinemanaItem>[]).take(20).toList(),
-                        );
-                        // The flat skeleton stays until there is something to
-                        // show - also while the featured fallback is still on
-                        // its way after the banner feed failed - so nothing
-                        // flashes.
-                        return _buildHeroSection(
-                          heroMovies,
-                          heroMovies.isEmpty &&
-                              (bannerAsync.isLoading || (bannerAsync.hasError && featuredAsync.isLoading)),
-                        );
-                      },
+        color: bgColor,
+        child: Stack(
+          children: [
+            // Main Scrollable Content
+            RefreshIndicator(
+              color: const Color(0xFFE50914),
+              backgroundColor: _p.card,
+              strokeWidth: 2.4,
+              displacement: 48,
+              // The spinner drops in below the floating bar, never under it.
+              edgeOffset: topBarHeight,
+              triggerMode: RefreshIndicatorTriggerMode.anywhere,
+              onRefresh: _refreshHome,
+              child: NotificationListener<ScrollNotification>(
+                onNotification: (n) {
+                  if (n.depth == 0) _barScrolled.value = n.metrics.pixels > 6;
+                  return false;
+                },
+                child: CustomScrollView(
+                  key: const PageStorageKey('home'),
+                  physics: kAppDefaultScrollPhysics,
+                  cacheExtent: 600,
+                  slivers: [
+                    // 1. Full-Bleed Hero Movie Section (Screen-filling, Crystal
+                    // Clear, Latest 20, Interactive & Pausable). Its own Consumer:
+                    // the banner feed landing repaints the hero and nothing else.
+                    SliverToBoxAdapter(
+                      child: RepaintBoundary(
+                        child: Consumer(
+                          builder: (context, ref, _) {
+                            final bannerAsync =
+                                ref.watch(heroBannerMoviesProvider);
+                            final featuredAsync =
+                                ref.watch(homeFeaturedProvider);
+                            // Hero Section: Strictly official Cinemana banners
+                            // ("الإصدارات الجديدة"). The banner feed alone: while it
+                            // loads the hero keeps its skeleton rather than showing
+                            // the featured titles and then swapping them out.
+                            final heroMovies = bannerAsync.when(
+                              data: (b) => b.take(20).toList(),
+                              loading: () => const <CinemanaItem>[],
+                              error: (_, __) => (featuredAsync.valueOrNull ??
+                                      const <CinemanaItem>[])
+                                  .take(20)
+                                  .toList(),
+                            );
+                            // The flat skeleton stays until there is something to
+                            // show - also while the featured fallback is still on
+                            // its way after the banner feed failed - so nothing
+                            // flashes.
+                            return _buildHeroSection(
+                              heroMovies,
+                              heroMovies.isEmpty &&
+                                  (bannerAsync.isLoading ||
+                                      (bannerAsync.hasError &&
+                                          featuredAsync.isLoading)),
+                            );
+                          },
+                        ),
+                      ),
+                    ),
+
+                    // Everything under the hero is one lazy list. The children are
+                    // *builders*, not a ready-made list of widgets: with a child
+                    // list every section's tree was constructed on every rebuild of
+                    // this page, however far off screen it sat. Now a row is built
+                    // only once it comes within cacheExtent of the viewport, so the
+                    // first frame is the hero and the matches, nothing more.
+                    SliverList(
+                      delegate: SliverChildBuilderDelegate(
+                        (context, index) => _sections[index](context),
+                        childCount: _sections.length,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+
+            // Pinned top bar: white and flat while the page is at rest; once
+            // the page has moved, the content shows through a soft blur and a
+            // faint shadow separates the bar from what scrolls under it.
+            Positioned(
+              top: 0,
+              left: 0,
+              right: 0,
+              child: ValueListenableBuilder<bool>(
+                valueListenable: _barScrolled,
+                // Glass, the way iOS draws its bars: what scrolls under shows
+                // through a blur and a tint of the page colour.
+                builder: (context, scrolled, child) => ClipRect(
+                  child: BackdropFilter(
+                    filter: ImageFilter.blur(sigmaX: 20, sigmaY: 20),
+                    child: Container(
+                      decoration: BoxDecoration(
+                        color: _p.bg.withOpacity(scrolled ? 0.72 : 0.0),
+                        border: scrolled
+                            ? Border(
+                                bottom: BorderSide(
+                                    color: Colors.white.withOpacity(0.08),
+                                    width: 0.6))
+                            : null,
+                      ),
+                      child: child,
                     ),
                   ),
                 ),
-
-                // Everything under the hero is one lazy list. The children are
-                // *builders*, not a ready-made list of widgets: with a child
-                // list every section's tree was constructed on every rebuild of
-                // this page, however far off screen it sat. Now a row is built
-                // only once it comes within cacheExtent of the viewport, so the
-                // first frame is the hero and the matches, nothing more.
-                SliverList(
-                  delegate: SliverChildBuilderDelegate(
-                    (context, index) => _sections[index](context),
-                    childCount: _sections.length,
+                child: SafeArea(
+                  bottom: false,
+                  child: Padding(
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+                    child: _buildFloatingTopBar(),
                   ),
                 ),
-              ],
-            ),
-            ),
-          ),
-
-          // Pinned top bar: white and flat while the page is at rest; once
-          // the page has moved, the content shows through a soft blur and a
-          // faint shadow separates the bar from what scrolls under it.
-          Positioned(
-            top: 0,
-            left: 0,
-            right: 0,
-            child: ValueListenableBuilder<bool>(
-              valueListenable: _barScrolled,
-              builder: (context, scrolled, child) => Container(
-                decoration: BoxDecoration(
-                  color: const Color(0xFF04060A),
-                  boxShadow: scrolled
-                      ? const [BoxShadow(color: Color(0x33000000), blurRadius: 10, offset: Offset(0, 3))]
-                      : null,
-                  border: scrolled
-                      ? Border(bottom: BorderSide(color: Colors.white.withOpacity(0.08), width: 0.8))
-                      : null,
-                ),
-                child: child,
-              ),
-              child: SafeArea(
-                bottom: false,
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-                  child: _buildFloatingTopBar(),
-                ),
               ),
             ),
-          ),
 
-          // The newest films wait on the rail rather than interrupting the
-          // page. This is the one side surface: the old card that slid in by
-          // itself on start-up is gone.
-          const FilmDeck(),
-        ],
-      ),
+            // The newest films wait on the rail rather than interrupting the
+            // page. This is the one side surface: the old card that slid in by
+            // itself on start-up is gone.
+            const FilmDeck(),
+          ],
+        ),
       ),
     );
   }
@@ -734,7 +759,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
 
   Widget _buildHeroSection(List<CinemanaItem> movies, bool isLoading) {
     return LayoutBuilder(
-      builder: (context, constraints) => _buildHeroContent(movies, isLoading, constraints.maxWidth),
+      builder: (context, constraints) =>
+          _buildHeroContent(movies, isLoading, constraints.maxWidth),
     );
   }
 
@@ -786,7 +812,9 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                           ScaffoldMessenger.of(context).showSnackBar(
                             SnackBar(
                               content: Text(
-                                _isAutoSlidePaused ? 'تم إيقاف التحريك التلقائي' : 'تم استئناف التحريك التلقائي',
+                                _isAutoSlidePaused
+                                    ? 'تم إيقاف التحريك التلقائي'
+                                    : 'تم استئناف التحريك التلقائي',
                                 style: const TextStyle(fontSize: 12),
                               ),
                               duration: const Duration(seconds: 1),
@@ -806,11 +834,14 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                           },
                           itemCount: movies.length,
                           itemBuilder: (context, index) {
-                            return _buildHeroFullPoster(movies[index], availableWidth);
+                            return _buildHeroFullPoster(
+                                movies[index], availableWidth);
                           },
                         ),
                       )
-                    : (isLoading ? _buildHeroLoadingSkeleton() : _buildHeroEmptyPlaceholder()),
+                    : (isLoading
+                        ? _buildHeroLoadingSkeleton()
+                        : _buildHeroEmptyPlaceholder()),
               ),
             ),
 
@@ -821,7 +852,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                   ? Center(
                       child: ValueListenableBuilder<int>(
                         valueListenable: _heroPage,
-                        builder: (_, page, __) => _buildHeroDots(movies.length, page),
+                        builder: (_, page, __) =>
+                            _buildHeroDots(movies.length, page),
                       ),
                     )
                   : null,
@@ -869,8 +901,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                 padding: const EdgeInsets.only(bottom: 12),
                 child: ValueListenableBuilder<int>(
                   valueListenable: _heroPage,
-                  builder: (_, page, __) =>
-                      _buildHeroRealMovieDetails(movies[page.clamp(0, movies.length - 1)]),
+                  builder: (_, page, __) => _buildHeroRealMovieDetails(
+                      movies[page.clamp(0, movies.length - 1)]),
                 ),
               ),
             ),
@@ -878,8 +910,6 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
       ],
     );
   }
-
-
 
   /// The home page's background - the colour the hero's fog fades into.
   Color get _homeBg => _p.bg;
@@ -944,13 +974,14 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
             child: Padding(
               padding: const EdgeInsets.only(top: 8, bottom: 20),
               child: ClipRRect(
-                borderRadius: BorderRadius.circular(16),
+                borderRadius: BorderRadius.circular(10),
                 child: CachedNetworkImage(
                   imageUrl: imageUrl,
                   cacheManager: appImageCache,
                   fit: BoxFit.contain,
                   filterQuality: FilterQuality.high,
-                  memCacheWidth: null, // Native full resolution without downsampling
+                  memCacheWidth:
+                      null, // Native full resolution without downsampling
                   memCacheHeight: null,
                   fadeInDuration: Duration.zero,
                   fadeOutDuration: Duration.zero,
@@ -1006,7 +1037,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
   Widget _buildFloatingTopBar() {
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
-    final isDesktop = Platform.isWindows || Platform.isLinux || Platform.isMacOS;
+    final isDesktop =
+        Platform.isWindows || Platform.isLinux || Platform.isMacOS;
 
     // One plain row: the account button with search and cast beside it, and
     // the app's name at the far end.
@@ -1037,7 +1069,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
             builder: (context, ref, _) {
               final casting = ref.watch(isCastingProvider);
               return _buildTranslucentIconButton(
-                icon: casting ? Icons.cast_connected_rounded : Icons.cast_rounded,
+                icon:
+                    casting ? Icons.cast_connected_rounded : Icons.cast_rounded,
                 color: casting ? const Color(0xFFE50914) : null,
                 ring: casting ? const Color(0x66E50914) : null,
                 onTap: () => showCastDeviceSheet(context),
@@ -1105,7 +1138,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
           decoration: BoxDecoration(
             shape: BoxShape.circle,
             color: const Color(0xFF141926),
-            border: Border.all(color: ring ?? Colors.white.withOpacity(0.12), width: 1),
+            border: Border.all(
+                color: ring ?? Colors.white.withOpacity(0.12), width: 1),
           ),
           child: Icon(
             icon,
@@ -1126,7 +1160,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
       TextSpan(
         children: [
           TextSpan(text: 'CINE', style: TextStyle(color: _p.text)),
-          const TextSpan(text: 'BALL', style: TextStyle(color: Color(0xFFE50914))),
+          const TextSpan(
+              text: 'BALL', style: TextStyle(color: Color(0xFFE50914))),
         ],
       ),
       style: const TextStyle(
@@ -1142,10 +1177,12 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
   // REAL HERO DETAILS (Crisp Title Without Muddy Shadows, Compact Play Button)
   // ==========================================
   Widget _buildHeroRealMovieDetails(CinemanaItem movie) {
-    final genreText =
-        movie.categories.isNotEmpty ? movie.categories.take(2).join(' • ') : (movie.isSeries ? 'مسلسل' : 'فيلم');
+    final genreText = movie.categories.isNotEmpty
+        ? movie.categories.take(2).join(' • ')
+        : (movie.isSeries ? 'مسلسل' : 'فيلم');
     final yearText = movie.year.isNotEmpty ? movie.year : '2026';
-    final storyText = movie.arContent.isNotEmpty ? movie.arContent : movie.enContent;
+    final storyText =
+        movie.arContent.isNotEmpty ? movie.arContent : movie.enContent;
 
     return Column(
       mainAxisSize: MainAxisSize.min,
@@ -1232,7 +1269,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
               ),
             );
           },
-          icon: const Icon(Icons.play_arrow_rounded, color: Colors.white, size: 20),
+          icon: const Icon(Icons.play_arrow_rounded,
+              color: Colors.white, size: 20),
           label: const Text(
             'شاهد الآن',
             style: TextStyle(
@@ -1272,7 +1310,9 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
             width: isCurrent ? 18 : 6,
             height: 5.5,
             decoration: BoxDecoration(
-              color: isCurrent ? const Color(0xFFE50914) : (_p.isDark ? Colors.white24 : const Color(0x330F172A)),
+              color: isCurrent
+                  ? const Color(0xFFE50914)
+                  : (_p.isDark ? Colors.white24 : const Color(0x330F172A)),
               borderRadius: BorderRadius.circular(3),
             ),
           );
@@ -1299,7 +1339,9 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
   /// never larger than the source file it costs nothing where the artwork is
   /// smaller than that.
   int _hiResDecodeWidth(double logicalWidth) {
-    return (logicalWidth * MediaQuery.of(context).devicePixelRatio).clamp(200, 720).round();
+    return (logicalWidth * MediaQuery.of(context).devicePixelRatio)
+        .clamp(200, 720)
+        .round();
   }
 
   Widget _buildMetaSeparator() {
@@ -1352,14 +1394,16 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                 ),
                 const SizedBox(width: 8),
               ] else ...[
-                const Icon(Icons.sports_soccer_rounded, color: Colors.white, size: 19),
+                const Icon(Icons.sports_soccer_rounded,
+                    color: Colors.white, size: 19),
                 const SizedBox(width: 8),
               ],
 
               // Dynamic Title: "المباريات المباشرة" or "مباريات اليوم"
               Text(
                 title,
-                style: TextStyle(color: _p.text,
+                style: TextStyle(
+                  color: _p.text,
                   fontSize: 15,
                   fontWeight: FontWeight.w900,
                   letterSpacing: -0.3,
@@ -1399,10 +1443,10 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
         ),
         const SizedBox(height: 12),
 
-        // Horizontal List of Real Match Cards with increased height
+        // Horizontal List of Real Match Cards
         if (matches.isNotEmpty)
           SizedBox(
-            height: 196,
+            height: 180,
             child: ListView.separated(
               key: const PageStorageKey('row-sports'),
               padding: const EdgeInsets.symmetric(horizontal: 16),
@@ -1418,7 +1462,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
           )
         else if (isLoading)
           SizedBox(
-            height: 196,
+            height: 180,
             child: Center(
               child: Row(
                 mainAxisSize: MainAxisSize.min,
@@ -1426,7 +1470,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                   const SizedBox(
                     width: 18,
                     height: 18,
-                    child: CircularProgressIndicator(color: Color(0xFFE50914), strokeWidth: 2),
+                    child: CircularProgressIndicator(
+                        color: Color(0xFFE50914), strokeWidth: 2),
                   ),
                   const SizedBox(width: 12),
                   Text(
@@ -1443,7 +1488,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
             margin: const EdgeInsets.symmetric(horizontal: 16),
             decoration: BoxDecoration(
               color: _p.cardAlt,
-              borderRadius: BorderRadius.circular(16),
+              borderRadius: BorderRadius.circular(10),
               border: Border.all(color: _p.border),
             ),
             child: Center(
@@ -1460,7 +1505,9 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
 
   // Real Match Card with increased height & clean local time + small date
   Widget _buildRealMatchCard(SportMatchItem match) {
-    final leagueName = (match.league != null && match.league!.isNotEmpty) ? match.league! : 'مباراة';
+    final leagueName = (match.league != null && match.league!.isNotEmpty)
+        ? match.league!
+        : 'مباراة';
 
     final timeData = _formatMatchTimeAndDate(match.kickoffAt);
     final matchTime = timeData['time'] ?? 'VS';
@@ -1474,163 +1521,179 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
           ),
         );
       },
-      child: Container(
-        width: 300,
-        decoration: BoxDecoration(
-          color: _p.isDark ? const Color(0xFF101522) : _p.card,
-          borderRadius: BorderRadius.circular(18),
-          border: Border.all(
-            color: Colors.white.withOpacity(0.08),
-            width: 1.0,
-          ),
-        ),
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-        child: Column(
-          children: [
-            // Top Row: Status Badge & Tournament Name
-            Row(
-              children: [
-                _buildMatchStatusBadge(match, matchTime),
-                const Spacer(),
-                Flexible(
-                  child: Text(
-                    leagueName,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: TextStyle(
-                      color: _p.textMuted,
-                      fontSize: 11,
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                ),
-                const SizedBox(width: 4),
-                Icon(
-                  Icons.sports_soccer_rounded,
-                  color: _p.textMuted,
-                  size: 14,
-                ),
-              ],
+      // Frosted glass, the way iOS draws a card over a picture: the page
+      // shows through a blur, with a thin light edge.
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(12),
+        child: BackdropFilter(
+          filter: ImageFilter.blur(sigmaX: 18, sigmaY: 18),
+          child: Container(
+            width: 250,
+            decoration: BoxDecoration(
+              color: Colors.white.withOpacity(_p.isDark ? 0.07 : 0.55),
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(
+                color: Colors.white.withOpacity(0.14),
+                width: 0.8,
+              ),
             ),
-            // Main Match Row: Home Club Logo - Center Score/Time - Away Club Logo,
-            // centred in the space under the top row.
-            Expanded(
-              child: Center(
-                child: Row(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+            child: Column(
+              children: [
+                // Top Row: Status Badge & Tournament Name
+                Row(
                   children: [
-                    // Home Club
-                    Expanded(
-                      child: Column(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          GlowingCrest(url: match.home.logo, size: 76),
-                          const SizedBox(height: 8),
-                          Text(
-                            match.home.name,
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            textAlign: TextAlign.center,
-                            style: TextStyle(
-                              color: _p.text,
-                              fontSize: 12,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                        ],
+                    _buildMatchStatusBadge(match, matchTime),
+                    const Spacer(),
+                    Flexible(
+                      child: Text(
+                        leagueName,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(
+                          color: _p.textMuted,
+                          fontSize: 11,
+                          fontWeight: FontWeight.w600,
+                        ),
                       ),
                     ),
-
-                    // Center: score or local time, then the play button beneath
-                    Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 8),
-                      child: Column(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          if (match.isLive || match.isEnded) ...[
-                            MatchScoreLine(
-                              homeScore: match.homeScore,
-                              awayScore: match.awayScore,
-                              style: TextStyle(
-                                color: _p.text,
-                                fontSize: 22,
-                                fontWeight: FontWeight.w900,
-                                letterSpacing: 2,
-                              ),
-                            ),
-                            Text(
-                              match.isLive ? (match.minute != null ? "${match.minute}'" : "مباشر") : 'انتهت',
-                              style: TextStyle(
-                                color: match.isLive ? const Color(0xFFFF2A4A) : const Color(0xFF94A3B8),
-                                fontSize: 11,
-                                fontWeight: FontWeight.w700,
-                              ),
-                            ),
-                          ] else ...[
-                            Text(
-                              matchTime,
-                              style: const TextStyle(
-                                color: Color(0xFFFF4D5B),
-                                fontSize: 17,
-                                fontWeight: FontWeight.w900,
-                              ),
-                            ),
-                            if (matchDate.isNotEmpty) ...[
-                              const SizedBox(height: 2),
-                              Text(
-                                matchDate,
-                                style: TextStyle(
-                                  color: _p.textFaint,
-                                  fontSize: 9.5,
-                                  fontWeight: FontWeight.w500,
-                                ),
-                              ),
-                            ],
-                          ],
-                          const SizedBox(height: 8),
-                          // Play / Watch - flat, no glow
-                          Container(
-                            width: 34,
-                            height: 34,
-                            decoration: BoxDecoration(
-                              shape: BoxShape.circle,
-                              color: match.isLive ? const Color(0xFFFF2A4A) : const Color(0xFFE50914),
-                            ),
-                            child: const Icon(
-                              Icons.play_arrow_rounded,
-                              color: Colors.white,
-                              size: 22,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-
-                    // Away Club
-                    Expanded(
-                      child: Column(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          GlowingCrest(url: match.away.logo, size: 76),
-                          const SizedBox(height: 8),
-                          Text(
-                            match.away.name,
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            textAlign: TextAlign.center,
-                            style: TextStyle(
-                              color: _p.text,
-                              fontSize: 12,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                        ],
-                      ),
+                    const SizedBox(width: 4),
+                    Icon(
+                      Icons.sports_soccer_rounded,
+                      color: _p.textMuted,
+                      size: 14,
                     ),
                   ],
                 ),
-              ),
+                // Main Match Row: Home Club Logo - Center Score/Time - Away Club Logo,
+                // centred in the space under the top row.
+                Expanded(
+                  child: Center(
+                    child: Row(
+                      children: [
+                        // Home Club
+                        Expanded(
+                          child: Column(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              GlowingCrest(url: match.home.logo, size: 76),
+                              const SizedBox(height: 8),
+                              Text(
+                                match.home.name,
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                textAlign: TextAlign.center,
+                                style: TextStyle(
+                                  color: _p.text,
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+
+                        // Center: score or local time, then the play button beneath
+                        Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 8),
+                          child: Column(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              if (match.isLive || match.isEnded) ...[
+                                MatchScoreLine(
+                                  homeScore: match.homeScore,
+                                  awayScore: match.awayScore,
+                                  style: TextStyle(
+                                    color: _p.text,
+                                    fontSize: 22,
+                                    fontWeight: FontWeight.w900,
+                                    letterSpacing: 2,
+                                  ),
+                                ),
+                                Text(
+                                  match.isLive
+                                      ? (match.minute != null
+                                          ? "${match.minute}'"
+                                          : "مباشر")
+                                      : 'انتهت',
+                                  style: TextStyle(
+                                    color: match.isLive
+                                        ? const Color(0xFFFF2A4A)
+                                        : const Color(0xFF94A3B8),
+                                    fontSize: 11,
+                                    fontWeight: FontWeight.w700,
+                                  ),
+                                ),
+                              ] else ...[
+                                Text(
+                                  matchTime,
+                                  style: const TextStyle(
+                                    color: Color(0xFFFF4D5B),
+                                    fontSize: 17,
+                                    fontWeight: FontWeight.w900,
+                                  ),
+                                ),
+                                if (matchDate.isNotEmpty) ...[
+                                  const SizedBox(height: 2),
+                                  Text(
+                                    matchDate,
+                                    style: TextStyle(
+                                      color: _p.textFaint,
+                                      fontSize: 9.5,
+                                      fontWeight: FontWeight.w500,
+                                    ),
+                                  ),
+                                ],
+                              ],
+                              const SizedBox(height: 8),
+                              // Play / Watch - flat, no glow
+                              Container(
+                                width: 34,
+                                height: 34,
+                                decoration: BoxDecoration(
+                                  shape: BoxShape.circle,
+                                  color: match.isLive
+                                      ? const Color(0xFFFF2A4A)
+                                      : const Color(0xFFE50914),
+                                ),
+                                child: const Icon(
+                                  Icons.play_arrow_rounded,
+                                  color: Colors.white,
+                                  size: 22,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+
+                        // Away Club
+                        Expanded(
+                          child: Column(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              GlowingCrest(url: match.away.logo, size: 76),
+                              const SizedBox(height: 8),
+                              Text(
+                                match.away.name,
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                textAlign: TextAlign.center,
+                                style: TextStyle(
+                                  color: _p.text,
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ],
             ),
-          ],
+          ),
         ),
       ),
     );
@@ -1737,7 +1800,9 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                   Text(
                     title,
                     style: TextStyle(
-                      color: Theme.of(context).brightness == Brightness.dark ? Colors.white : const Color(0xFF0F172A),
+                      color: Theme.of(context).brightness == Brightness.dark
+                          ? Colors.white
+                          : const Color(0xFF0F172A),
                       fontSize: 15,
                       fontWeight: FontWeight.w900,
                       letterSpacing: -0.3,
@@ -1750,7 +1815,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                   onTap: onViewAll,
                   borderRadius: BorderRadius.circular(20),
                   child: Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
                     decoration: BoxDecoration(
                       color: const Color(0xFFE50914).withOpacity(0.10),
                       borderRadius: BorderRadius.circular(20),
@@ -1767,7 +1833,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                           ),
                         ),
                         SizedBox(width: 2),
-                        Icon(Icons.chevron_left_rounded, size: 17, color: Colors.white),
+                        Icon(Icons.chevron_left_rounded,
+                            size: 17, color: Colors.white),
                       ],
                     ),
                   ),
@@ -1783,28 +1850,28 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
             height: 156,
             child: WheelScroll(
               builder: (controller) => ListView.separated(
-              // Keeps the row's offset while the section is recycled.
-              key: PageStorageKey('row-$title'),
-              controller: controller,
-              padding: const EdgeInsets.symmetric(horizontal: 16),
-              scrollDirection: Axis.horizontal,
-              physics: const ClampingScrollPhysics(),
-              itemCount: items.length,
-              separatorBuilder: (_, __) => const SizedBox(width: 12),
-              // 104 wide plus the 12 of the separator: the motion needs to
-              // know where a card sits without measuring it.
-              itemBuilder: (context, index) => CardEntrance(
-                group: 'row-$title',
-                index: index,
-                child: CarouselFocus(
-                  controller: controller,
+                // Keeps the row's offset while the section is recycled.
+                key: PageStorageKey('row-$title'),
+                controller: controller,
+                padding: const EdgeInsets.symmetric(horizontal: 16),
+                scrollDirection: Axis.horizontal,
+                physics: const ClampingScrollPhysics(),
+                itemCount: items.length,
+                separatorBuilder: (_, __) => const SizedBox(width: 12),
+                // 104 wide plus the 12 of the separator: the motion needs to
+                // know where a card sits without measuring it.
+                itemBuilder: (context, index) => CardEntrance(
+                  group: 'row-$title',
                   index: index,
-                  extent: 116,
-                  width: 104,
-                  child: _buildRealMoviePosterCard(items[index]),
+                  child: CarouselFocus(
+                    controller: controller,
+                    index: index,
+                    extent: 116,
+                    width: 104,
+                    child: _buildRealMoviePosterCard(items[index]),
+                  ),
                 ),
               ),
-            ),
             ),
           )
         else if (isLoading)
@@ -1817,10 +1884,12 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
               itemCount: 4,
               separatorBuilder: (_, __) => const SizedBox(width: 12),
               itemBuilder: (_, __) => ClipRRect(
-                borderRadius: BorderRadius.circular(16),
+                borderRadius: BorderRadius.circular(10),
                 child: Shimmer(
                   base: _p.skeleton,
-                  highlight: _p.isDark ? const Color(0xFF1E2636) : const Color(0xFFF4F7FC),
+                  highlight: _p.isDark
+                      ? const Color(0xFF1E2636)
+                      : const Color(0xFFF4F7FC),
                   child: const SizedBox(width: 104, height: 156),
                 ),
               ),
@@ -1832,7 +1901,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
             margin: const EdgeInsets.symmetric(horizontal: 16),
             decoration: BoxDecoration(
               color: _p.cardAlt,
-              borderRadius: BorderRadius.circular(16),
+              borderRadius: BorderRadius.circular(10),
               border: Border.all(color: _p.border),
             ),
             child: Center(
@@ -1881,75 +1950,80 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
 
     return RepaintBoundary(
       child: PressScale(
-      onTap: () {
-        openCatalogueItem(context, movie);
-      },
-      child: SizedBox(
-        width: 104,
-        child: ClipRRect(
-          borderRadius: BorderRadius.circular(14),
-          child: Stack(
-            fit: StackFit.expand,
-            children: [
-              // Medium-size poster from the disk cache (104x156 is exactly 2:3,
-              // so nothing is cropped)
-              if (poster.isNotEmpty)
-                CachedNetworkImage(
-                  imageUrl: movie.imageForWidth(_decodeWidthFor(104).toDouble(), hiRes: preferFullArtwork),
-                  cacheManager: appImageCache,
-                  fit: BoxFit.cover,
-                  filterQuality: FilterQuality.high,
-                  memCacheWidth: _hiResDecodeWidth(104),
-                  fadeInDuration: Duration.zero,
-                  fadeOutDuration: Duration.zero,
-                  placeholderFadeInDuration: Duration.zero,
-                  useOldImageOnUrlChange: true,
-                  placeholder: (_, __) => ColoredBox(color: _p.skeleton),
-                  errorWidget: (_, __, ___) => _buildPosterPlaceholder(),
-                )
-              else
-                _buildPosterPlaceholder(),
+        onTap: () {
+          openCatalogueItem(context, movie);
+        },
+        child: SizedBox(
+          width: 104,
+          child: ClipRRect(
+            borderRadius: BorderRadius.circular(14),
+            child: Stack(
+              fit: StackFit.expand,
+              children: [
+                // Medium-size poster from the disk cache (104x156 is exactly 2:3,
+                // so nothing is cropped)
+                if (poster.isNotEmpty)
+                  CachedNetworkImage(
+                    imageUrl: movie.imageForWidth(
+                        _decodeWidthFor(104).toDouble(),
+                        hiRes: preferFullArtwork),
+                    cacheManager: appImageCache,
+                    fit: BoxFit.cover,
+                    filterQuality: FilterQuality.high,
+                    memCacheWidth: _hiResDecodeWidth(104),
+                    fadeInDuration: Duration.zero,
+                    fadeOutDuration: Duration.zero,
+                    placeholderFadeInDuration: Duration.zero,
+                    useOldImageOnUrlChange: true,
+                    placeholder: (_, __) => ColoredBox(color: _p.skeleton),
+                    errorWidget: (_, __, ___) => _buildPosterPlaceholder(),
+                  )
+                else
+                  _buildPosterPlaceholder(),
 
-              // Gradient Overlay at bottom
-              const Positioned.fill(child: DecoratedBox(decoration: _posterScrim)),
+                // Gradient Overlay at bottom
+                const Positioned.fill(
+                    child: DecoratedBox(decoration: _posterScrim)),
 
-              // Rating Star Badge at Top Left
-              Positioned(
-                top: 8,
-                left: 8,
-                child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                  decoration: _ratingBadge,
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      const Icon(Icons.star_rounded, color: Color(0xFFFFB800), size: 13),
-                      const SizedBox(width: 3),
-                      Text(
-                        movie.stars.isNotEmpty ? movie.stars : '8.0',
-                        style: const TextStyle(
-                          color: Colors.white,
-                          fontSize: 10.5,
-                          fontWeight: FontWeight.w800,
+                // Rating Star Badge at Top Left
+                Positioned(
+                  top: 8,
+                  left: 8,
+                  child: Container(
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                    decoration: _ratingBadge,
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        const Icon(Icons.star_rounded,
+                            color: Color(0xFFFFB800), size: 13),
+                        const SizedBox(width: 3),
+                        Text(
+                          movie.stars.isNotEmpty ? movie.stars : '8.0',
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 10.5,
+                            fontWeight: FontWeight.w800,
+                          ),
                         ),
-                      ),
-                    ],
+                      ],
+                    ),
                   ),
                 ),
-              ),
-
-            ],
+              ],
+            ),
           ),
         ),
       ),
-    ),
-  );
-}
+    );
+  }
 
   Widget _buildPosterPlaceholder() {
     return Container(
       color: _p.skeleton,
-      child: Center(child: Icon(Icons.movie_outlined, color: _p.textFaint, size: 36)),
+      child: Center(
+          child: Icon(Icons.movie_outlined, color: _p.textFaint, size: 36)),
     );
   }
 
@@ -1974,7 +2048,9 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
               Text(
                 title,
                 style: TextStyle(
-                  color: Theme.of(context).brightness == Brightness.dark ? Colors.white : const Color(0xFF0F172A),
+                  color: Theme.of(context).brightness == Brightness.dark
+                      ? Colors.white
+                      : const Color(0xFF0F172A),
                   fontSize: 15,
                   fontWeight: FontWeight.w900,
                   letterSpacing: -0.3,
@@ -2019,7 +2095,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                           ),
                         ),
                         SizedBox(width: 2),
-                        Icon(Icons.chevron_left_rounded, size: 18, color: Colors.white),
+                        Icon(Icons.chevron_left_rounded,
+                            size: 18, color: Colors.white),
                       ],
                     ),
                   ),
@@ -2061,7 +2138,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                 width: 224,
                 decoration: BoxDecoration(
                   color: _p.skeleton,
-                  borderRadius: BorderRadius.circular(16),
+                  borderRadius: BorderRadius.circular(10),
                 ),
               ),
             ),
@@ -2072,7 +2149,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
             margin: const EdgeInsets.symmetric(horizontal: 16),
             decoration: BoxDecoration(
               color: _p.cardAlt,
-              borderRadius: BorderRadius.circular(16),
+              borderRadius: BorderRadius.circular(10),
               border: Border.all(color: _p.border),
             ),
             child: Center(
@@ -2097,125 +2174,131 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     final poster = series.cardImageUrl;
     final seasonNum = int.tryParse(series.season) ?? 0;
     final seasonText = seasonNum > 0 ? 'الموسم $seasonNum' : 'مسلسل';
-    final genreText = series.categories.isNotEmpty ? series.categories.first : 'دراما';
+    final genreText =
+        series.categories.isNotEmpty ? series.categories.first : 'دراما';
     final yearText = series.year.isNotEmpty ? series.year : '2026';
     final rating = series.stars.isNotEmpty ? series.stars : '0.0';
 
     return RepaintBoundary(
       child: GestureDetector(
-      // The row holds titles from more than one catalogue; this opens each
-      // on the page that can actually play it.
-      onTap: () => openCatalogueItem(context, series),
-      child: Container(
-        width: cardW,
-        height: cardH,
-        decoration: BoxDecoration(
-          color: _p.card,
-          borderRadius: BorderRadius.circular(16),
-        ),
-        clipBehavior: Clip.antiAlias,
-        child: Row(
-          children: [
-            // Poster: 45% of the card.
-            SizedBox(
-              width: posterW,
-              height: cardH,
-              child: poster.isNotEmpty
-                  ? CachedNetworkImage(
-                      imageUrl: series.imageForWidth(_decodeWidthFor(posterW).toDouble(), hiRes: preferFullArtwork),
-                      cacheManager: appImageCache,
-                      fit: BoxFit.cover,
-                      filterQuality: FilterQuality.high,
-                      memCacheWidth: _hiResDecodeWidth(posterW),
-                      fadeInDuration: Duration.zero,
-                      fadeOutDuration: Duration.zero,
-                      placeholderFadeInDuration: Duration.zero,
-                      useOldImageOnUrlChange: true,
-                      placeholder: (_, __) => _buildPosterPlaceholder(),
-                      errorWidget: (_, __, ___) => _buildPosterPlaceholder(),
-                    )
-                  : _buildPosterPlaceholder(),
-            ),
-            // Story: 55% of the card.
-            Expanded(
-              child: Padding(
-                padding: const EdgeInsets.fromLTRB(12, 10, 12, 10),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      children: [
-                        Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
-                          decoration: BoxDecoration(
-                            color: const Color(0xFFE50914),
-                            borderRadius: BorderRadius.circular(6),
-                          ),
-                          child: Text(
-                            seasonText,
-                            style: const TextStyle(
-                              color: Colors.white,
-                              fontSize: 9.5,
-                              fontWeight: FontWeight.w800,
+        // The row holds titles from more than one catalogue; this opens each
+        // on the page that can actually play it.
+        onTap: () => openCatalogueItem(context, series),
+        child: Container(
+          width: cardW,
+          height: cardH,
+          decoration: BoxDecoration(
+            color: _p.card,
+            borderRadius: BorderRadius.circular(10),
+          ),
+          clipBehavior: Clip.antiAlias,
+          child: Row(
+            children: [
+              // Poster: 45% of the card.
+              SizedBox(
+                width: posterW,
+                height: cardH,
+                child: poster.isNotEmpty
+                    ? CachedNetworkImage(
+                        imageUrl: series.imageForWidth(
+                            _decodeWidthFor(posterW).toDouble(),
+                            hiRes: preferFullArtwork),
+                        cacheManager: appImageCache,
+                        fit: BoxFit.cover,
+                        filterQuality: FilterQuality.high,
+                        memCacheWidth: _hiResDecodeWidth(posterW),
+                        fadeInDuration: Duration.zero,
+                        fadeOutDuration: Duration.zero,
+                        placeholderFadeInDuration: Duration.zero,
+                        useOldImageOnUrlChange: true,
+                        placeholder: (_, __) => _buildPosterPlaceholder(),
+                        errorWidget: (_, __, ___) => _buildPosterPlaceholder(),
+                      )
+                    : _buildPosterPlaceholder(),
+              ),
+              // Story: 55% of the card.
+              Expanded(
+                child: Padding(
+                  padding: const EdgeInsets.fromLTRB(12, 10, 12, 10),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 7, vertical: 2),
+                            decoration: BoxDecoration(
+                              color: const Color(0xFFE50914),
+                              borderRadius: BorderRadius.circular(6),
+                            ),
+                            child: Text(
+                              seasonText,
+                              style: const TextStyle(
+                                color: Colors.white,
+                                fontSize: 9.5,
+                                fontWeight: FontWeight.w800,
+                              ),
                             ),
                           ),
-                        ),
-                        const Spacer(),
-                        const Icon(Icons.star_rounded, color: Color(0xFFFFB800), size: 14),
-                        const SizedBox(width: 2),
-                        Text(
-                          rating,
-                          style: TextStyle(
-                            color: _p.text,
-                            fontSize: 11.5,
-                            fontWeight: FontWeight.w800,
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 8),
-                    Text(
-                      '$genreText • $yearText',
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: TextStyle(
-                        color: _p.textMuted,
-                        fontSize: 11.5,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                    const Spacer(),
-                    // One clear, full-width play button.
-                    Container(
-                      height: 34,
-                      decoration: BoxDecoration(
-                        color: const Color(0xFFE50914),
-                        borderRadius: BorderRadius.circular(17),
-                      ),
-                      child: const Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Icon(Icons.play_arrow_rounded, color: Colors.white, size: 20),
-                          SizedBox(width: 4),
+                          const Spacer(),
+                          const Icon(Icons.star_rounded,
+                              color: Color(0xFFFFB800), size: 14),
+                          const SizedBox(width: 2),
                           Text(
-                            'شاهد الآن',
+                            rating,
                             style: TextStyle(
-                              color: Colors.white,
-                              fontSize: 12.5,
+                              color: _p.text,
+                              fontSize: 11.5,
                               fontWeight: FontWeight.w800,
                             ),
                           ),
                         ],
                       ),
-                    ),
-                  ],
+                      const SizedBox(height: 8),
+                      Text(
+                        '$genreText • $yearText',
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(
+                          color: _p.textMuted,
+                          fontSize: 11.5,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                      const Spacer(),
+                      // One clear, full-width play button.
+                      Container(
+                        height: 34,
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFE50914),
+                          borderRadius: BorderRadius.circular(17),
+                        ),
+                        child: const Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Icon(Icons.play_arrow_rounded,
+                                color: Colors.white, size: 20),
+                            SizedBox(width: 4),
+                            Text(
+                              'شاهد الآن',
+                              style: TextStyle(
+                                color: Colors.white,
+                                fontSize: 12.5,
+                                fontWeight: FontWeight.w800,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
-    ),
     );
   }
 }

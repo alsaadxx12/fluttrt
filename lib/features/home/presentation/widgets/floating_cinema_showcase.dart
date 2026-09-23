@@ -394,13 +394,13 @@ class _FloatingCinemaShowcaseState extends ConsumerState<FloatingCinemaShowcase>
 
     return InkWell(
       onTap: () => _openDetail(item),
-      borderRadius: BorderRadius.circular(16),
+      borderRadius: BorderRadius.circular(10),
       child: Container(
         margin: const EdgeInsets.symmetric(horizontal: 5, vertical: 4),
         padding: const EdgeInsets.all(8),
         decoration: BoxDecoration(
           color: isDark ? const Color(0xFF1B1B24) : Colors.white,
-          borderRadius: BorderRadius.circular(16),
+          borderRadius: BorderRadius.circular(10),
           border: Border.all(
             color: isDark ? const Color(0xFF282836) : const Color(0xFFE8ECF2),
             width: 1,

@@ -218,7 +218,7 @@ class _FranchiseCarouselState extends State<_FranchiseCarousel> {
                             child: DecoratedBox(
                               decoration: BoxDecoration(
                                 color: Colors.black.withOpacity(0.26 * (1 - t)),
-                                borderRadius: BorderRadius.circular(18),
+                                borderRadius: BorderRadius.circular(12),
                               ),
                             ),
                           ),
@@ -278,7 +278,7 @@ class _FranchiseCard extends ConsumerWidget {
         // shade already say which card that is.
         decoration: BoxDecoration(
           color: p.bg,
-          borderRadius: BorderRadius.circular(18),
+          borderRadius: BorderRadius.circular(12),
         ),
         clipBehavior: Clip.antiAlias,
         child: Stack(
