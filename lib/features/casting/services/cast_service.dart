@@ -42,6 +42,8 @@ class CastPlaybackEvent {
     this.ended = false,
     this.error,
     this.disconnected = false,
+    this.recoverable = false,
+    this.stalled = false,
   });
 
   final Duration? position;
@@ -58,12 +60,31 @@ class CastPlaybackEvent {
 
   /// The device is gone: the page was closed, or the session expired.
   final bool disconnected;
+
+  /// True when [error] is the kind that connecting again may cure — a set
+  /// that stopped answering, not one that refused the film — so the
+  /// controller tries to get it back before telling anyone.
+  final bool recoverable;
+
+  /// The picture has not moved for a while though the set says it is
+  /// playing: the link is not keeping up. The controller may answer with a
+  /// softer picture.
+  final bool stalled;
 }
 
 /// Thrown when a device cannot be reached or a pairing code is refused.
 class CastException implements Exception {
-  const CastException(this.message);
+  const CastException(this.message, {this.code, this.retryable = false});
   final String message;
+
+  /// The UPnP or HTTP code the device answered with, when it answered.
+  ///
+  /// 404 is used for a device that is no longer on the network at all.
+  final int? code;
+
+  /// True when the same request a moment later may well succeed: a timeout,
+  /// a dropped connection, a set that was not ready yet. A refusal is not.
+  final bool retryable;
 
   @override
   String toString() => message;

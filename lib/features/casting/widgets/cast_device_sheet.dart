@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:lottie/lottie.dart';
@@ -7,7 +9,10 @@ import 'package:youtube_downloader/core/constants/app_palette.dart';
 import '../controllers/cast_controller.dart';
 import '../controllers/cast_quality.dart';
 import '../models/cast_models.dart';
+import '../services/cast_prefs.dart';
 import '../services/cast_service.dart';
+import '../services/local_network.dart';
+import 'cast_diagnostics_page.dart';
 import 'cast_scan_page.dart';
 
 /// «البث إلى جهاز» — the sheet the Cast button opens.
@@ -25,13 +30,51 @@ Future<void> showCastDeviceSheet(BuildContext context) {
   );
 }
 
-class _CastSheet extends ConsumerWidget {
+class _CastSheet extends ConsumerStatefulWidget {
   const _CastSheet();
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<_CastSheet> createState() => _CastSheetState();
+}
+
+class _CastSheetState extends ConsumerState<_CastSheet> {
+  @override
+  void initState() {
+    super.initState();
+    // Straight back to last time's screen, without a tap: the sheet opens,
+    // the remembered set is at the top of the list with its spinner
+    // already turning, and a moment later it is connected. Anyone who
+    // wants a different screen taps it; that connection takes over.
+    WidgetsBinding.instance.addPostFrameCallback((_) => _reconnectToLast());
+  }
+
+  Future<void> _reconnectToLast() async {
+    final controller = ref.read(castControllerProvider.notifier);
+    final state = ref.read(castControllerProvider);
+    if (state.isConnected || state.status == CastStatus.connecting) return;
+    final last = await ref.read(lastCastDeviceProvider.future);
+    if (last == null || !mounted) return;
+    // Only when the network can carry it: on mobile data the attempt
+    // would fail four times over, and the banner already says why.
+    final network = await ref.read(localNetworkProvider.future);
+    if (!mounted || network != LocalNetworkStatus.wifi) return;
+    try {
+      await controller.connectToLast(last);
+    } on CastException {
+      // The sheet shows the reason; the list is still there to pick from.
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
     final p = AppPalette.of(context);
     final cast = ref.watch(castControllerProvider);
+    final network = ref.watch(localNetworkProvider).valueOrNull;
+    final networkAdvice = network == null ? null : LocalNetwork.advice(network);
+    // A line of words under the animation costs height; the animation
+    // gives some of its own up, so the list is never pushed off the foot.
+    final hasLine =
+        cast.error != null || cast.note != null || networkAdvice != null;
 
     return Container(
       // Named so a test can measure it: how tall this stands is the kind of
@@ -49,7 +92,8 @@ class _CastSheet extends ConsumerWidget {
         color: p.card,
         borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
       ),
-      padding: EdgeInsets.only(bottom: MediaQuery.of(context).viewInsets.bottom),
+      padding:
+          EdgeInsets.only(bottom: MediaQuery.of(context).viewInsets.bottom),
       child: SafeArea(
         top: false,
         child: Column(
@@ -64,23 +108,34 @@ class _CastSheet extends ConsumerWidget {
               ),
             ),
             const SizedBox(height: 12),
-            const _CastMark(),
+            _CastMark(compact: hasLine),
             const SizedBox(height: 10),
             if (cast.error != null)
-              Padding(
-                padding: const EdgeInsets.fromLTRB(20, 8, 20, 0),
-                child: Row(
-                  children: [
-                    const Icon(Icons.error_outline_rounded, color: Color(0xFFFF6B75), size: 17),
-                    const SizedBox(width: 8),
-                    Expanded(
-                      child: Text(
-                        cast.error!,
-                        style: const TextStyle(color: Color(0xFFFF6B75), fontSize: 12.5),
-                      ),
-                    ),
-                  ],
-                ),
+              _Line(
+                icon: const Icon(Icons.error_outline_rounded,
+                    color: Color(0xFFFF6B75), size: 17),
+                text: cast.error!,
+                color: const Color(0xFFFF6B75),
+              )
+            // What is being done about a set that did not answer: «trying
+            // again, 2 of 4». Not red — the attempt is still on.
+            else if (cast.note != null)
+              // Words only: the row of the screen being tried already turns
+              // a spinner, and a second one here made two.
+              _Line(
+                icon: Icon(Icons.info_outline_rounded, color: p.textMuted, size: 16),
+                text: cast.note!,
+                color: p.textMuted,
+              )
+            // The network, checked before the search: a phone on mobile
+            // data will never find a television, and a spinner that never
+            // stops is not an explanation.
+            else if (networkAdvice != null)
+              _Line(
+                icon: const Icon(Icons.wifi_off_rounded,
+                    color: Color(0xFFFFB020), size: 17),
+                text: networkAdvice,
+                color: const Color(0xFFFFB020),
               ),
             const SizedBox(height: 8),
             if (cast.isConnected)
@@ -98,7 +153,37 @@ class _CastSheet extends ConsumerWidget {
   }
 }
 
-/// The televisions the Cast SDK can see, as they answer.
+/// One line of words under the animation: an error, a note, a warning.
+class _Line extends StatelessWidget {
+  const _Line({required this.icon, required this.text, required this.color});
+  final Widget icon;
+  final String text;
+  final Color color;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(20, 8, 20, 0),
+      child: Row(
+        children: [
+          icon,
+          const SizedBox(width: 10),
+          Expanded(
+            child: Text(
+              text,
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+              style: TextStyle(color: color, fontSize: 12.5, height: 1.35),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// The televisions the Cast SDK can see, as they answer — with last time's
+/// screen at the top whether or not it has answered yet.
 ///
 /// Discovery is live for as long as this is on screen, so the list fills in
 /// rather than appearing all at once — a Chromecast can take a few seconds
@@ -109,9 +194,28 @@ class _TelevisionList extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final found = ref.watch(castTelevisionsProvider).valueOrNull ?? const <CastDevice>[];
-    if (found.isEmpty) {
-      return _EmptyState(status: ref.watch(castControllerProvider).status);
+    final found =
+        ref.watch(castTelevisionsProvider).valueOrNull ?? const <CastDevice>[];
+    final last = ref.watch(lastCastDeviceProvider).valueOrNull;
+    final names = ref.watch(castDeviceNamesProvider).valueOrNull ??
+        const <String, String>{};
+
+    // Last time's screen first, then the rest as they were found. When it
+    // has not answered yet it is listed anyway: a tap on it starts the
+    // search-and-connect, the same as the automatic one.
+    final rows = <CastDevice>[
+      if (last != null)
+        found.firstWhere((d) => d.id == last.id, orElse: () => last),
+      for (final d in found)
+        if (last == null || d.id != last.id) d,
+    ];
+
+    if (rows.isEmpty) {
+      // Scrollable so that, on a short screen with a line of words under
+      // the animation, the words never push this off the foot of the sheet.
+      return SingleChildScrollView(
+        child: _EmptyState(status: ref.watch(castControllerProvider).status),
+      );
     }
 
     return ConstrainedBox(
@@ -121,16 +225,36 @@ class _TelevisionList extends ConsumerWidget {
       child: ListView.builder(
         shrinkWrap: true,
         padding: EdgeInsets.zero,
-        itemCount: found.length,
-        itemBuilder: (_, i) => _DeviceRow(device: found[i]),
+        itemCount: rows.length,
+        itemBuilder: (_, i) => _DeviceRow(
+          device: rows[i],
+          isLast: last != null && rows[i].id == last.id,
+          customName: names[rows[i].id],
+          seen: found.any((d) => d.id == rows[i].id),
+        ),
       ),
     );
   }
 }
 
 class _DeviceRow extends ConsumerStatefulWidget {
-  const _DeviceRow({required this.device});
+  const _DeviceRow({
+    required this.device,
+    this.isLast = false,
+    this.customName,
+    this.seen = true,
+  });
+
   final CastDevice device;
+
+  /// True for the screen used last time: it wears a badge and sits first.
+  final bool isLast;
+
+  /// What the viewer calls this screen, when they renamed it.
+  final String? customName;
+
+  /// Whether the search has heard from it this time.
+  final bool seen;
 
   @override
   ConsumerState<_DeviceRow> createState() => _DeviceRowState();
@@ -151,13 +275,141 @@ class _DeviceRowState extends ConsumerState<_DeviceRow> {
     }
   }
 
+  /// A long press renames the screen — «تلفاز الصالة» reads better than
+  /// «[TV] Samsung 7 Series (55)» every evening.
+  Future<void> _rename() async {
+    final controller =
+        TextEditingController(text: widget.customName ?? widget.device.name);
+    final p = AppPalette.of(context);
+    final name = await showDialog<String>(
+      context: context,
+      builder: (context) => AlertDialog(
+        backgroundColor: p.card,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: Text('اسم الشاشة',
+            style: TextStyle(
+                color: p.text, fontSize: 16, fontWeight: FontWeight.w900)),
+        content: TextField(
+          controller: controller,
+          autofocus: true,
+          style: TextStyle(
+              color: p.text, fontSize: 15, fontWeight: FontWeight.w700),
+          decoration: InputDecoration(
+            hintText: widget.device.name,
+            hintStyle: TextStyle(color: p.textFaint),
+            filled: true,
+            fillColor: p.cardAlt,
+            border: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(14),
+              borderSide: BorderSide.none,
+            ),
+          ),
+          onSubmitted: (v) => Navigator.of(context).pop(v),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(''),
+            child: Text('الاسم الأصلي', style: TextStyle(color: p.textMuted)),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.of(context).pop(controller.text),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: const Color(0xFFE50914),
+              foregroundColor: Colors.white,
+            ),
+            child: const Text('حفظ'),
+          ),
+        ],
+      ),
+    );
+    controller.dispose();
+    if (name == null) return;
+    await CastPrefs.rename(widget.device.id, name);
+    ref.invalidate(castDeviceNamesProvider);
+  }
+
   @override
   Widget build(BuildContext context) {
     final p = AppPalette.of(context);
+    final brand = CastBrand.of(widget.device);
+    final title = widget.customName ?? widget.device.name;
+    final connecting = _busy ||
+        (widget.isLast &&
+            ref.watch(castControllerProvider).status == CastStatus.connecting);
+
     return ListTile(
-      onTap: _busy ? null : _connect,
+      onTap: connecting ? null : _connect,
+      onLongPress: _rename,
       contentPadding: const EdgeInsets.symmetric(horizontal: 20),
-      leading: Container(
+      leading: _BrandBadge(brand: brand, transport: widget.device.transport),
+      title: Row(
+        children: [
+          Flexible(
+            child: Text(
+              title,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: TextStyle(
+                  color: p.text, fontSize: 15, fontWeight: FontWeight.w800),
+            ),
+          ),
+          if (widget.isLast) ...[
+            const SizedBox(width: 8),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+              decoration: BoxDecoration(
+                color: const Color(0x22E50914),
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: const Text(
+                'آخر مرة',
+                style: TextStyle(
+                    color: Color(0xFFE50914),
+                    fontSize: 10.5,
+                    fontWeight: FontWeight.w800),
+              ),
+            ),
+          ],
+        ],
+      ),
+      subtitle: Text(
+        widget.seen
+            ? (widget.customName != null
+                ? widget.device.name
+                : widget.device.subtitle)
+            : 'لم يظهر بعد — اضغط للبحث عنه والاتصال',
+        maxLines: 1,
+        overflow: TextOverflow.ellipsis,
+        style: TextStyle(color: p.textFaint, fontSize: 11.5),
+      ),
+      trailing: connecting
+          ? const SizedBox(
+              width: 18,
+              height: 18,
+              child: CircularProgressIndicator(
+                  color: Color(0xFFE50914), strokeWidth: 2),
+            )
+          : Icon(Icons.cast_rounded, color: p.textMuted, size: 20),
+    );
+  }
+}
+
+/// The maker's mark beside a screen, so a room with a Samsung and an LG
+/// can tell them apart at a glance.
+///
+/// A monogram in the brand's colour rather than its logo: the logos are
+/// theirs, the colours are only colours. A screen whose maker is not
+/// known gets the plain television icon.
+class _BrandBadge extends StatelessWidget {
+  const _BrandBadge({required this.brand, required this.transport});
+  final CastBrand brand;
+  final CastTransport transport;
+
+  @override
+  Widget build(BuildContext context) {
+    final p = AppPalette.of(context);
+    if (brand == CastBrand.unknown) {
+      return Container(
         width: 42,
         height: 42,
         decoration: BoxDecoration(color: p.cardAlt, shape: BoxShape.circle),
@@ -165,62 +417,105 @@ class _DeviceRowState extends ConsumerState<_DeviceRow> {
           // A television found over UPnP and a Chromecast are different
           // things behind the scenes, and the picture is the only hint the
           // viewer gets that the list holds both.
-          widget.device.transport == CastTransport.dlna
+          transport == CastTransport.dlna
               ? Icons.tv_rounded
               : Icons.cast_rounded,
           color: p.text,
           size: 21,
         ),
+      );
+    }
+    return Container(
+      width: 42,
+      height: 42,
+      decoration: BoxDecoration(
+        color: Color(brand.color),
+        borderRadius: BorderRadius.circular(12),
       ),
-      title: Text(
-        widget.device.name,
-        maxLines: 1,
-        overflow: TextOverflow.ellipsis,
-        style: TextStyle(color: p.text, fontSize: 15, fontWeight: FontWeight.w800),
+      alignment: Alignment.center,
+      child: Text(
+        brand.mark,
+        style: TextStyle(
+          color: Colors.white,
+          fontSize: brand.mark.length > 3 ? 8.5 : 11,
+          fontWeight: FontWeight.w900,
+          letterSpacing: 0.3,
+        ),
       ),
-      subtitle: Text(
-        widget.device.subtitle,
-        maxLines: 1,
-        overflow: TextOverflow.ellipsis,
-        style: TextStyle(color: p.textFaint, fontSize: 11.5),
-      ),
-      trailing: _busy
-          ? const SizedBox(
-              width: 18,
-              height: 18,
-              child: CircularProgressIndicator(color: Color(0xFFE50914), strokeWidth: 2),
-            )
-          : Icon(Icons.cast_rounded, color: p.textMuted, size: 20),
     );
   }
 }
 
-class _EmptyState extends StatelessWidget {
+/// «Searching…» — and, when the search has gone on long enough on a wifi
+/// that is up, the reason it usually finds nothing.
+class _EmptyState extends ConsumerStatefulWidget {
   const _EmptyState({required this.status});
   final CastStatus status;
 
   @override
+  ConsumerState<_EmptyState> createState() => _EmptyStateState();
+}
+
+class _EmptyStateState extends ConsumerState<_EmptyState> {
+  /// After this long with nothing found, the router is the usual suspect.
+  static const Duration _patience = Duration(seconds: 15);
+
+  bool _longEnough = false;
+  Timer? _timer;
+
+  @override
+  void initState() {
+    super.initState();
+    _timer = Timer(_patience, () {
+      if (mounted) setState(() => _longEnough = true);
+    });
+  }
+
+  @override
+  void dispose() {
+    _timer?.cancel();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
     final p = AppPalette.of(context);
-    final connecting = status == CastStatus.connecting;
+    final connecting = widget.status == CastStatus.connecting;
+    final onWifi =
+        ref.watch(localNetworkProvider).valueOrNull == LocalNetworkStatus.wifi;
     return Padding(
       padding: const EdgeInsets.fromLTRB(20, 14, 20, 14),
-      child: Row(
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
         children: [
-          const SizedBox(
-            width: 18,
-            height: 18,
-            child: CircularProgressIndicator(color: Color(0xFFE50914), strokeWidth: 2),
+          Row(
+            children: [
+              const SizedBox(
+                width: 18,
+                height: 18,
+                child: CircularProgressIndicator(
+                    color: Color(0xFFE50914), strokeWidth: 2),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Text(
+                  connecting
+                      ? 'جارٍ الاتصال…'
+                      : 'جارٍ البحث عن شاشات على الشبكة…',
+                  style: TextStyle(color: p.textMuted, fontSize: 13.5),
+                ),
+              ),
+            ],
           ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Text(
-              connecting
-                  ? 'جارٍ الاتصال…'
-                  : 'جارٍ البحث عن شاشات على الشبكة…',
-              style: TextStyle(color: p.textMuted, fontSize: 13.5),
+          if (_longEnough && onWifi && !connecting)
+            const Padding(
+              padding: EdgeInsets.only(top: 10),
+              child: Text(
+                LocalNetwork.isolationAdvice,
+                style: TextStyle(
+                    color: Color(0xFFFFB020), fontSize: 12, height: 1.4),
+              ),
             ),
-          ),
         ],
       ),
     );
@@ -234,39 +529,51 @@ class _ConnectedRow extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final p = AppPalette.of(context);
+    final names = ref.watch(castDeviceNamesProvider).valueOrNull ??
+        const <String, String>{};
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 20),
       child: Row(
         children: [
-          Container(
-            width: 42,
-            height: 42,
-            decoration: const BoxDecoration(color: Color(0x22E50914), shape: BoxShape.circle),
-            child: const Icon(Icons.desktop_windows_rounded, color: Color(0xFFE50914), size: 21),
-          ),
+          _BrandBadge(brand: CastBrand.of(device), transport: device.transport),
           const SizedBox(width: 12),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text('متصل بـ', style: TextStyle(color: p.textFaint, fontSize: 11.5)),
+                Text('متصل بـ',
+                    style: TextStyle(color: p.textFaint, fontSize: 11.5)),
                 Text(
-                  device.name,
+                  names[device.id] ?? device.name,
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
-                  style: TextStyle(color: p.text, fontSize: 15, fontWeight: FontWeight.w800),
+                  style: TextStyle(
+                      color: p.text, fontSize: 15, fontWeight: FontWeight.w800),
                 ),
               ],
             ),
           ),
-          TextButton(
-            onPressed: () async {
-              await ref.read(castControllerProvider.notifier).disconnect();
-              if (context.mounted) Navigator.of(context).pop();
-            },
-            child: const Text(
-              'قطع الاتصال',
-              style: TextStyle(color: Color(0xFFE50914), fontWeight: FontWeight.w800),
+          // Disconnect: one mark, no words. It is the only thing on this row
+          // besides the name, and a red pill of text read louder than the
+          // set it belonged to.
+          Material(
+            color: const Color(0x22E50914),
+            shape: const CircleBorder(),
+            clipBehavior: Clip.antiAlias,
+            child: InkWell(
+              onTap: () async {
+                await ref.read(castControllerProvider.notifier).disconnect();
+                if (context.mounted) Navigator.of(context).pop();
+              },
+              child: const Tooltip(
+                message: 'قطع الاتصال',
+                child: SizedBox(
+                  width: 42,
+                  height: 42,
+                  child: Icon(Icons.link_off_rounded,
+                      color: Color(0xFFE50914), size: 22),
+                ),
+              ),
             ),
           ),
         ],
@@ -280,61 +587,66 @@ class _ConnectedRow extends ConsumerWidget {
 /// It replaces an icon and the words «البث إلى جهاز». A sheet that has just
 /// slid up from the cast button does not need to announce what it is, and
 /// the animation says it better than a line of text — a screen with
-/// something arriving at it.
+/// something arriving at it. A long press on it opens the diagnostics.
 class _CastMark extends StatelessWidget {
-  const _CastMark();
+  const _CastMark({this.compact = false});
 
-  static const double _size = 185;
+  /// Smaller, when there are words to make room for under it.
+  final bool compact;
+
+  static const double _full = 185;
+  static const double _small = 148;
 
   @override
   Widget build(BuildContext context) {
+    final size = compact ? _small : _full;
     // Whoever has asked the system for less motion gets the still icon.
     if (MediaQuery.maybeOf(context)?.disableAnimations ?? false) {
-      return const SizedBox(
-        height: _size,
-        child: Center(
+      return SizedBox(
+        height: size,
+        child: const Center(
           child: Icon(Icons.tv_rounded, color: Color(0xFFE50914), size: 72),
         ),
       );
     }
 
-    return SizedBox(
-      height: _size,
-      child: Center(
-        // On a light plate rather than straight onto the sheet.
-        //
-        // The Apple TV animation's shapes and strokes are dark / black, and on
-        // a pitch-dark sheet they would be nearly invisible. A clean, subtle
-        // light background plate brings out every line, wifi wave, and detail.
-        child: Container(
-          width: _size,
-          height: _size,
-          decoration: BoxDecoration(
-            color: const Color(0xFFEFF3F8),
-            borderRadius: BorderRadius.circular(32),
-            boxShadow: [
-              BoxShadow(
-                color: const Color(0xFFE50914).withOpacity(0.16),
-                blurRadius: 24,
-                offset: const Offset(0, 8),
+    return AnimatedSize(
+      duration: const Duration(milliseconds: 220),
+      curve: Curves.easeOut,
+      child: SizedBox(
+        height: size,
+        child: Center(
+          child: GestureDetector(
+            onLongPress: () => CastDiagnosticsPage.open(context),
+            // A black plate, a shade darker than the sheet, with a faint red
+            // glow: the live-tv animation is drawn for a dark ground.
+            child: Container(
+              width: size,
+              height: size,
+              decoration: BoxDecoration(
+                color: Colors.black,
+                borderRadius: BorderRadius.circular(32),
+                border: Border.all(color: Colors.white.withOpacity(0.06)),
+                boxShadow: [
+                  BoxShadow(
+                    color: const Color(0xFFE50914).withOpacity(0.18),
+                    blurRadius: 28,
+                    offset: const Offset(0, 8),
+                  ),
+                ],
               ),
-              BoxShadow(
-                color: Colors.black.withOpacity(0.35),
-                blurRadius: 18,
-                offset: const Offset(0, 6),
+              padding: const EdgeInsets.all(8),
+              child: Lottie.asset(
+                'assets/animations/live_tv.json',
+                repeat: true,
+                fit: BoxFit.contain,
+                // One asset failing is no reason for the sheet to arrive empty.
+                errorBuilder: (_, __, ___) => const Icon(
+                  Icons.tv_rounded,
+                  color: Color(0xFFE50914),
+                  size: 68,
+                ),
               ),
-            ],
-          ),
-          padding: const EdgeInsets.all(8),
-          child: Lottie.asset(
-            'assets/animations/apple_tv.json',
-            repeat: true,
-            fit: BoxFit.contain,
-            // One asset failing is no reason for the sheet to arrive empty.
-            errorBuilder: (_, __, ___) => const Icon(
-              Icons.tv_rounded,
-              color: Color(0xFFE50914),
-              size: 68,
             ),
           ),
         ),
@@ -356,51 +668,106 @@ class _QualityRow extends ConsumerWidget {
     final p = AppPalette.of(context);
     final quality = ref.watch(castQualityProvider);
 
+    final auto = quality.adaptive;
+    final manual = [
+      for (final q in CastQuality.values)
+        if (!q.adaptive) q
+    ];
+
+    // Two controls, one decision: «تلقائي» on or off, and - when it is off -
+    // which picture to send. Auto measures the link before each film; the
+    // menu is for whoever knows their network better than a measurement.
     return Padding(
       padding: const EdgeInsetsDirectional.fromSTEB(20, 0, 8, 0),
       child: Row(
         children: [
           Icon(Icons.high_quality_rounded, color: p.textMuted, size: 19),
-          const SizedBox(width: 10),
-          Text('الجودة', style: TextStyle(color: p.textMuted, fontSize: 13.5)),
-          const Spacer(),
+          const SizedBox(width: 8),
+          // The label gives way first: on a narrow phone the two controls
+          // beside it matter more than the word they are labelled with.
+          Expanded(
+            child: Text(
+              'الجودة',
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: TextStyle(color: p.textMuted, fontSize: 13.5),
+            ),
+          ),
+          const SizedBox(width: 6),
+          Material(
+            color: auto ? const Color(0x22E50914) : p.cardAlt,
+            borderRadius: BorderRadius.circular(16),
+            clipBehavior: Clip.antiAlias,
+            child: InkWell(
+              onTap: () => ref
+                  .read(castQualityProvider.notifier)
+                  .set(auto ? CastQuality.balanced : CastQuality.auto),
+              child: Padding(
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(
+                      auto ? Icons.check_circle_rounded : Icons.circle_outlined,
+                      color: auto ? const Color(0xFFE50914) : p.textMuted,
+                      size: 16,
+                    ),
+                    const SizedBox(width: 6),
+                    Text(
+                      'تلقائي',
+                      style: TextStyle(
+                        color: auto ? const Color(0xFFE50914) : p.text,
+                        fontSize: 13,
+                        fontWeight: FontWeight.w800,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+          const SizedBox(width: 6),
           PopupMenuButton<CastQuality>(
-            initialValue: quality,
+            initialValue: auto ? null : quality,
             color: p.card,
+            tooltip: 'اختيار يدوي',
             onSelected: (choice) =>
                 ref.read(castQualityProvider.notifier).set(choice),
             itemBuilder: (context) => [
-              for (final option in CastQuality.values)
+              for (final option in manual)
                 PopupMenuItem(
                   value: option,
                   child: Text(
                     '${option.label} · ${option.short}',
                     style: TextStyle(
-                      color: option == quality ? const Color(0xFFE50914) : p.text,
+                      color:
+                          option == quality ? const Color(0xFFE50914) : p.text,
                       fontSize: 13.5,
                       fontWeight: FontWeight.w800,
                     ),
                   ),
                 ),
             ],
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Flexible(
-                  child: Text(
-                    quality.short,
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 7),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    auto ? 'يدوي' : quality.short,
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                     style: TextStyle(
-                      color: p.text,
-                      fontSize: 13.5,
+                      color: auto ? p.textMuted : p.text,
+                      fontSize: 13,
                       fontWeight: FontWeight.w800,
                     ),
                   ),
-                ),
-                const SizedBox(width: 4),
-                Icon(Icons.expand_more_rounded, color: p.textMuted, size: 18),
-              ],
+                  const SizedBox(width: 2),
+                  Icon(Icons.expand_more_rounded, color: p.textMuted, size: 18),
+                ],
+              ),
             ),
           ),
         ],
@@ -493,7 +860,9 @@ class _PairingDialogState extends ConsumerState<_PairingDialog> {
       _error = null;
     });
     try {
-      await ref.read(castControllerProvider.notifier).pairWithCode(_controller.text);
+      await ref
+          .read(castControllerProvider.notifier)
+          .pairWithCode(_controller.text);
       if (mounted) Navigator.of(context).pop();
     } on CastException catch (e) {
       if (mounted) setState(() => _error = e.message);
@@ -510,7 +879,8 @@ class _PairingDialogState extends ConsumerState<_PairingDialog> {
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
       title: Text(
         'ربط شاشة',
-        style: TextStyle(color: p.text, fontSize: 17, fontWeight: FontWeight.w900),
+        style:
+            TextStyle(color: p.text, fontSize: 17, fontWeight: FontWeight.w900),
       ),
       content: Column(
         mainAxisSize: MainAxisSize.min,
@@ -534,7 +904,8 @@ class _PairingDialogState extends ConsumerState<_PairingDialog> {
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(14),
                 ),
-                textStyle: const TextStyle(fontSize: 14.5, fontWeight: FontWeight.w800),
+                textStyle: const TextStyle(
+                    fontSize: 14.5, fontWeight: FontWeight.w800),
               ),
             ),
           ),
@@ -580,7 +951,9 @@ class _PairingDialogState extends ConsumerState<_PairingDialog> {
           ),
           if (_error != null) ...[
             const SizedBox(height: 10),
-            Text(_error!, style: const TextStyle(color: Color(0xFFFF6B75), fontSize: 12.5)),
+            Text(_error!,
+                style:
+                    const TextStyle(color: Color(0xFFFF6B75), fontSize: 12.5)),
           ],
         ],
       ),
@@ -599,7 +972,8 @@ class _PairingDialogState extends ConsumerState<_PairingDialog> {
               ? const SizedBox(
                   width: 16,
                   height: 16,
-                  child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2),
+                  child: CircularProgressIndicator(
+                      color: Colors.white, strokeWidth: 2),
                 )
               : const Text('ربط'),
         ),

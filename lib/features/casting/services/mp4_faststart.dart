@@ -39,11 +39,11 @@ class Mp4FastStart {
   ) =>
       fetch(start, start + length - 1);
 
-  /// Works out how to serve [totalSize] bytes with the index first.
+  /// Finds the index of the file and reads it, wherever it is.
   ///
-  /// Returns null when the file needs no rearranging — or when it is not
-  /// the shape this understands, in which case it is served as it is.
-  static Future<Mp4Layout?> plan({
+  /// Returns null for anything that is not an mp4 with one `mdat` and one
+  /// `moov` at the top level, or whose index is too large to hold.
+  static Future<Mp4File?> read({
     required Future<Uint8List?> Function(int start, int endInclusive) fetch,
     required int totalSize,
   }) async {
@@ -64,16 +64,7 @@ class Mp4FastStart {
       at = box.end;
       if (at > head.length - 8) break;
     }
-
     if (boxes.isEmpty) return null;
-
-    // Already in the right order: leave it alone.
-    final firstNames = boxes.map((b) => b.type).toList();
-    if (firstNames.contains('moov')) {
-      final moovAt = firstNames.indexOf('moov');
-      final mdatAt = firstNames.indexOf('mdat');
-      if (mdatAt < 0 || moovAt < mdatAt) return null;
-    }
 
     final ftyp = boxes.firstWhere((b) => b.type == 'ftyp',
         orElse: () => const _Box('', 0, 0));
@@ -81,9 +72,16 @@ class Mp4FastStart {
         orElse: () => const _Box('', 0, 0));
     if (mdat.type.isEmpty || mdat.size <= 0) return null;
 
-    // Whatever follows mdat should be the index. Anything else and this is
-    // a shape not understood here.
-    final moovStart = mdat.end;
+    // The index is either among the boxes in front, or it is whatever
+    // follows mdat. Anything else and this is a shape not understood here.
+    final moovFirst = boxes.indexWhere((b) => b.type == 'moov');
+    final mdatAt = boxes.indexOf(mdat);
+    final int moovStart;
+    if (moovFirst >= 0 && moovFirst < mdatAt) {
+      moovStart = boxes[moovFirst].start;
+    } else {
+      moovStart = mdat.end;
+    }
     if (moovStart + 8 > totalSize) return null;
     final moovHeader = await _read(fetch, moovStart, 16);
     if (moovHeader == null || moovHeader.length < 8) return null;
@@ -102,25 +100,51 @@ class Mp4FastStart {
         ? Uint8List(0)
         : (await _read(fetch, ftyp.start, ftyp.size) ?? Uint8List(0));
 
+    return Mp4File(
+      ftyp: ftypBytes,
+      moov: moov,
+      indexFirst: moovStart < mdat.start,
+      dataStart: mdat.start + mdat.headerSize,
+      dataLength: mdat.size - mdat.headerSize,
+      mdatHeader: _mdatHeader(mdat),
+    );
+  }
+
+  /// Works out how to serve [totalSize] bytes with the index first.
+  ///
+  /// Returns null when the file needs no rearranging — or when it is not
+  /// the shape this understands, in which case it is served as it is.
+  static Future<Mp4Layout?> plan({
+    required Future<Uint8List?> Function(int start, int endInclusive) fetch,
+    required int totalSize,
+  }) async {
+    final file = await read(fetch: fetch, totalSize: totalSize);
+    // Already in the right order: leave it alone.
+    if (file == null || file.indexFirst) return null;
+    return planFor(file);
+  }
+
+  /// The rearranged layout of an already-read [file].
+  static Mp4Layout? planFor(Mp4File file) {
     // Where the video data used to begin, and where it will begin once the
     // index sits in front of it. Every offset inside the index moves by the
     // difference.
-    final oldDataStart = mdat.start + mdat.headerSize;
-    final newDataStart = ftypBytes.length + moovSize + mdat.headerSize;
+    final oldDataStart = file.dataStart;
+    final newDataStart = file.ftyp.length + file.moov.length + file.mdatHeader.length;
     final delta = newDataStart - oldDataStart;
 
-    final patched = shiftChunkOffsets(moov, delta);
+    final patched = shiftChunkOffsets(file.moov, delta);
     if (patched == null) return null;
 
     final header = BytesBuilder(copy: false)
-      ..add(ftypBytes)
+      ..add(file.ftyp)
       ..add(patched)
-      ..add(_mdatHeader(mdat));
+      ..add(file.mdatHeader);
 
     return Mp4Layout(
       header: header.takeBytes(),
       sourceDataStart: oldDataStart,
-      dataLength: mdat.size - mdat.headerSize,
+      dataLength: file.dataLength,
     );
   }
 
@@ -232,6 +256,34 @@ class Mp4FastStart {
     if (size < headerSize) return null;
     return _Box(type, at, size, headerSize);
   }
+}
+
+/// An mp4 as found: its index, read whole, and where its media data is.
+@immutable
+class Mp4File {
+  const Mp4File({
+    required this.ftyp,
+    required this.moov,
+    required this.indexFirst,
+    required this.dataStart,
+    required this.dataLength,
+    required this.mdatHeader,
+  });
+
+  final Uint8List ftyp;
+
+  /// The whole `moov` box, header included, untouched.
+  final Uint8List moov;
+
+  /// Whether the index already comes before the media data.
+  final bool indexFirst;
+
+  /// Where the media data begins in the file, and how much there is.
+  final int dataStart;
+  final int dataLength;
+
+  /// The `mdat` box header, as it was.
+  final Uint8List mdatHeader;
 }
 
 /// How to serve a rearranged file: a header to send first, then a stretch

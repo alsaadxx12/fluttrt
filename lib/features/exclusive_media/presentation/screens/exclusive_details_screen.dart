@@ -5,6 +5,7 @@ import '../../../../core/constants/app_colors.dart';
 import '../../data/models/exclusive_media_models.dart';
 import '../providers/exclusive_media_providers.dart';
 import 'exclusive_player_screen.dart';
+import 'package:youtube_downloader/presentation/widgets/house_notice.dart';
 
 class ExclusiveDetailsScreen extends ConsumerStatefulWidget {
   final ExclusiveMediaItem item;
@@ -24,7 +25,10 @@ class _ExclusiveDetailsScreenState extends ConsumerState<ExclusiveDetailsScreen>
 
     return Scaffold(
       backgroundColor: const Color(0xFF04060A),
-      body: detailsAsync.when(
+      // The popcorn notice sits over the page until the viewer sends it away.
+      body: Stack(
+        children: [
+          detailsAsync.when(
         loading: () => Center(
           child: Column(
             mainAxisSize: MainAxisSize.min,
@@ -362,6 +366,9 @@ class _ExclusiveDetailsScreenState extends ConsumerState<ExclusiveDetailsScreen>
             ],
           );
         },
+          ),
+          const HouseNotice.snacks(),
+        ],
       ),
     );
   }

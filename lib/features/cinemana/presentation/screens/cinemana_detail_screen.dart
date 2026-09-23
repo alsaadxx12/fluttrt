@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -8,10 +9,13 @@ import '../providers/cinemana_provider.dart';
 import 'package:youtube_downloader/features/casting/controllers/cast_controller.dart';
 import 'package:youtube_downloader/features/casting/controllers/cast_quality.dart';
 import 'package:youtube_downloader/features/casting/services/cast_media_source.dart';
+import 'package:youtube_downloader/features/casting/services/cast_service.dart';
+import 'package:youtube_downloader/features/history/presentation/providers/watch_history_provider.dart';
 import 'package:youtube_downloader/features/casting/widgets/cast_remote_page.dart';
 import 'cinemana_watch_screen.dart';
 import '../../../trailers/presentation/detail_trailer.dart';
 import 'package:youtube_downloader/presentation/widgets/favorite_toast.dart';
+import 'package:youtube_downloader/presentation/widgets/house_notice.dart';
 
 class CinemanaDetailScreen extends ConsumerStatefulWidget {
   final CinemanaItem item;
@@ -124,6 +128,7 @@ class _CinemanaDetailScreenState extends ConsumerState<CinemanaDetailScreen> {
         item,
         episode: episode,
         maxHeight: ref.read(castMaxHeightProvider),
+        adaptive: ref.read(castQualityProvider).adaptive,
       );
       if (!mounted) return;
       if (media == null) {
@@ -133,12 +138,18 @@ class _CinemanaDetailScreenState extends ConsumerState<CinemanaDetailScreen> {
         ));
         return;
       }
+      // Into the history as it starts on the screen, the way the phone's
+      // player does when it opens.
+      unawaited(ref.read(watchHistoryProvider.notifier).record(item, episode: episode));
       await ref.read(castControllerProvider.notifier).cast(media);
       if (mounted) await CastRemotePage.open(context);
-    } catch (_) {
+    } catch (e) {
+      // The reason, when there is one: «the set refused», «the set did not
+      // answer» — not the same sentence for every fault.
+      final why = e is CastException ? e.message : 'تعذّر إرسال المحتوى إلى الجهاز';
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-          content: Text('تعذّر إرسال المحتوى إلى الجهاز'),
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+          content: Text(why),
           behavior: SnackBarBehavior.floating,
         ));
       }
@@ -158,7 +169,10 @@ class _CinemanaDetailScreenState extends ConsumerState<CinemanaDetailScreen> {
 
     return Scaffold(
       backgroundColor: palette.bg,
-      body: CustomScrollView(
+      // The popcorn notice sits over the page until the viewer sends it away.
+      body: Stack(
+        children: [
+          CustomScrollView(
         slivers: [
           // Collapsible Hero App Bar with Poster
           SliverAppBar(
@@ -541,6 +555,9 @@ class _CinemanaDetailScreenState extends ConsumerState<CinemanaDetailScreen> {
               ),
             ),
           ),
+        ],
+          ),
+          const HouseNotice.snacks(),
         ],
       ),
     );

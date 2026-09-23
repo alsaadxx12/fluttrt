@@ -14,6 +14,7 @@ import '../providers/cinemana_provider.dart';
 import '../widgets/cinemana_player_view.dart';
 import 'package:youtube_downloader/core/video/desktop_video.dart';
 import 'package:window_manager/window_manager.dart';
+import 'package:youtube_downloader/features/casting/services/resume_store.dart';
 
 class CinemanaWatchScreen extends ConsumerStatefulWidget {
   final CinemanaItem item;
@@ -30,7 +31,8 @@ class CinemanaWatchScreen extends ConsumerStatefulWidget {
   });
 
   @override
-  ConsumerState<CinemanaWatchScreen> createState() => _CinemanaWatchScreenState();
+  ConsumerState<CinemanaWatchScreen> createState() =>
+      _CinemanaWatchScreenState();
 }
 
 class _CinemanaWatchScreenState extends ConsumerState<CinemanaWatchScreen> {
@@ -58,7 +60,6 @@ class _CinemanaWatchScreenState extends ConsumerState<CinemanaWatchScreen> {
   int _loadToken = 0;
   Timer? _savePrefsTimer;
 
-
   @override
   void initState() {
     super.initState();
@@ -66,12 +67,18 @@ class _CinemanaWatchScreenState extends ConsumerState<CinemanaWatchScreen> {
     // «سجل المشاهدة»: the title goes in once, when its player opens. For a
     // series or anime [widget.item] is the show, so the history lists it
     // once however many episodes are watched.
-    ref.read(watchHistoryProvider.notifier).record(widget.item);
+    ref
+        .read(watchHistoryProvider.notifier)
+        .record(widget.item, episode: _currentEpisode);
     _loadSubtitlePrefs();
     _allowRotation();
     _initSeasons();
     _loadStreamFiles();
+    _resumeTimer =
+        Timer.periodic(const Duration(seconds: 5), (_) => _rememberPosition());
   }
+
+  Timer? _resumeTimer;
 
   void _initSeasons() {
     final Map<String, List<CinemanaEpisode>> map = {};
@@ -91,9 +98,11 @@ class _CinemanaWatchScreenState extends ConsumerState<CinemanaWatchScreen> {
     }
     _seasons = sorted;
 
-    if (widget.initialEpisode != null && widget.initialEpisode!.seasonNumber.isNotEmpty) {
+    if (widget.initialEpisode != null &&
+        widget.initialEpisode!.seasonNumber.isNotEmpty) {
       _selectedSeason = widget.initialEpisode!.seasonNumber;
-    } else if (widget.initialSeason != null && _seasons.containsKey(widget.initialSeason)) {
+    } else if (widget.initialSeason != null &&
+        _seasons.containsKey(widget.initialSeason)) {
       _selectedSeason = widget.initialSeason;
     } else if (sortedKeys.isNotEmpty) {
       _selectedSeason = sortedKeys.first;
@@ -149,7 +158,27 @@ class _CinemanaWatchScreenState extends ConsumerState<CinemanaWatchScreen> {
       _isLoadingStreams = false;
     });
 
-    _openStream(selected.videoUrl);
+    // From where it was left — here, or on a television.
+    final resumeAt = await ResumeStore.read(_currentVideoId);
+    if (!mounted || token != _loadToken) return;
+    _openStream(selected.videoUrl, startAt: resumeAt);
+  }
+
+  /// Writes down where the film is, every few seconds while it plays, so
+  /// the next opening - on the phone or a screen - starts there.
+  void _rememberPosition({bool now = false}) {
+    final video = _video;
+    if (video == null || !video.value.isInitialized) return;
+    final position = video.value.position;
+    final duration = video.value.duration;
+    ResumeStore.save(_currentVideoId, position, duration: duration);
+    // And in the history, where the page shows «وصلت إلى 42:10».
+    ref.read(watchHistoryProvider.notifier).updatePosition(
+          _currentVideoId,
+          position,
+          duration: duration,
+          now: now,
+        );
   }
 
   Future<void> _loadSubtitlePrefs() async {
@@ -161,7 +190,8 @@ class _CinemanaWatchScreenState extends ConsumerState<CinemanaWatchScreen> {
     setState(() => _subs = s);
     // Dragging the line fires many changes; save once it settles.
     _savePrefsTimer?.cancel();
-    _savePrefsTimer = Timer(const Duration(milliseconds: 500), () => _subs.save());
+    _savePrefsTimer =
+        Timer(const Duration(milliseconds: 500), () => _subs.save());
   }
 
   /// Arabic only - that is what the viewer reads.
@@ -209,7 +239,8 @@ class _CinemanaWatchScreenState extends ConsumerState<CinemanaWatchScreen> {
         await disposeQuietly(controller);
         return;
       }
-      if (startAt != null && startAt > Duration.zero) await controller.seekTo(startAt);
+      if (startAt != null && startAt > Duration.zero)
+        await controller.seekTo(startAt);
       controller.addListener(_syncWakelock);
       await controller.play();
       setState(() => _video = controller);
@@ -217,7 +248,8 @@ class _CinemanaWatchScreenState extends ConsumerState<CinemanaWatchScreen> {
       if (identical(_video, controller)) _video = null;
       await disposeQuietly(controller);
       if (!mounted || token != _videoToken) return;
-      setState(() => _playerError = 'تعذّر تشغيل الفيديو، حاول مرة أخرى أو اختر جودة أخرى');
+      setState(() => _playerError =
+          'تعذّر تشغيل الفيديو، حاول مرة أخرى أو اختر جودة أخرى');
     }
   }
 
@@ -251,6 +283,8 @@ class _CinemanaWatchScreenState extends ConsumerState<CinemanaWatchScreen> {
 
   @override
   void dispose() {
+    _resumeTimer?.cancel();
+    _rememberPosition(now: true);
     _savePrefsTimer?.cancel();
     _videoToken++;
     _closeVideo();
@@ -300,9 +334,13 @@ class _CinemanaWatchScreenState extends ConsumerState<CinemanaWatchScreen> {
 
   void _selectEpisode(CinemanaEpisode ep) {
     if (_currentEpisode?.id == ep.id) return;
+    _rememberPosition(now: true);
     setState(() {
       _currentEpisode = ep;
     });
+    // The history follows the episode: one entry for the show, on the
+    // episode being watched.
+    ref.read(watchHistoryProvider.notifier).record(widget.item, episode: ep);
     _loadStreamFiles();
   }
 
@@ -310,7 +348,8 @@ class _CinemanaWatchScreenState extends ConsumerState<CinemanaWatchScreen> {
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final isMobile = !isDesktopVideo;
-    final isLandscapeMobile = isMobile && MediaQuery.of(context).orientation == Orientation.landscape;
+    final isLandscapeMobile =
+        isMobile && MediaQuery.of(context).orientation == Orientation.landscape;
 
     // Fullscreen: only when explicitly toggled on desktop, or rotated on mobile
     if (_isFullscreen || isLandscapeMobile) {
@@ -330,305 +369,375 @@ class _CinemanaWatchScreenState extends ConsumerState<CinemanaWatchScreen> {
       canPop: true,
       child: Scaffold(
         backgroundColor: isDark ? const Color(0xFF0F0F13) : Colors.white,
-        appBar: AppBar(
-          titleSpacing: 0,
-          backgroundColor: isDark ? Colors.black : Colors.white,
-          iconTheme: IconThemeData(color: isDark ? Colors.white : Colors.black87),
-          title: Text(
-            _currentTitle,
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            style: TextStyle(color: isDark ? Colors.white : Colors.black87, fontSize: 14.5, fontWeight: FontWeight.bold),
-          ),
-          actions: [
-            IconButton(
-              icon: Icon(Icons.fullscreen_rounded, color: isDark ? Colors.white : Colors.black87),
-              tooltip: 'ملء الشاشة',
-              onPressed: () => _setFullscreen(true),
-            ),
-          ],
-        ),
-        body: Column(
-          children: [
-            // 1. Video player (16:9)
-            AspectRatio(
-              aspectRatio: 16 / 9,
-              child: _player(fullscreen: false),
-            ),
-
-          // 2. Stream Quality Selector Chips
-          if (_streams.length > 1)
-            Container(
-              height: 38,
-              decoration: BoxDecoration(
-                color: isDark ? const Color(0xFF16161D) : Colors.white,
-                border: isDark ? null : Border(bottom: BorderSide(color: AppPalette.of(context).border)),
+        // No app bar: the player draws its own top row - back, the title,
+        // fullscreen - and a second row of the same three above it was
+        // exactly that, the same three twice.
+        body: SafeArea(
+          bottom: false,
+          child: Column(
+            children: [
+              // 1. Video player (16:9)
+              AspectRatio(
+                aspectRatio: 16 / 9,
+                child: _player(fullscreen: false),
               ),
-              padding: const EdgeInsets.symmetric(horizontal: 14),
-              child: Row(
-                children: [
-                  const Icon(Icons.high_quality_rounded, size: 16, color: AppColors.primary),
-                  const SizedBox(width: 8),
-                  const Text('الجودة: ', style: TextStyle(fontSize: 11.5, fontWeight: FontWeight.bold)),
-                  Expanded(
-                    child: ListView.separated(
-                      scrollDirection: Axis.horizontal,
-                      itemCount: _streams.length,
-                      separatorBuilder: (_, __) => const SizedBox(width: 6),
-                      itemBuilder: (context, index) {
-                        final s = _streams[index];
-                        final isSelected = _selectedStream?.resolution == s.resolution;
-                        return ChoiceChip(
-                          label: Text(s.resolution, style: const TextStyle(fontSize: 11)),
-                          selected: isSelected,
-                          selectedColor: AppColors.primary,
-                          onSelected: (_) => _switchQuality(s),
-                          padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 0),
-                          materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                        );
-                      },
-                    ),
+
+              // 2. Stream Quality Selector Chips
+              if (_streams.length > 1)
+                Container(
+                  height: 38,
+                  decoration: BoxDecoration(
+                    color: isDark ? const Color(0xFF16161D) : Colors.white,
+                    border: isDark
+                        ? null
+                        : Border(
+                            bottom: BorderSide(
+                                color: AppPalette.of(context).border)),
                   ),
-                ],
-              ),
-            ),
-
-          // 2b. Subtitle language
-          if (_hasSubs) SubtitleSettingsBar(settings: _subs, onChanged: _onSubtitlesChanged),
-
-          // 3. Details & Episodes Section (Matching Image 5)
-          Expanded(
-            child: ListView(
-              padding: const EdgeInsets.all(14),
-              children: [
-                // Title and Stars
-                Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            _currentTitle,
-                            style: TextStyle(
-                              fontSize: 16,
-                              fontWeight: FontWeight.bold,
-                              color: isDark ? Colors.white : Colors.black87,
-                            ),
-                          ),
-                          const SizedBox(height: 4),
-                          Text(
-                            widget.item.categories.join(' • '),
-                            style: const TextStyle(fontSize: 12, color: AppColors.darkTextSecondary),
-                          ),
-                        ],
-                      ),
-                    ),
-                    if (widget.item.stars.isNotEmpty)
-                      Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                        decoration: BoxDecoration(
-                          color: Colors.amber.withOpacity(0.16),
-                          borderRadius: BorderRadius.circular(6),
-                        ),
-                        child: Row(
-                          children: [
-                            const Icon(Icons.star_rounded, size: 16, color: Colors.amber),
-                            const SizedBox(width: 4),
-                            Text(
-                              widget.item.stars,
-                              style: const TextStyle(color: Colors.amber, fontWeight: FontWeight.bold, fontSize: 13),
-                            ),
-                          ],
-                        ),
-                      ),
-                  ],
-                ),
-
-                const SizedBox(height: 16),
-
-                // Series Episodes Carousel with Season Tabs & RTL Flow
-                if (widget.episodes.isNotEmpty) ...[
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  padding: const EdgeInsets.symmetric(horizontal: 14),
+                  child: Row(
                     children: [
-                      Row(
-                        children: [
-                          const Icon(Icons.movie_filter_rounded, color: AppColors.primary, size: 18),
-                          const SizedBox(width: 8),
-                          Text(
-                            _selectedSeason != null
-                                ? 'حلقات الموسم $_selectedSeason'
-                                : 'الحلقات (${widget.episodes.length})',
-                            style: const TextStyle(fontSize: 15, fontWeight: FontWeight.bold),
-                          ),
-                        ],
-                      ),
-                      if (_selectedSeason != null && _seasons.containsKey(_selectedSeason))
-                        Text(
-                          '${_seasons[_selectedSeason]!.length} حلقة',
-                          style: const TextStyle(fontSize: 12, color: AppColors.darkTextSecondary),
+                      const Icon(Icons.high_quality_rounded,
+                          size: 16, color: AppColors.primary),
+                      const SizedBox(width: 8),
+                      const Text('الجودة: ',
+                          style: TextStyle(
+                              fontSize: 11.5, fontWeight: FontWeight.bold)),
+                      Expanded(
+                        child: ListView.separated(
+                          scrollDirection: Axis.horizontal,
+                          itemCount: _streams.length,
+                          separatorBuilder: (_, __) => const SizedBox(width: 6),
+                          itemBuilder: (context, index) {
+                            final s = _streams[index];
+                            final isSelected =
+                                _selectedStream?.resolution == s.resolution;
+                            return ChoiceChip(
+                              label: Text(s.resolution,
+                                  style: const TextStyle(fontSize: 11)),
+                              selected: isSelected,
+                              selectedColor: AppColors.primary,
+                              onSelected: (_) => _switchQuality(s),
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 4, vertical: 0),
+                              materialTapTargetSize:
+                                  MaterialTapTargetSize.shrinkWrap,
+                            );
+                          },
                         ),
+                      ),
                     ],
                   ),
+                ),
 
-                  // Season Selection Chips (RTL)
-                  if (_seasons.keys.length > 1) ...[
-                    const SizedBox(height: 8),
-                    Directionality(
-                      textDirection: TextDirection.rtl,
-                      child: SizedBox(
-                        height: 34,
-                        child: ListView(
-                          scrollDirection: Axis.horizontal,
-                          children: _seasons.keys.map((sNum) {
-                            final isSelected = _selectedSeason == sNum;
-                            final count = _seasons[sNum]?.length ?? 0;
-                            return Padding(
-                              padding: const EdgeInsets.only(left: 6),
-                              child: ChoiceChip(
-                                label: Text('الموسم $sNum ($count)', style: const TextStyle(fontSize: 11)),
-                                selected: isSelected,
-                                selectedColor: AppColors.primary,
-                                padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 0),
-                                materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                                onSelected: (_) {
-                                  setState(() {
-                                    _selectedSeason = sNum;
-                                  });
+              // 2b. Subtitle language
+              if (_hasSubs)
+                SubtitleSettingsBar(
+                    settings: _subs, onChanged: _onSubtitlesChanged),
+
+              // 3. Details & Episodes Section (Matching Image 5)
+              Expanded(
+                child: ListView(
+                  padding: const EdgeInsets.all(14),
+                  children: [
+                    // Title and Stars
+                    Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                _currentTitle,
+                                style: TextStyle(
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.bold,
+                                  color: isDark ? Colors.white : Colors.black87,
+                                ),
+                              ),
+                              const SizedBox(height: 4),
+                              Text(
+                                widget.item.categories.join(' • '),
+                                style: const TextStyle(
+                                    fontSize: 12,
+                                    color: AppColors.darkTextSecondary),
+                              ),
+                            ],
+                          ),
+                        ),
+                        if (widget.item.stars.isNotEmpty)
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 8, vertical: 4),
+                            decoration: BoxDecoration(
+                              color: Colors.amber.withOpacity(0.16),
+                              borderRadius: BorderRadius.circular(6),
+                            ),
+                            child: Row(
+                              children: [
+                                const Icon(Icons.star_rounded,
+                                    size: 16, color: Colors.amber),
+                                const SizedBox(width: 4),
+                                Text(
+                                  widget.item.stars,
+                                  style: const TextStyle(
+                                      color: Colors.amber,
+                                      fontWeight: FontWeight.bold,
+                                      fontSize: 13),
+                                ),
+                              ],
+                            ),
+                          ),
+                      ],
+                    ),
+
+                    const SizedBox(height: 16),
+
+                    // Series Episodes Carousel with Season Tabs & RTL Flow
+                    if (widget.episodes.isNotEmpty) ...[
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Row(
+                            children: [
+                              const Icon(Icons.movie_filter_rounded,
+                                  color: AppColors.primary, size: 18),
+                              const SizedBox(width: 8),
+                              Text(
+                                _selectedSeason != null
+                                    ? 'حلقات الموسم $_selectedSeason'
+                                    : 'الحلقات (${widget.episodes.length})',
+                                style: const TextStyle(
+                                    fontSize: 15, fontWeight: FontWeight.bold),
+                              ),
+                            ],
+                          ),
+                          if (_selectedSeason != null &&
+                              _seasons.containsKey(_selectedSeason))
+                            Text(
+                              '${_seasons[_selectedSeason]!.length} حلقة',
+                              style: const TextStyle(
+                                  fontSize: 12,
+                                  color: AppColors.darkTextSecondary),
+                            ),
+                        ],
+                      ),
+
+                      // Season Selection Chips (RTL)
+                      if (_seasons.keys.length > 1) ...[
+                        const SizedBox(height: 8),
+                        Directionality(
+                          textDirection: TextDirection.rtl,
+                          child: SizedBox(
+                            height: 34,
+                            child: ListView(
+                              scrollDirection: Axis.horizontal,
+                              children: _seasons.keys.map((sNum) {
+                                final isSelected = _selectedSeason == sNum;
+                                final count = _seasons[sNum]?.length ?? 0;
+                                return Padding(
+                                  padding: const EdgeInsets.only(left: 6),
+                                  child: ChoiceChip(
+                                    label: Text('الموسم $sNum ($count)',
+                                        style: const TextStyle(fontSize: 11)),
+                                    selected: isSelected,
+                                    selectedColor: AppColors.primary,
+                                    padding: const EdgeInsets.symmetric(
+                                        horizontal: 4, vertical: 0),
+                                    materialTapTargetSize:
+                                        MaterialTapTargetSize.shrinkWrap,
+                                    onSelected: (_) {
+                                      setState(() {
+                                        _selectedSeason = sNum;
+                                      });
+                                    },
+                                  ),
+                                );
+                              }).toList(),
+                            ),
+                          ),
+                        ),
+                      ],
+
+                      const SizedBox(height: 10),
+
+                      // Episodes Carousel scrolling RTL (From Right to Left)
+                      Builder(
+                        builder: (context) {
+                          final currentSeasonEpisodes =
+                              (_selectedSeason != null &&
+                                      _seasons.containsKey(_selectedSeason))
+                                  ? _seasons[_selectedSeason]!
+                                  : widget.episodes;
+
+                          return SizedBox(
+                            height: 120,
+                            child: Directionality(
+                              textDirection: TextDirection.rtl,
+                              child: ListView.separated(
+                                scrollDirection: Axis.horizontal,
+                                itemCount: currentSeasonEpisodes.length,
+                                separatorBuilder: (_, __) =>
+                                    const SizedBox(width: 10),
+                                itemBuilder: (context, index) {
+                                  final ep = currentSeasonEpisodes[index];
+                                  final isCurrent =
+                                      _currentEpisode?.id == ep.id;
+
+                                  return InkWell(
+                                    onTap: () => _selectEpisode(ep),
+                                    borderRadius: BorderRadius.circular(10),
+                                    child: Container(
+                                      width: 140,
+                                      decoration: BoxDecoration(
+                                        color: isDark
+                                            ? const Color(0xFF1E1E26)
+                                            : Colors.white,
+                                        borderRadius: BorderRadius.circular(10),
+                                        border: Border.all(
+                                          color: isCurrent
+                                              ? AppColors.primary
+                                              : (isDark
+                                                  ? Colors.transparent
+                                                  : AppPalette.of(context)
+                                                      .border),
+                                          width: 2,
+                                        ),
+                                      ),
+                                      child: Column(
+                                        crossAxisAlignment:
+                                            CrossAxisAlignment.start,
+                                        children: [
+                                          Expanded(
+                                            child: Stack(
+                                              fit: StackFit.expand,
+                                              children: [
+                                                ClipRRect(
+                                                  borderRadius:
+                                                      const BorderRadius
+                                                          .vertical(
+                                                          top: Radius.circular(
+                                                              8)),
+                                                  child: ep.imgUrl != null &&
+                                                          ep.imgUrl!.isNotEmpty
+                                                      ? Image.network(
+                                                          ep.imgUrl!,
+                                                          fit: BoxFit.cover,
+                                                          cacheWidth: 320,
+                                                          errorBuilder: (_, __,
+                                                                  ___) =>
+                                                              Container(
+                                                                  color: isDark
+                                                                      ? Colors
+                                                                          .black26
+                                                                      : AppPalette.of(
+                                                                              context)
+                                                                          .skeleton),
+                                                        )
+                                                      : Container(
+                                                          color: isDark
+                                                              ? Colors.black26
+                                                              : AppPalette.of(
+                                                                      context)
+                                                                  .skeleton),
+                                                ),
+                                                if (isCurrent)
+                                                  Container(
+                                                    decoration: BoxDecoration(
+                                                      color: AppColors.primary
+                                                          .withOpacity(0.35),
+                                                      borderRadius:
+                                                          const BorderRadius
+                                                              .vertical(
+                                                              top: Radius
+                                                                  .circular(8)),
+                                                    ),
+                                                    child: const Center(
+                                                      child: Icon(
+                                                          Icons
+                                                              .play_arrow_rounded,
+                                                          color: Colors.white,
+                                                          size: 32),
+                                                    ),
+                                                  ),
+                                              ],
+                                            ),
+                                          ),
+                                          Padding(
+                                            padding: const EdgeInsets.symmetric(
+                                                horizontal: 8, vertical: 6),
+                                            child: Row(
+                                              mainAxisAlignment:
+                                                  MainAxisAlignment
+                                                      .spaceBetween,
+                                              children: [
+                                                Text(
+                                                  'الحلقة ${ep.episodeNumber}',
+                                                  style: TextStyle(
+                                                    fontSize: 12,
+                                                    fontWeight: isCurrent
+                                                        ? FontWeight.bold
+                                                        : FontWeight.w600,
+                                                    color: isCurrent
+                                                        ? AppColors.primary
+                                                        : (isDark
+                                                            ? Colors.white
+                                                            : Colors.black87),
+                                                  ),
+                                                ),
+                                                if (ep.duration.isNotEmpty)
+                                                  Text(
+                                                    ep.duration,
+                                                    style: const TextStyle(
+                                                        fontSize: 10,
+                                                        color: AppColors
+                                                            .darkTextSecondary),
+                                                  ),
+                                              ],
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                  );
                                 },
                               ),
-                            );
-                          }).toList(),
-                        ),
+                            ),
+                          );
+                        },
+                      ),
+                    ],
+
+                    const SizedBox(height: 20),
+
+                    // Description
+                    const Text(
+                      'نبذة عن العمل',
+                      style:
+                          TextStyle(fontSize: 14, fontWeight: FontWeight.bold),
+                    ),
+                    const SizedBox(height: 6),
+                    Text(
+                      widget.item.arContent.isNotEmpty
+                          ? widget.item.arContent
+                          : (widget.item.enContent.isNotEmpty
+                              ? widget.item.enContent
+                              : 'لا يوجد وصف متاح.'),
+                      style: TextStyle(
+                        fontSize: 12.5,
+                        height: 1.45,
+                        color: isDark
+                            ? const Color(0xFFC8C8D0)
+                            : const Color(0xFF484850),
                       ),
                     ),
                   ],
-
-                  const SizedBox(height: 10),
-
-                  // Episodes Carousel scrolling RTL (From Right to Left)
-                  Builder(
-                    builder: (context) {
-                      final currentSeasonEpisodes = (_selectedSeason != null && _seasons.containsKey(_selectedSeason))
-                          ? _seasons[_selectedSeason]!
-                          : widget.episodes;
-
-                      return SizedBox(
-                        height: 120,
-                        child: Directionality(
-                          textDirection: TextDirection.rtl,
-                          child: ListView.separated(
-                            scrollDirection: Axis.horizontal,
-                            itemCount: currentSeasonEpisodes.length,
-                            separatorBuilder: (_, __) => const SizedBox(width: 10),
-                            itemBuilder: (context, index) {
-                              final ep = currentSeasonEpisodes[index];
-                              final isCurrent = _currentEpisode?.id == ep.id;
-
-                              return InkWell(
-                                onTap: () => _selectEpisode(ep),
-                                borderRadius: BorderRadius.circular(10),
-                                child: Container(
-                                  width: 140,
-                                  decoration: BoxDecoration(
-                                    color: isDark ? const Color(0xFF1E1E26) : Colors.white,
-                                    borderRadius: BorderRadius.circular(10),
-                                    border: Border.all(
-                                      color: isCurrent
-                                          ? AppColors.primary
-                                          : (isDark ? Colors.transparent : AppPalette.of(context).border),
-                                      width: 2,
-                                    ),
-                                  ),
-                                  child: Column(
-                                    crossAxisAlignment: CrossAxisAlignment.start,
-                                    children: [
-                                      Expanded(
-                                        child: Stack(
-                                          fit: StackFit.expand,
-                                          children: [
-                                            ClipRRect(
-                                              borderRadius: const BorderRadius.vertical(top: Radius.circular(8)),
-                                              child: ep.imgUrl != null && ep.imgUrl!.isNotEmpty
-                                                  ? Image.network(
-                                                      ep.imgUrl!,
-                                                      fit: BoxFit.cover,
-                                                      cacheWidth: 320,
-                                                      errorBuilder: (_, __, ___) => Container(color: isDark ? Colors.black26 : AppPalette.of(context).skeleton),
-                                                    )
-                                                  : Container(color: isDark ? Colors.black26 : AppPalette.of(context).skeleton),
-                                            ),
-                                            if (isCurrent)
-                                              Container(
-                                                decoration: BoxDecoration(
-                                                  color: AppColors.primary.withOpacity(0.35),
-                                                  borderRadius: const BorderRadius.vertical(top: Radius.circular(8)),
-                                                ),
-                                                child: const Center(
-                                                  child: Icon(Icons.play_arrow_rounded, color: Colors.white, size: 32),
-                                                ),
-                                              ),
-                                          ],
-                                        ),
-                                      ),
-                                      Padding(
-                                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
-                                        child: Row(
-                                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                                          children: [
-                                            Text(
-                                              'الحلقة ${ep.episodeNumber}',
-                                              style: TextStyle(
-                                                fontSize: 12,
-                                                fontWeight: isCurrent ? FontWeight.bold : FontWeight.w600,
-                                                color: isCurrent ? AppColors.primary : (isDark ? Colors.white : Colors.black87),
-                                              ),
-                                            ),
-                                            if (ep.duration.isNotEmpty)
-                                              Text(
-                                                ep.duration,
-                                                style: const TextStyle(fontSize: 10, color: AppColors.darkTextSecondary),
-                                              ),
-                                          ],
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                              );
-                            },
-                          ),
-                        ),
-                      );
-                    },
-                  ),
-                ],
-
-                const SizedBox(height: 20),
-
-                // Description
-                const Text(
-                  'نبذة عن العمل',
-                  style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold),
                 ),
-                const SizedBox(height: 6),
-                Text(
-                  widget.item.arContent.isNotEmpty
-                      ? widget.item.arContent
-                      : (widget.item.enContent.isNotEmpty ? widget.item.enContent : 'لا يوجد وصف متاح.'),
-                  style: TextStyle(
-                    fontSize: 12.5,
-                    height: 1.45,
-                    color: isDark ? const Color(0xFFC8C8D0) : const Color(0xFF484850),
-                  ),
-                ),
-              ],
-            ),
+              ),
+            ],
           ),
-        ],
-      ),
+        ),
       ),
     );
   }

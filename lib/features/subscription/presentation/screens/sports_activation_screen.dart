@@ -10,6 +10,7 @@ import '../../../../core/constants/app_theme.dart';
 import '../../data/models/subscription_plan.dart';
 import '../providers/subscription_provider.dart';
 import '../widgets/subscription_plan_card.dart';
+import 'package:youtube_downloader/presentation/widgets/house_notice.dart';
 
 class SportsActivationScreen extends ConsumerStatefulWidget {
   const SportsActivationScreen({super.key});
@@ -210,7 +211,10 @@ class _SportsActivationScreenState
 
     return Scaffold(
       backgroundColor: palette.bg,
-      body: SafeArea(
+      // What brought you here? Over the page until the viewer sends it away.
+      body: Stack(
+        children: [
+          SafeArea(
         child: SingleChildScrollView(
           padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 14),
           child: Column(
@@ -533,6 +537,9 @@ class _SportsActivationScreenState
               ),
             ),
           ),
-        );
+          const HouseNotice.subscription(),
+        ],
+      ),
+    );
   }
 }

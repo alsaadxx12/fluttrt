@@ -50,6 +50,34 @@ class CastRemotePage extends ConsumerWidget {
           padding: const EdgeInsets.fromLTRB(24, 8, 24, 24),
           child: Column(
             children: [
+              // What the set is up to when it is not simply playing: a
+              // reconnection in progress, or the reason it stopped.
+              if (cast.note != null || cast.error != null)
+                Padding(
+                  padding: const EdgeInsets.only(bottom: 10),
+                  child: Row(
+                    children: [
+                      if (cast.error != null)
+                        const Icon(Icons.error_outline_rounded, color: Color(0xFFFF6B75), size: 17)
+                      else
+                        const SizedBox(
+                          width: 14,
+                          height: 14,
+                          child: CircularProgressIndicator(color: Color(0xFFE50914), strokeWidth: 2),
+                        ),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: Text(
+                          cast.error ?? cast.note!,
+                          style: TextStyle(
+                            color: cast.error != null ? const Color(0xFFFF6B75) : p.textMuted,
+                            fontSize: 12.5,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
               Expanded(
                 child: Center(
                   child: ClipRRect(
@@ -82,6 +110,17 @@ class CastRemotePage extends ConsumerWidget {
                 overflow: TextOverflow.ellipsis,
                 style: TextStyle(color: p.text, fontSize: 18, fontWeight: FontWeight.w900),
               ),
+              // The quality the link earned, when it was measured: the one
+              // line that explains a softer picture on a slow evening.
+              if (media.quality != null)
+                Padding(
+                  padding: const EdgeInsets.only(top: 6),
+                  child: Text(
+                    'الجودة: ${media.quality}',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(color: p.textFaint, fontSize: 12),
+                  ),
+                ),
               const SizedBox(height: 18),
               _Progress(cast: cast),
               const SizedBox(height: 18),

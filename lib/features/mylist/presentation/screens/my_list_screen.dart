@@ -16,7 +16,8 @@ class MyListScreen extends ConsumerStatefulWidget {
 }
 
 class _MyListScreenState extends ConsumerState<MyListScreen> {
-  /// 0: «المفضلة», 1: «سجل المشاهدة».
+  /// 0: «سجل المشاهدة», 1: «المفضلة». The history first: it is the one
+  /// that says where the evening left off.
   int _tab = 0;
 
   @override
@@ -24,7 +25,9 @@ class _MyListScreenState extends ConsumerState<MyListScreen> {
     final p = AppPalette.of(context);
 
     return Scaffold(
-      backgroundColor: p.bg,
+      // Black, not the page grey: the lists sit on the same ground as the
+      // player, and the posters carry the colour.
+      backgroundColor: Colors.black,
       body: SafeArea(
         bottom: false,
         child: Column(
@@ -55,7 +58,7 @@ class _MyListScreenState extends ConsumerState<MyListScreen> {
                   const SizedBox(height: 12),
                   _SegmentedSwitch(
                     index: _tab,
-                    labels: const ['المفضلة', 'سجل المشاهدة'],
+                    labels: const ['سجل المشاهدة', 'المفضلة'],
                     onChanged: (i) => setState(() => _tab = i),
                   ),
                 ],
@@ -65,8 +68,8 @@ class _MyListScreenState extends ConsumerState<MyListScreen> {
               child: IndexedStack(
                 index: _tab,
                 children: const [
-                  CinemanaFavoritesBody(),
                   WatchHistoryBody(),
+                  CinemanaFavoritesBody(),
                 ],
               ),
             ),

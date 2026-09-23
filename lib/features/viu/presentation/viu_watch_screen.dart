@@ -75,9 +75,12 @@ class _ViuWatchScreenState extends ConsumerState<ViuWatchScreen> {
     if (versions.length > 1) {
       var preferDubbed = true;
       try {
-        preferDubbed = (await SharedPreferences.getInstance()).getBool(_prefDubbed) ?? true;
+        preferDubbed =
+            (await SharedPreferences.getInstance()).getBool(_prefDubbed) ??
+                true;
       } catch (_) {}
-      final pick = versions.firstWhere((v) => v.isDubbed == preferDubbed, orElse: () => versions.first);
+      final pick = versions.firstWhere((v) => v.isDubbed == preferDubbed,
+          orElse: () => versions.first);
       if (mounted) setState(() => _show = pick);
     }
     await _loadEpisodes();
@@ -87,10 +90,13 @@ class _ViuWatchScreenState extends ConsumerState<ViuWatchScreen> {
     final seriesId = _show.seriesId;
     setState(() => _episodesFailed = false);
     try {
-      final eps = await ref.read(viuServiceProvider).fetchFreeEpisodes(seriesId);
-      if (mounted && seriesId == _show.seriesId) setState(() => _episodes = eps);
+      final eps =
+          await ref.read(viuServiceProvider).fetchFreeEpisodes(seriesId);
+      if (mounted && seriesId == _show.seriesId)
+        setState(() => _episodes = eps);
     } catch (_) {
-      if (mounted && seriesId == _show.seriesId) setState(() => _episodesFailed = true);
+      if (mounted && seriesId == _show.seriesId)
+        setState(() => _episodesFailed = true);
     }
   }
 
@@ -112,12 +118,15 @@ class _ViuWatchScreenState extends ConsumerState<ViuWatchScreen> {
       _preparing = false;
     });
     if (widget.show.hasDubbedVersion && widget.show.hasOriginalVersion) {
-      SharedPreferences.getInstance().then((p) => p.setBool(_prefDubbed, version.isDubbed)).catchError((_) => false);
+      SharedPreferences.getInstance()
+          .then((p) => p.setBool(_prefDubbed, version.isDubbed))
+          .catchError((_) => false);
     }
     await _loadEpisodes();
     final eps = _episodes;
     if (!mounted || playingNumber == null || eps == null || eps.isEmpty) return;
-    _playEpisode(eps.firstWhere((e) => e.number == playingNumber, orElse: () => eps.first));
+    _playEpisode(eps.firstWhere((e) => e.number == playingNumber,
+        orElse: () => eps.first));
   }
 
   @override
@@ -134,7 +143,8 @@ class _ViuWatchScreenState extends ConsumerState<ViuWatchScreen> {
 
   // ------------------------------------------------------------ playback
 
-  static int _px(CinemanaStreamFile s) => int.tryParse(s.resolution.replaceAll(RegExp(r'\D'), '')) ?? 0;
+  static int _px(CinemanaStreamFile s) =>
+      int.tryParse(s.resolution.replaceAll(RegExp(r'\D'), '')) ?? 0;
 
   Future<void> _playEpisode(ViuEpisode ep, {Duration? startAt}) async {
     final token = ++_episodeToken;
@@ -152,13 +162,18 @@ class _ViuWatchScreenState extends ConsumerState<ViuWatchScreen> {
       if (!mounted || token != _episodeToken) return;
       final streams = [
         for (final q in pb.qualities)
-          CinemanaStreamFile(name: q.label, resolution: q.label, container: 'hls', videoUrl: q.url),
+          CinemanaStreamFile(
+              name: q.label,
+              resolution: q.label,
+              container: 'hls',
+              videoUrl: q.url),
       ];
       // Keep the viewer's quality; otherwise 720p (or the best below it).
       final wanted = _selected?.resolution ?? '720p';
       final pick = streams.firstWhere(
         (s) => s.resolution == wanted,
-        orElse: () => streams.lastWhere((s) => _px(s) <= 720, orElse: () => streams.last),
+        orElse: () =>
+            streams.lastWhere((s) => _px(s) <= 720, orElse: () => streams.last),
       );
       setState(() {
         _streams = streams;
@@ -167,7 +182,8 @@ class _ViuWatchScreenState extends ConsumerState<ViuWatchScreen> {
       final subsUrl = pb.arabicSubtitleUrl;
       if (subsUrl != null) {
         service.fetchSubtitleCues(subsUrl).then((cues) {
-          if (mounted && token == _episodeToken && cues.isNotEmpty) setState(() => _cues = cues);
+          if (mounted && token == _episodeToken && cues.isNotEmpty)
+            setState(() => _cues = cues);
         });
       }
       await _openStream(pick.videoUrl, startAt: startAt);
@@ -175,7 +191,8 @@ class _ViuWatchScreenState extends ConsumerState<ViuWatchScreen> {
       if (!mounted || token != _episodeToken) return;
       setState(() {
         _preparing = false;
-        _playerError = e is ViuException ? e.message : 'تعذّر تشغيل الحلقة، حاول مرة أخرى';
+        _playerError =
+            e is ViuException ? e.message : 'تعذّر تشغيل الحلقة، حاول مرة أخرى';
       });
     }
   }
@@ -207,7 +224,8 @@ class _ViuWatchScreenState extends ConsumerState<ViuWatchScreen> {
         await disposeQuietly(controller);
         return;
       }
-      if (startAt != null && startAt > Duration.zero) await controller.seekTo(startAt);
+      if (startAt != null && startAt > Duration.zero)
+        await controller.seekTo(startAt);
       controller.addListener(_onVideoTick);
       await controller.play();
       _advancing = false;
@@ -275,7 +293,8 @@ class _ViuWatchScreenState extends ConsumerState<ViuWatchScreen> {
   void _onSubtitlesChanged(SubtitleSettings s) {
     setState(() => _subs = s);
     _saveSubsTimer?.cancel();
-    _saveSubsTimer = Timer(const Duration(milliseconds: 500), () => _subs.save());
+    _saveSubsTimer =
+        Timer(const Duration(milliseconds: 500), () => _subs.save());
   }
 
   void _setFullscreen(bool fs) async {
@@ -287,7 +306,8 @@ class _ViuWatchScreenState extends ConsumerState<ViuWatchScreen> {
     }
     if (fs) {
       SystemChrome.setEnabledSystemUIMode(SystemUiMode.immersiveSticky);
-      SystemChrome.setPreferredOrientations([DeviceOrientation.landscapeLeft, DeviceOrientation.landscapeRight]);
+      SystemChrome.setPreferredOrientations(
+          [DeviceOrientation.landscapeLeft, DeviceOrientation.landscapeRight]);
     } else {
       SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
       _allowRotation();
@@ -306,7 +326,8 @@ class _ViuWatchScreenState extends ConsumerState<ViuWatchScreen> {
 
   String get _title {
     final cur = _current;
-    if (cur == null || _show.isMovie || (_episodes?.length ?? 0) <= 1) return _show.displayName;
+    if (cur == null || _show.isMovie || (_episodes?.length ?? 0) <= 1)
+      return _show.displayName;
     return '${_show.displayName} - الحلقة ${cur.number}';
   }
 
@@ -342,7 +363,8 @@ class _ViuWatchScreenState extends ConsumerState<ViuWatchScreen> {
   Widget _cover() {
     final eps = _episodes;
     final first = (eps == null || eps.isEmpty) ? null : eps.first;
-    final image = _show.landscapeUrl ?? _show.portraitUrl ?? widget.show.landscapeUrl;
+    final image =
+        _show.landscapeUrl ?? _show.portraitUrl ?? widget.show.landscapeUrl;
     final dpr = MediaQuery.of(context).devicePixelRatio;
     return GestureDetector(
       onTap: first == null ? null : () => _playEpisode(first),
@@ -363,21 +385,32 @@ class _ViuWatchScreenState extends ConsumerState<ViuWatchScreen> {
                 ? const CircularProgressIndicator(color: Color(0xFFE50914))
                 : first == null
                     ? Text(
-                        _episodesFailed ? 'تعذّر تحميل الحلقات' : 'لا توجد حلقات مجانية حالياً',
-                        style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+                        _episodesFailed
+                            ? 'تعذّر تحميل الحلقات'
+                            : 'لا توجد حلقات مجانية حالياً',
+                        style: const TextStyle(
+                            color: Colors.white, fontWeight: FontWeight.bold),
                       )
                     : Column(
                         mainAxisSize: MainAxisSize.min,
                         children: [
                           Container(
                             padding: const EdgeInsets.all(14),
-                            decoration: const BoxDecoration(color: Color(0xFFE50914), shape: BoxShape.circle),
-                            child: const Icon(Icons.play_arrow_rounded, color: Colors.white, size: 40),
+                            decoration: const BoxDecoration(
+                                color: Color(0xFFE50914),
+                                shape: BoxShape.circle),
+                            child: const Icon(Icons.play_arrow_rounded,
+                                color: Colors.white, size: 40),
                           ),
                           const SizedBox(height: 10),
                           Text(
-                            _show.isMovie || eps!.length == 1 ? 'شاهد الآن' : 'شاهد الحلقة ${first.number}',
-                            style: const TextStyle(color: Colors.white, fontSize: 14, fontWeight: FontWeight.w800),
+                            _show.isMovie || eps!.length == 1
+                                ? 'شاهد الآن'
+                                : 'شاهد الحلقة ${first.number}',
+                            style: const TextStyle(
+                                color: Colors.white,
+                                fontSize: 14,
+                                fontWeight: FontWeight.w800),
                           ),
                         ],
                       ),
@@ -391,7 +424,8 @@ class _ViuWatchScreenState extends ConsumerState<ViuWatchScreen> {
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final isMobile = !isDesktopVideo;
-    final isLandscapeMobile = isMobile && MediaQuery.of(context).orientation == Orientation.landscape;
+    final isLandscapeMobile =
+        isMobile && MediaQuery.of(context).orientation == Orientation.landscape;
     final started = _current != null;
 
     if (started && (_isFullscreen || isLandscapeMobile)) {
@@ -400,50 +434,47 @@ class _ViuWatchScreenState extends ConsumerState<ViuWatchScreen> {
         onPopInvokedWithResult: (didPop, _) {
           if (!didPop) _setFullscreen(false);
         },
-        child: Scaffold(backgroundColor: Colors.black, body: _player(fullscreen: true)),
+        child: Scaffold(
+            backgroundColor: Colors.black, body: _player(fullscreen: true)),
       );
     }
 
     final eps = _episodes;
     return Scaffold(
       backgroundColor: isDark ? const Color(0xFF0F0F13) : Colors.white,
-      appBar: AppBar(
-        titleSpacing: 0,
-        backgroundColor: isDark ? Colors.black : Colors.white,
-        iconTheme: IconThemeData(color: isDark ? Colors.white : Colors.black87),
-        title: Text(
-          _title,
-          maxLines: 1,
-          overflow: TextOverflow.ellipsis,
-          style: TextStyle(color: isDark ? Colors.white : Colors.black87, fontSize: 14.5, fontWeight: FontWeight.bold),
-        ),
-      ),
-      body: Column(
-        children: [
-          AspectRatio(
-            aspectRatio: 16 / 9,
-            child: started ? _player(fullscreen: false) : _cover(),
-          ),
-          if (started && _streams.length > 1) _qualityBar(isDark),
-          if (started && _cues != null) SubtitleSettingsBar(settings: _subs, onChanged: _onSubtitlesChanged),
-          Expanded(
-            child: CustomScrollView(
-              slivers: [
-                SliverToBoxAdapter(child: _details(isDark)),
-                if (eps != null && eps.length > 1)
-                  SliverPadding(
-                    padding: const EdgeInsets.fromLTRB(14, 0, 14, 24),
-                    sliver: SliverList.separated(
-                      itemCount: eps.length,
-                      separatorBuilder: (_, __) => const SizedBox(height: 10),
-                      itemBuilder: (_, i) => _episodeTile(eps[i], isDark),
-                    ),
-                  ),
-              ],
-            ),
-          ),
-        ],
-      ),
+      // No app bar: the player draws its own back, title and fullscreen;
+      // a bar above it with the same things was those things twice.
+      body: SafeArea(
+          bottom: false,
+          child: Column(
+            children: [
+              AspectRatio(
+                aspectRatio: 16 / 9,
+                child: started ? _player(fullscreen: false) : _cover(),
+              ),
+              if (started && _streams.length > 1) _qualityBar(isDark),
+              if (started && _cues != null)
+                SubtitleSettingsBar(
+                    settings: _subs, onChanged: _onSubtitlesChanged),
+              Expanded(
+                child: CustomScrollView(
+                  slivers: [
+                    SliverToBoxAdapter(child: _details(isDark)),
+                    if (eps != null && eps.length > 1)
+                      SliverPadding(
+                        padding: const EdgeInsets.fromLTRB(14, 0, 14, 24),
+                        sliver: SliverList.separated(
+                          itemCount: eps.length,
+                          separatorBuilder: (_, __) =>
+                              const SizedBox(height: 10),
+                          itemBuilder: (_, i) => _episodeTile(eps[i], isDark),
+                        ),
+                      ),
+                  ],
+                ),
+              ),
+            ],
+          )),
     );
   }
 
@@ -452,14 +483,18 @@ class _ViuWatchScreenState extends ConsumerState<ViuWatchScreen> {
       height: 38,
       decoration: BoxDecoration(
         color: isDark ? const Color(0xFF16161D) : Colors.white,
-        border: isDark ? null : Border(bottom: BorderSide(color: AppPalette.of(context).border)),
+        border: isDark
+            ? null
+            : Border(bottom: BorderSide(color: AppPalette.of(context).border)),
       ),
       padding: const EdgeInsets.symmetric(horizontal: 14),
       child: Row(
         children: [
-          const Icon(Icons.high_quality_rounded, size: 16, color: Color(0xFFE50914)),
+          const Icon(Icons.high_quality_rounded,
+              size: 16, color: Color(0xFFE50914)),
           const SizedBox(width: 8),
-          const Text('الجودة: ', style: TextStyle(fontSize: 11.5, fontWeight: FontWeight.bold)),
+          const Text('الجودة: ',
+              style: TextStyle(fontSize: 11.5, fontWeight: FontWeight.bold)),
           Expanded(
             child: ListView.separated(
               scrollDirection: Axis.horizontal,
@@ -468,7 +503,8 @@ class _ViuWatchScreenState extends ConsumerState<ViuWatchScreen> {
               itemBuilder: (_, i) {
                 final s = _streams[i];
                 return ChoiceChip(
-                  label: Text(s.resolution, style: const TextStyle(fontSize: 11)),
+                  label:
+                      Text(s.resolution, style: const TextStyle(fontSize: 11)),
                   selected: _selected?.resolution == s.resolution,
                   selectedColor: const Color(0xFFE50914),
                   onSelected: (_) => _switchQuality(s),
@@ -489,32 +525,44 @@ class _ViuWatchScreenState extends ConsumerState<ViuWatchScreen> {
     final eps = _episodes;
     final fg = isDark ? Colors.white : Colors.black87;
     final sub = isDark ? const Color(0xFFA8A8B3) : const Color(0xFF55555F);
-    final description = show.description.isNotEmpty ? show.description : (_current?.description ?? '');
+    final description = show.description.isNotEmpty
+        ? show.description
+        : (_current?.description ?? '');
     return Padding(
       padding: const EdgeInsets.fromLTRB(14, 14, 14, 12),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(show.displayName, style: TextStyle(fontSize: 17, fontWeight: FontWeight.w900, color: fg)),
+          Text(show.displayName,
+              style: TextStyle(
+                  fontSize: 17, fontWeight: FontWeight.w900, color: fg)),
           const SizedBox(height: 6),
           Wrap(
             spacing: 6,
             runSpacing: 6,
             children: [
-              if (show.categoryName.isNotEmpty) _chip(show.categoryName, isDark),
-              if (show.isDubbed && versions.length == 1) _chip('مدبلج', isDark, red: true),
-              if (eps != null && eps.length > 1) _chip('${eps.length} حلقة مجانية', isDark),
+              if (show.categoryName.isNotEmpty)
+                _chip(show.categoryName, isDark),
+              if (show.isDubbed && versions.length == 1)
+                _chip('مدبلج', isDark, red: true),
+              if (eps != null && eps.length > 1)
+                _chip('${eps.length} حلقة مجانية', isDark),
             ],
           ),
           if (versions.length > 1) ...[
             const SizedBox(height: 12),
             Row(
               children: [
-                Text('النسخة: ', style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.bold, color: fg)),
+                Text('النسخة: ',
+                    style: TextStyle(
+                        fontSize: 12.5,
+                        fontWeight: FontWeight.bold,
+                        color: fg)),
                 const SizedBox(width: 4),
                 for (final v in versions) ...[
                   ChoiceChip(
-                    label: Text(v.versionLabel, style: const TextStyle(fontSize: 12)),
+                    label: Text(v.versionLabel,
+                        style: const TextStyle(fontSize: 12)),
                     selected: v.seriesId == show.seriesId,
                     selectedColor: const Color(0xFFE50914),
                     labelStyle: TextStyle(
@@ -531,15 +579,19 @@ class _ViuWatchScreenState extends ConsumerState<ViuWatchScreen> {
           ],
           if (description.isNotEmpty) ...[
             const SizedBox(height: 10),
-            Text(description, style: TextStyle(fontSize: 12.5, height: 1.5, color: sub)),
+            Text(description,
+                style: TextStyle(fontSize: 12.5, height: 1.5, color: sub)),
           ],
           if (eps != null && eps.length > 1) ...[
             const SizedBox(height: 16),
             Row(
               children: [
-                const Icon(Icons.video_library_rounded, color: Color(0xFFE50914), size: 18),
+                const Icon(Icons.video_library_rounded,
+                    color: Color(0xFFE50914), size: 18),
                 const SizedBox(width: 8),
-                Text('الحلقات', style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold, color: fg)),
+                Text('الحلقات',
+                    style: TextStyle(
+                        fontSize: 15, fontWeight: FontWeight.bold, color: fg)),
               ],
             ),
           ],
@@ -551,16 +603,21 @@ class _ViuWatchScreenState extends ConsumerState<ViuWatchScreen> {
   Widget _chip(String text, bool isDark, {bool red = false}) => Container(
         padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
         decoration: BoxDecoration(
-          color: red ? const Color(0xFFE50914) : (isDark ? const Color(0xFF1E1E26) : Colors.white),
+          color: red
+              ? const Color(0xFFE50914)
+              : (isDark ? const Color(0xFF1E1E26) : Colors.white),
           borderRadius: BorderRadius.circular(6),
-          border: (red || isDark) ? null : Border.all(color: AppPalette.of(context).border),
+          border: (red || isDark)
+              ? null
+              : Border.all(color: AppPalette.of(context).border),
         ),
         child: Text(
           text,
           style: TextStyle(
             fontSize: 11,
             fontWeight: FontWeight.w700,
-            color: red ? Colors.white : (isDark ? Colors.white70 : Colors.black87),
+            color:
+                red ? Colors.white : (isDark ? Colors.white70 : Colors.black87),
           ),
         ),
       );
@@ -577,7 +634,9 @@ class _ViuWatchScreenState extends ConsumerState<ViuWatchScreen> {
           color: isDark ? const Color(0xFF17171F) : Colors.white,
           borderRadius: BorderRadius.circular(12),
           border: Border.all(
-            color: isCurrent ? const Color(0xFFE50914) : (isDark ? Colors.transparent : AppPalette.of(context).border),
+            color: isCurrent
+                ? const Color(0xFFE50914)
+                : (isDark ? Colors.transparent : AppPalette.of(context).border),
             width: 1.5,
           ),
         ),
@@ -601,7 +660,9 @@ class _ViuWatchScreenState extends ConsumerState<ViuWatchScreen> {
                       ),
                     Center(
                       child: Icon(
-                        isCurrent ? Icons.equalizer_rounded : Icons.play_circle_fill_rounded,
+                        isCurrent
+                            ? Icons.equalizer_rounded
+                            : Icons.play_circle_fill_rounded,
                         color: Colors.white.withOpacity(0.9),
                         size: 28,
                       ),
@@ -620,14 +681,18 @@ class _ViuWatchScreenState extends ConsumerState<ViuWatchScreen> {
                     style: TextStyle(
                       fontSize: 13.5,
                       fontWeight: FontWeight.w800,
-                      color: isCurrent ? const Color(0xFFE50914) : (isDark ? Colors.white : Colors.black87),
+                      color: isCurrent
+                          ? const Color(0xFFE50914)
+                          : (isDark ? Colors.white : Colors.black87),
                     ),
                   ),
                   if (ep.durationLabel.isNotEmpty) ...[
                     const SizedBox(height: 4),
                     Text(
                       ep.durationLabel,
-                      style: TextStyle(fontSize: 11.5, color: isDark ? Colors.white54 : Colors.black45),
+                      style: TextStyle(
+                          fontSize: 11.5,
+                          color: isDark ? Colors.white54 : Colors.black45),
                     ),
                   ],
                 ],

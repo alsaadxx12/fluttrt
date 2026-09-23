@@ -19,12 +19,15 @@ import 'package:youtube_downloader/core/config/supabase_config.dart';
 import 'package:youtube_downloader/router/app_router.dart';
 import 'features/update/presentation/update_gate.dart';
 import 'core/tv/tv_mode.dart';
+import 'package:youtube_downloader/features/casting/services/cast_log.dart';
 import 'package:youtube_downloader/features/casting/services/google_cast_service.dart';
 import 'package:youtube_downloader/features/trailers/tmdb_config.dart';
 import 'package:video_player_media_kit/video_player_media_kit.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  // Every `[cast]` line is kept for the diagnostics page from here on.
+  CastLog.install();
   _registerFontLicense();
   // Initialize Supabase Authentication & Database
   try {

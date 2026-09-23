@@ -152,7 +152,7 @@ class _CinemanaFavoritesBodyState extends ConsumerState<CinemanaFavoritesBody> {
                       ),
                       const SizedBox(height: 18),
                       Text(
-                        'لا توجد عناصر في المفضلة',
+                        'المفضلة فارغة',
                         style: TextStyle(
                           fontSize: 16,
                           fontWeight: FontWeight.bold,
@@ -161,7 +161,7 @@ class _CinemanaFavoritesBodyState extends ConsumerState<CinemanaFavoritesBody> {
                       ),
                       const SizedBox(height: 6),
                       Text(
-                        'يمكنك حفظ الأفلام والمسلسلات بضغطة واحدة على علامة ❤️',
+                        'احفظ ما يعجبك من صفحة الفيلم',
                         style: TextStyle(
                           fontSize: 12,
                           color: isDark ? AppColors.darkTextSecondary : AppColors.lightTextSecondary,
@@ -171,7 +171,7 @@ class _CinemanaFavoritesBodyState extends ConsumerState<CinemanaFavoritesBody> {
                       ElevatedButton.icon(
                         onPressed: () => context.go('/cinemana/movies'),
                         icon: const Icon(Icons.movie_filter_rounded, size: 18),
-                        label: const Text('تصفح أفلام سينمانا'),
+                        label: const Text('تصفح الأفلام'),
                         style: ElevatedButton.styleFrom(
                           backgroundColor: AppColors.primary,
                           foregroundColor: Colors.white,

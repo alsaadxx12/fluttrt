@@ -5,7 +5,7 @@
 
 version:
   revision: "80c2e84975bbd28ecf5f8d4bd4ca5a2490bfc819"
-  channel: "stable"
+  channel: "[user-branch]"
 
 project_type: app
 
@@ -15,7 +15,7 @@ migration:
     - platform: root
       create_revision: 80c2e84975bbd28ecf5f8d4bd4ca5a2490bfc819
       base_revision: 80c2e84975bbd28ecf5f8d4bd4ca5a2490bfc819
-    - platform: macos
+    - platform: ios
       create_revision: 80c2e84975bbd28ecf5f8d4bd4ca5a2490bfc819
       base_revision: 80c2e84975bbd28ecf5f8d4bd4ca5a2490bfc819
 

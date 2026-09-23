@@ -178,12 +178,16 @@ class GoogleCastService implements CastService {
     await ensureStarted();
     final target = _found[device.id];
     if (target == null) {
-      throw const CastException('لم يعد الجهاز ظاهرًا على الشبكة');
+      throw const CastException('لم يعد الجهاز ظاهرًا على الشبكة', code: 404);
     }
-    final started =
-        await GoogleCastSessionManager.instance.startSessionWithDevice(target);
+    // A session that does not start is usually a session that will start
+    // on the next try: the set was asleep, or the first mDNS answer was
+    // stale. Said so, and the controller asks again.
+    final started = await GoogleCastSessionManager.instance
+        .startSessionWithDevice(target)
+        .timeout(const Duration(seconds: 15), onTimeout: () => false);
     if (!started) {
-      throw const CastException('تعذّر الاتصال بالتلفاز');
+      throw const CastException('تعذّر الاتصال بالتلفاز', retryable: true);
     }
     _device = device;
   }

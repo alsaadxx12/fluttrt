@@ -31,7 +31,8 @@ class ExclusivePlayerScreen extends ConsumerStatefulWidget {
   });
 
   @override
-  ConsumerState<ExclusivePlayerScreen> createState() => _ExclusivePlayerScreenState();
+  ConsumerState<ExclusivePlayerScreen> createState() =>
+      _ExclusivePlayerScreenState();
 }
 
 class _ExclusivePlayerScreenState extends ConsumerState<ExclusivePlayerScreen> {
@@ -139,7 +140,8 @@ class _ExclusivePlayerScreenState extends ConsumerState<ExclusivePlayerScreen> {
     }
   }
 
-  Future<void> _startPlayback(String streamUrl, {required int token, Duration? startAt}) async {
+  Future<void> _startPlayback(String streamUrl,
+      {required int token, Duration? startAt}) async {
     _closeController();
     setState(() {
       _isLoading = true;
@@ -215,8 +217,10 @@ class _ExclusivePlayerScreenState extends ConsumerState<ExclusivePlayerScreen> {
 
   void _playNextEpisode() {
     final episodes = widget.allEpisodes;
-    if (episodes == null || episodes.isEmpty || _currentEpNumber == null) return;
-    final nextIdx = episodes.indexWhere((e) => e.number == _currentEpNumber! + 1);
+    if (episodes == null || episodes.isEmpty || _currentEpNumber == null)
+      return;
+    final nextIdx =
+        episodes.indexWhere((e) => e.number == _currentEpNumber! + 1);
     if (nextIdx != -1) {
       final nextEp = episodes[nextIdx];
       setState(() {
@@ -230,8 +234,10 @@ class _ExclusivePlayerScreenState extends ConsumerState<ExclusivePlayerScreen> {
 
   void _playPreviousEpisode() {
     final episodes = widget.allEpisodes;
-    if (episodes == null || episodes.isEmpty || _currentEpNumber == null) return;
-    final prevIdx = episodes.indexWhere((e) => e.number == _currentEpNumber! - 1);
+    if (episodes == null || episodes.isEmpty || _currentEpNumber == null)
+      return;
+    final prevIdx =
+        episodes.indexWhere((e) => e.number == _currentEpNumber! - 1);
     if (prevIdx != -1) {
       final prevEp = episodes[prevIdx];
       setState(() {
@@ -247,8 +253,10 @@ class _ExclusivePlayerScreenState extends ConsumerState<ExclusivePlayerScreen> {
   Widget build(BuildContext context) {
     final palette = AppPalette.of(context);
     final episodes = widget.allEpisodes ?? const [];
-    final hasPrev = _currentEpNumber != null && episodes.any((e) => e.number == _currentEpNumber! - 1);
-    final hasNext = _currentEpNumber != null && episodes.any((e) => e.number == _currentEpNumber! + 1);
+    final hasPrev = _currentEpNumber != null &&
+        episodes.any((e) => e.number == _currentEpNumber! - 1);
+    final hasNext = _currentEpNumber != null &&
+        episodes.any((e) => e.number == _currentEpNumber! + 1);
 
     if (_isFullscreen) {
       return Scaffold(
@@ -274,57 +282,8 @@ class _ExclusivePlayerScreenState extends ConsumerState<ExclusivePlayerScreen> {
 
     return Scaffold(
       backgroundColor: const Color(0xFF04060A),
-      appBar: AppBar(
-        backgroundColor: const Color(0xFF04060A),
-        elevation: 0,
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back_rounded, color: Colors.white),
-          onPressed: () => Navigator.of(context).pop(),
-        ),
-        title: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              _currentTitle,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: const TextStyle(color: Colors.white, fontSize: 15, fontWeight: FontWeight.w800),
-            ),
-            const SizedBox(height: 2),
-            Row(
-              children: [
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1),
-                  decoration: BoxDecoration(
-                    color: const Color(0xFF10B981).withOpacity(0.18),
-                    borderRadius: BorderRadius.circular(4),
-                    border: Border.all(color: const Color(0xFF10B981).withOpacity(0.4), width: 0.8),
-                  ),
-                  child: const Text(
-                    'بدون إعلانات',
-                    style: TextStyle(color: Color(0xFF10B981), fontSize: 10, fontWeight: FontWeight.bold),
-                  ),
-                ),
-                if (_selectedStream != null) ...[
-                  const SizedBox(width: 6),
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1),
-                    decoration: BoxDecoration(
-                      color: AppColors.primary.withOpacity(0.18),
-                      borderRadius: BorderRadius.circular(4),
-                      border: Border.all(color: AppColors.primary.withOpacity(0.4), width: 0.8),
-                    ),
-                    child: Text(
-                      _selectedStream!.resolution,
-                      style: const TextStyle(color: AppColors.primary, fontSize: 10, fontWeight: FontWeight.bold),
-                    ),
-                  ),
-                ],
-              ],
-            ),
-          ],
-        ),
-      ),
+      // No app bar: the player draws its own back, title and fullscreen;
+      // a bar above it with the same things was those things twice.
       body: SafeArea(
         child: Column(
           children: [
@@ -360,20 +319,24 @@ class _ExclusivePlayerScreenState extends ConsumerState<ExclusivePlayerScreen> {
                   padding: const EdgeInsets.fromLTRB(16, 16, 16, 24),
                   children: [
                     // Episode navigation bar
-                    if (widget.allEpisodes != null && widget.allEpisodes!.isNotEmpty) ...[
+                    if (widget.allEpisodes != null &&
+                        widget.allEpisodes!.isNotEmpty) ...[
                       Row(
                         children: [
                           Expanded(
                             child: OutlinedButton.icon(
                               onPressed: hasPrev ? _playPreviousEpisode : null,
-                              icon: const Icon(Icons.skip_previous_rounded, size: 18),
+                              icon: const Icon(Icons.skip_previous_rounded,
+                                  size: 18),
                               label: const Text('الحلقة السابقة'),
                               style: OutlinedButton.styleFrom(
                                 foregroundColor: Colors.white,
                                 side: BorderSide(
-                                  color: hasPrev ? Colors.white24 : Colors.white10,
+                                  color:
+                                      hasPrev ? Colors.white24 : Colors.white10,
                                 ),
-                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                                shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(8)),
                               ),
                             ),
                           ),
@@ -381,12 +344,16 @@ class _ExclusivePlayerScreenState extends ConsumerState<ExclusivePlayerScreen> {
                           Expanded(
                             child: ElevatedButton.icon(
                               onPressed: hasNext ? _playNextEpisode : null,
-                              icon: const Icon(Icons.skip_next_rounded, size: 18),
+                              icon:
+                                  const Icon(Icons.skip_next_rounded, size: 18),
                               label: const Text('الحلقة التالية'),
                               style: ElevatedButton.styleFrom(
-                                backgroundColor: hasNext ? AppColors.primary : Colors.white10,
+                                backgroundColor: hasNext
+                                    ? AppColors.primary
+                                    : Colors.white10,
                                 foregroundColor: Colors.white,
-                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                                shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(8)),
                               ),
                             ),
                           ),
@@ -416,16 +383,24 @@ class _ExclusivePlayerScreenState extends ConsumerState<ExclusivePlayerScreen> {
                             return ActionChip(
                               label: Text('حلقة ${ep.number}'),
                               labelStyle: TextStyle(
-                                color: isCurrent ? Colors.white : Colors.white70,
-                                fontWeight: isCurrent ? FontWeight.w900 : FontWeight.w600,
+                                color:
+                                    isCurrent ? Colors.white : Colors.white70,
+                                fontWeight: isCurrent
+                                    ? FontWeight.w900
+                                    : FontWeight.w600,
                                 fontSize: 12.5,
                               ),
-                              backgroundColor: isCurrent ? AppColors.primary : const Color(0xFF141926),
+                              backgroundColor: isCurrent
+                                  ? AppColors.primary
+                                  : const Color(0xFF141926),
                               side: BorderSide(
-                                color: isCurrent ? AppColors.primary : Colors.white12,
+                                color: isCurrent
+                                    ? AppColors.primary
+                                    : Colors.white12,
                                 width: 1,
                               ),
-                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                              shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(8)),
                               onPressed: () {
                                 if (isCurrent) return;
                                 setState(() {

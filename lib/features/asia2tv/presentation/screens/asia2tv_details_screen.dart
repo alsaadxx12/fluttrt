@@ -6,6 +6,7 @@ import '../../../../core/constants/app_palette.dart';
 import '../../data/models/asia2tv_models.dart';
 import '../providers/asia2tv_providers.dart';
 import 'asia2tv_watch_screen.dart';
+import 'package:youtube_downloader/presentation/widgets/house_notice.dart';
 
 class Asia2TvDetailsScreen extends ConsumerStatefulWidget {
   final Asia2TvItem item;
@@ -26,7 +27,10 @@ class _Asia2TvDetailsScreenState extends ConsumerState<Asia2TvDetailsScreen> {
 
     return Scaffold(
       backgroundColor: palette.bg,
-      body: detailsAsync.when(
+      // The popcorn notice sits over the page until the viewer sends it away.
+      body: Stack(
+        children: [
+          detailsAsync.when(
         loading: () => Center(
           child: Column(
             mainAxisSize: MainAxisSize.min,
@@ -362,6 +366,9 @@ class _Asia2TvDetailsScreenState extends ConsumerState<Asia2TvDetailsScreen> {
             ],
           );
         },
+          ),
+          const HouseNotice.snacks(),
+        ],
       ),
     );
   }

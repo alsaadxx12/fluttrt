@@ -11,6 +11,7 @@ import 'package:window_manager/window_manager.dart';
 import '../../../../presentation/widgets/window_caption_buttons.dart';
 import 'package:youtube_downloader/features/casting/controllers/cast_controller.dart';
 import 'package:youtube_downloader/features/casting/widgets/cast_device_sheet.dart';
+import 'package:youtube_downloader/features/casting/widgets/cast_diagnostics_page.dart';
 import 'package:youtube_downloader/features/search/presentation/screens/search_screen.dart';
 import 'package:youtube_downloader/features/cinemana/data/models/cinemana_models.dart';
 import 'package:youtube_downloader/features/cinemana/presentation/providers/cinemana_provider.dart';
@@ -46,6 +47,7 @@ import 'package:youtube_downloader/features/asia2tv/presentation/providers/asia2
 import 'package:youtube_downloader/features/asia2tv/presentation/open_catalogue_item.dart';
 import 'package:youtube_downloader/features/exclusive_media/presentation/providers/exclusive_media_providers.dart';
 import 'package:youtube_downloader/features/exclusive_media/data/models/exclusive_media_models.dart';
+import 'package:youtube_downloader/presentation/widgets/house_notice.dart';
 
 class HomeScreen extends ConsumerStatefulWidget {
   const HomeScreen({super.key});
@@ -77,6 +79,18 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
 
     _startAutoSlideTimer();
     _prefetchTimer = Timer(const Duration(milliseconds: 900), _prefetchRows);
+    WidgetsBinding.instance.addPostFrameCallback((_) => _welcome());
+  }
+
+  /// Whether this launch has had its word from the house.
+  static bool _welcomed = false;
+
+  /// The night-of-it notice, once per launch: over the whole app, bottom
+  /// bar and all, until the viewer sends it away.
+  void _welcome() {
+    if (_welcomed || !mounted) return;
+    _welcomed = true;
+    HouseNotice.show(context, const HouseNotice.welcome());
   }
 
   /// Starts the feeds for the rows further down, without subscribing this
@@ -1016,14 +1030,20 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
           ),
           const SizedBox(width: 8),
 
-          // Cast to a screen. The icon fills in while a device is connected,
-          // so the bar says at a glance that something is playing elsewhere.
+          // Cast to a screen. The icon fills in and turns the brand red while
+          // a device is connected, so the bar says at a glance that
+          // something is playing elsewhere.
           Consumer(
             builder: (context, ref, _) {
               final casting = ref.watch(isCastingProvider);
               return _buildTranslucentIconButton(
                 icon: casting ? Icons.cast_connected_rounded : Icons.cast_rounded,
+                color: casting ? const Color(0xFFE50914) : null,
+                ring: casting ? const Color(0x66E50914) : null,
                 onTap: () => showCastDeviceSheet(context),
+                // Hidden on purpose: the diagnostics are for the evening
+                // something does not play.
+                onLongPress: () => CastDiagnosticsPage.open(context),
               );
             },
           ),
@@ -1069,11 +1089,15 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
   Widget _buildTranslucentIconButton({
     required IconData icon,
     required VoidCallback onTap,
+    VoidCallback? onLongPress,
+    Color? color,
+    Color? ring,
   }) {
     return Material(
       color: Colors.transparent,
       child: InkWell(
         onTap: onTap,
+        onLongPress: onLongPress,
         borderRadius: BorderRadius.circular(20),
         child: Container(
           width: 40,
@@ -1081,11 +1105,11 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
           decoration: BoxDecoration(
             shape: BoxShape.circle,
             color: const Color(0xFF141926),
-            border: Border.all(color: Colors.white.withOpacity(0.12), width: 1),
+            border: Border.all(color: ring ?? Colors.white.withOpacity(0.12), width: 1),
           ),
           child: Icon(
             icon,
-            color: Colors.white,
+            color: color ?? Colors.white,
             size: 20,
           ),
         ),

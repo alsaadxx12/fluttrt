@@ -1,14 +1,20 @@
 package com.antigravity.yt.youtube_downloader
 
+import android.app.NotificationChannel
+import android.app.NotificationManager
+import android.app.PendingIntent
 import android.app.UiModeManager
+import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
+import android.content.IntentFilter
 import android.content.pm.PackageManager
 import android.net.Uri
 import android.os.Build
 import android.os.StatFs
 import android.provider.Settings
 import android.speech.RecognizerIntent
+import androidx.core.app.NotificationCompat
 import androidx.core.content.FileProvider
 import io.flutter.embedding.android.FlutterActivity
 import io.flutter.embedding.engine.FlutterEngine
@@ -21,6 +27,94 @@ class MainActivity : FlutterActivity() {
 
     companion object {
         private const val VOICE_REQUEST = 4210
+
+        /// The casting notification: one id, one channel, one broadcast
+        /// action its buttons send back to the activity.
+        private const val CAST_NOTIFICATION_ID = 7301
+        private const val CAST_CHANNEL = "cast"
+        private const val CAST_ACTION = "com.antigravity.yt.youtube_downloader.CAST_ACTION"
+    }
+
+    /// The channel to Dart for the casting notification, kept so a button
+    /// press on the notification can be sent back over it.
+    private var castChannel: MethodChannel? = null
+    private var castReceiver: BroadcastReceiver? = null
+
+    /// Puts up, or updates, the line in the shade for a film playing on
+    /// another screen: its title, the screen's name, and play/pause and
+    /// stop buttons. Ongoing, so it cannot be swiped away while the film
+    /// plays; silent, so an update never buzzes.
+    private fun showCastNotification(title: String, where: String, playing: Boolean) {
+        val manager = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            val channel = NotificationChannel(CAST_CHANNEL, "البث إلى الشاشة", NotificationManager.IMPORTANCE_LOW)
+            channel.setShowBadge(false)
+            manager.createNotificationChannel(channel)
+        }
+        val flags = PendingIntent.FLAG_UPDATE_CURRENT or
+            (if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) PendingIntent.FLAG_IMMUTABLE else 0)
+
+        fun button(name: String, icon: Int, label: String): NotificationCompat.Action {
+            val intent = Intent(CAST_ACTION).setPackage(packageName).putExtra("action", name)
+            val pending = PendingIntent.getBroadcast(this, name.hashCode(), intent, flags)
+            return NotificationCompat.Action(icon, label, pending)
+        }
+
+        val open = PendingIntent.getActivity(
+            this, 0,
+            Intent(this, MainActivity::class.java).addFlags(Intent.FLAG_ACTIVITY_SINGLE_TOP),
+            flags
+        )
+        val notification = NotificationCompat.Builder(this, CAST_CHANNEL)
+            .setSmallIcon(android.R.drawable.ic_media_play)
+            .setContentTitle(title)
+            .setContentText("يُعرض على $where")
+            .setContentIntent(open)
+            .setOngoing(true)
+            .setOnlyAlertOnce(true)
+            .setSilent(true)
+            .setPriority(NotificationCompat.PRIORITY_LOW)
+            .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
+            .addAction(
+                if (playing) button("pause", android.R.drawable.ic_media_pause, "إيقاف مؤقت")
+                else button("play", android.R.drawable.ic_media_play, "تشغيل")
+            )
+            .addAction(button("stop", android.R.drawable.ic_menu_close_clear_cancel, "إيقاف البث"))
+            .build()
+        manager.notify(CAST_NOTIFICATION_ID, notification)
+    }
+
+    private fun hideCastNotification() {
+        val manager = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+        manager.cancel(CAST_NOTIFICATION_ID)
+    }
+
+    /// Listens for the notification's buttons and hands each press to Dart.
+    private fun listenForCastButtons() {
+        if (castReceiver != null) return
+        val receiver = object : BroadcastReceiver() {
+            override fun onReceive(context: Context?, intent: Intent?) {
+                val action = intent?.getStringExtra("action") ?: return
+                castChannel?.invokeMethod("action", action)
+            }
+        }
+        val filter = IntentFilter(CAST_ACTION)
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            registerReceiver(receiver, filter, Context.RECEIVER_NOT_EXPORTED)
+        } else {
+            @Suppress("UnspecifiedRegisterReceiverFlag")
+            registerReceiver(receiver, filter)
+        }
+        castReceiver = receiver
+    }
+
+    override fun onDestroy() {
+        // The app is gone: so is the film's line in the shade, and the ear
+        // for its buttons.
+        try { hideCastNotification() } catch (_: Exception) {}
+        castReceiver?.let { try { unregisterReceiver(it) } catch (_: Exception) {} }
+        castReceiver = null
+        super.onDestroy()
     }
 
     /// Hands back whatever the system's speech recogniser heard.
@@ -91,6 +185,31 @@ class MainActivity : FlutterActivity() {
 
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
         super.configureFlutterEngine(flutterEngine)
+        // The notification for a film playing on another screen.
+        val cast = MethodChannel(flutterEngine.dartExecutor.binaryMessenger, "cineball/cast_notification")
+        castChannel = cast
+        cast.setMethodCallHandler { call, result ->
+            when (call.method) {
+                "show" -> {
+                    try {
+                        listenForCastButtons()
+                        showCastNotification(
+                            call.argument<String>("title") ?: "",
+                            call.argument<String>("where") ?: "",
+                            call.argument<Boolean>("playing") ?: true
+                        )
+                        result.success(null)
+                    } catch (e: Exception) {
+                        result.error("notification", e.message, null)
+                    }
+                }
+                "hide" -> {
+                    try { hideCastNotification() } catch (_: Exception) {}
+                    result.success(null)
+                }
+                else -> result.notImplemented()
+            }
+        }
         // Self-update outside Google Play: install permission, free space and
         // handing a downloaded APK to the system package installer.
         MethodChannel(flutterEngine.dartExecutor.binaryMessenger, "cineball/updater").setMethodCallHandler { call, result ->

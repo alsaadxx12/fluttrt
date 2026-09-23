@@ -21,6 +21,7 @@ class CastDevice {
     required this.name,
     required this.transport,
     this.subtitle = '',
+    this.brand = '',
   });
 
   /// For a browser this is the cast session's uuid; for a Chromecast, the
@@ -33,6 +34,10 @@ class CastDevice {
   /// The line under it: what kind of device it is.
   final String subtitle;
 
+  /// Who made it, as the device says — `manufacturer` and `modelName` from
+  /// its UPnP description, run together. Empty when it did not say.
+  final String brand;
+
   final CastTransport transport;
 
   @override
@@ -40,6 +45,62 @@ class CastDevice {
 
   @override
   int get hashCode => id.hashCode;
+}
+
+/// The makers whose sets turn up in a living room, for the badge beside
+/// the name.
+enum CastBrand {
+  samsung('SAMSUNG', 0xFF1428A0),
+  lg('LG', 0xFFA50034),
+  tcl('TCL', 0xFFE30613),
+  sony('SONY', 0xFF222222),
+  hisense('HISENSE', 0xFF00A0E9),
+  haier('HAIER', 0xFF0066B3),
+  xiaomi('MI', 0xFFFF6900),
+  philips('PHILIPS', 0xFF0B5ED7),
+  panasonic('PANA', 0xFF0057A8),
+  toshiba('TOSHIBA', 0xFFE50000),
+  sharp('SHARP', 0xFFCC0000),
+  roku('ROKU', 0xFF662D91),
+  google('CAST', 0xFF4285F4),
+  unknown('', 0xFF333333);
+
+  const CastBrand(this.mark, this.color);
+
+  /// The word on the badge.
+  final String mark;
+
+  /// The badge's colour, as a Flutter colour value.
+  final int color;
+
+  /// Reads the maker out of what the device said about itself, and failing
+  /// that out of its name — «[TV] Samsung 7 Series» says enough.
+  static CastBrand of(CastDevice device) {
+    final text = '${device.brand} ${device.name} ${device.subtitle}'.toLowerCase();
+    if (text.contains('samsung')) return samsung;
+    if (text.contains('lg ') || text.startsWith('lg') || text.contains('[lg]') || text.contains('webos')) return lg;
+    if (text.contains('tcl')) return tcl;
+    if (text.contains('sony') || text.contains('bravia')) return sony;
+    if (text.contains('hisense') || text.contains('vidaa')) return hisense;
+    if (text.contains('haier')) return haier;
+    if (text.contains('xiaomi') || text.contains('mi tv') || text.contains('mi box') || text.contains('redmi')) return xiaomi;
+    if (text.contains('philips')) return philips;
+    if (text.contains('panasonic')) return panasonic;
+    if (text.contains('toshiba')) return toshiba;
+    if (text.contains('sharp')) return sharp;
+    if (text.contains('roku')) return roku;
+    if (text.contains('chromecast') || text.contains('google')) return google;
+    return unknown;
+  }
+}
+
+/// One of the streams the catalogue offers for a title: the address and
+/// how tall its picture is.
+@immutable
+class CastStreamOption {
+  const CastStreamOption({required this.url, required this.height});
+  final String url;
+  final int height;
 }
 
 /// What the phone asks a device to play.
@@ -60,6 +121,9 @@ class CastMedia {
     this.position = Duration.zero,
     this.duration,
     this.isLive = false,
+    this.quality,
+    this.height = 0,
+    this.fallbacks = const [],
   });
 
   final String mediaId;
@@ -84,10 +148,38 @@ class CastMedia {
   /// A live channel: no duration to show and no seeking.
   final bool isLive;
 
+  /// What was chosen and why, when the quality was decided from the link:
+  /// «720p · 2.1 Mbit/s». Null when the viewer chose.
+  final String? quality;
+
+  /// How tall the picture in [streamUrl] is, when known; zero otherwise.
+  final int height;
+
+  /// The other streams the catalogue offers for the same title, so a link
+  /// that turns out too slow can be answered with a softer picture from
+  /// the same minute.
+  final List<CastStreamOption> fallbacks;
+
+  /// The next picture down from this one, or null at the bottom.
+  CastStreamOption? get softer {
+    CastStreamOption? best;
+    for (final option in fallbacks) {
+      if (option.height <= 0 || option.height >= height) continue;
+      if (best == null || option.height > best.height) best = option;
+    }
+    return best;
+  }
+
   bool get isHls =>
       contentType == 'application/x-mpegURL' || streamUrl.toLowerCase().contains('.m3u8');
 
-  CastMedia copyWith({Duration? position, String? streamUrl}) => CastMedia(
+  CastMedia copyWith({
+    Duration? position,
+    String? streamUrl,
+    int? height,
+    String? quality,
+  }) =>
+      CastMedia(
         mediaId: mediaId,
         title: title,
         streamUrl: streamUrl ?? this.streamUrl,
@@ -99,6 +191,9 @@ class CastMedia {
         position: position ?? this.position,
         duration: duration,
         isLive: isLive,
+        quality: quality ?? this.quality,
+        height: height ?? this.height,
+        fallbacks: fallbacks,
       );
 
   /// The LOAD_MEDIA command as the receiver reads it.
@@ -149,6 +244,7 @@ class CastState {
     this.isMuted = false,
     this.volume = 1,
     this.error,
+    this.note,
   });
 
   final CastStatus status;
@@ -163,6 +259,11 @@ class CastState {
   final bool isMuted;
   final double volume;
   final String? error;
+
+  /// What the controller is doing about a problem right now — «trying
+  /// again, 2 of 4» — for the sheet and the remote to show while it does.
+  /// Not an error: the attempt is still on.
+  final String? note;
 
   bool get isConnected => status == CastStatus.connected && device != null;
 
@@ -181,9 +282,11 @@ class CastState {
     bool? isMuted,
     double? volume,
     String? error,
+    String? note,
     bool clearDevice = false,
     bool clearMedia = false,
     bool clearError = false,
+    bool clearNote = false,
   }) =>
       CastState(
         status: status ?? this.status,
@@ -196,5 +299,6 @@ class CastState {
         isMuted: isMuted ?? this.isMuted,
         volume: volume ?? this.volume,
         error: clearError ? null : (error ?? this.error),
+        note: clearNote ? null : (note ?? this.note),
       );
 }

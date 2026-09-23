@@ -34,7 +34,7 @@ void main() {
   });
 
   test('the cast sheet animation is bundled and parses too', () async {
-    const tv = 'assets/animations/apple_tv.json';
+    const tv = 'assets/animations/live_tv.json';
     expect(File(tv).existsSync(), isTrue,
         reason: 'the cast sheet asks for this by name');
 
@@ -55,6 +55,9 @@ void main() {
     final used = [
       File('lib/presentation/widgets/app_drawer.dart').readAsStringSync(),
       File('lib/features/casting/widgets/cast_device_sheet.dart')
+          .readAsStringSync(),
+      File('lib/presentation/widgets/house_notice.dart').readAsStringSync(),
+      File('lib/features/sports/presentation/screens/sports_player_screen.dart')
           .readAsStringSync(),
     ].join();
 

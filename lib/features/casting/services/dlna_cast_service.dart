@@ -1,12 +1,14 @@
 import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
+import 'dart:typed_data';
 
 import 'package:flutter/foundation.dart';
 
 import '../models/cast_models.dart';
 import 'cast_service.dart';
 import 'local_stream_server.dart';
+import 'mkv_remux.dart';
 
 /// Casting to a smart television over DLNA.
 ///
@@ -79,22 +81,53 @@ class DlnaCastService implements CastService {
   Stream<CastPlaybackEvent> get events => _events.stream;
 
   // ------------------------------------------------------------ discovery
+  /// Sweeps in a row a known set has failed to answer.
+  final Map<String, int> _misses = <String, int>{};
+
+  /// A set is dropped from the list after this many sweeps without it.
+  ///
+  /// One missed sweep is nothing — a multicast reply goes astray on a busy
+  /// wifi all the time — and a list that emptied on every miss was a set
+  /// that vanished from under the viewer's finger, with «لم يعد ظاهرًا»
+  /// for a device that was on and playing.
+  static const int _maxMisses = 3;
+
   @override
   Future<List<CastDevice>> discoverDevices() async {
     final locations = await _search();
-    if (locations.isEmpty) return const [];
 
     // Descriptions are fetched together: a television that is slow to answer
     // should not hold up one that is quick.
-    final described = await Future.wait(
-      locations.map(_describe),
-      eagerError: false,
-    );
+    final described = locations.isEmpty
+        ? const <_Renderer?>[]
+        : await Future.wait(locations.map(_describe), eagerError: false);
 
-    _found.clear();
+    final seen = <String>{};
     for (final renderer in described) {
       if (renderer == null) continue;
+      seen.add(renderer.id);
+      _misses.remove(renderer.id);
+      // What the set said it could play is remembered across sweeps; the
+      // set has not changed its mind since it was asked.
+      renderer.acceptsMatroska ??= _found[renderer.id]?.acceptsMatroska;
       _found[renderer.id] = renderer;
+      // A set that restarted comes back on a new port; the one being talked
+      // to follows it there rather than going on knocking at the old one.
+      final target = _target;
+      if (target != null && target.id == renderer.id &&
+          target.avTransport != renderer.avTransport) {
+        _target = renderer;
+      }
+    }
+    for (final id in _found.keys.toList()) {
+      if (seen.contains(id)) continue;
+      final misses = (_misses[id] ?? 0) + 1;
+      if (misses >= _maxMisses && id != _target?.id) {
+        _found.remove(id);
+        _misses.remove(id);
+      } else {
+        _misses[id] = misses;
+      }
     }
 
     return _found.values
@@ -102,6 +135,7 @@ class DlnaCastService implements CastService {
               id: r.id,
               name: r.name,
               subtitle: r.model.isEmpty ? 'DLNA' : r.model,
+              brand: r.maker,
               transport: CastTransport.dlna,
             ))
         .toList(growable: false);
@@ -123,10 +157,24 @@ class DlnaCastService implements CastService {
         id: renderer.id,
         name: renderer.name,
         subtitle: renderer.model.isEmpty ? 'DLNA' : renderer.model,
+        brand: renderer.maker,
         transport: CastTransport.dlna,
       ),
     ];
   }
+
+  /// What the network is asked for.
+  ///
+  /// The renderer type first, which is the direct question. Then the root
+  /// device, because a few sets — LG among them, and some of the Android
+  /// televisions Haier and others sell — answer only for their root and
+  /// keep the renderer as an embedded device inside it. Their description
+  /// lists the same AVTransport service, so [_describe] finds it either
+  /// way; the router and the printer that answer too are read and dropped.
+  static const List<String> _searchTargets = [
+    'urn:schemas-upnp-org:device:MediaRenderer:1',
+    'upnp:rootdevice',
+  ];
 
   /// Asks the network for media renderers and collects where they live.
   ///
@@ -142,14 +190,15 @@ class DlnaCastService implements CastService {
       socket = await RawDatagramSocket.bind(InternetAddress.anyIPv4, 0);
       socket.broadcastEnabled = true;
 
-      final message = <int>[
-        ...'M-SEARCH * HTTP/1.1\r\n'
-            'HOST: $_group:$_port\r\n'
-            'MAN: "ssdp:discover"\r\n'
-            'MX: 2\r\n'
-            'ST: urn:schemas-upnp-org:device:MediaRenderer:1\r\n'
-            '\r\n'
-            .codeUnits,
+      final messages = [
+        for (final st in _searchTargets)
+          'M-SEARCH * HTTP/1.1\r\n'
+              'HOST: $_group:$_port\r\n'
+              'MAN: "ssdp:discover"\r\n'
+              'MX: 2\r\n'
+              'ST: $st\r\n'
+              '\r\n'
+              .codeUnits,
       ];
 
       final target = InternetAddress(_group);
@@ -169,7 +218,9 @@ class DlnaCastService implements CastService {
       }, onError: (Object e) => debugPrint('[cast] ssdp: $e'));
 
       for (var i = 0; i < 3; i++) {
-        socket.send(message, target, _port);
+        for (final message in messages) {
+          socket.send(message, target, _port);
+        }
         await Future<void>.delayed(const Duration(milliseconds: 250));
       }
 
@@ -206,6 +257,7 @@ class DlnaCastService implements CastService {
 
       final name = _tag(xml, 'friendlyName') ?? 'تلفاز';
       final model = _tag(xml, 'modelName') ?? '';
+      final maker = '${_tag(xml, 'manufacturer') ?? ''} $model'.trim();
       final udn = _tag(xml, 'UDN') ?? location;
 
       final control = _controlUrl(xml, _avTransport, location);
@@ -217,6 +269,7 @@ class DlnaCastService implements CastService {
         id: udn,
         name: name,
         model: model,
+        maker: maker,
         avTransport: control,
         renderingControl: _controlUrl(xml, _rendering, location),
         connectionManager: _controlUrl(xml, _connection, location),
@@ -268,7 +321,7 @@ class DlnaCastService implements CastService {
   Future<void> connect(CastDevice device) async {
     final renderer = _found[device.id];
     if (renderer == null) {
-      throw const CastException('لم يعد التلفاز ظاهرًا على الشبكة');
+      throw const CastException('لم يعد التلفاز ظاهرًا على الشبكة', code: 404);
     }
     // Actually speak to it before saying it is connected.
     //
@@ -282,9 +335,17 @@ class DlnaCastService implements CastService {
     //
     // One real question here turns that into a sentence somebody can act
     // on, and it names the device so it can be found in its own settings.
+    //
+    // Asked three times before it is called a refusal. A set that has just
+    // been switched on answers its first question late or not at all, and
+    // one question with one timeout was «يرفض الاتصال» for a television
+    // that was merely slow.
     try {
-      await _soap(renderer.avTransport, _avTransport, 'GetTransportInfo',
-          '<InstanceID>0</InstanceID>').timeout(const Duration(seconds: 8));
+      await _retrying(
+        () => _soap(renderer.avTransport, _avTransport, 'GetTransportInfo',
+            '<InstanceID>0</InstanceID>').timeout(const Duration(seconds: 6)),
+        what: 'GetTransportInfo on ${renderer.name}',
+      );
     } on CastException {
       rethrow;
     } catch (e) {
@@ -296,8 +357,44 @@ class DlnaCastService implements CastService {
     }
 
     _target = renderer;
-    unawaited(_reportWhatItAccepts(renderer));
+    // Waited for, briefly, rather than left to run: whether the film goes
+    // as an mkv with its subtitle or as a plain mp4 depends on the answer,
+    // and the film is usually sent the moment this returns.
+    if (renderer.acceptsMatroska == null) {
+      await _reportWhatItAccepts(renderer)
+          .timeout(const Duration(seconds: 4), onTimeout: () {});
+    }
   }
+
+  /// How many times a command is sent before its failure is believed.
+  static const int _tries = 3;
+
+  /// Runs [run], and again after a pause when what went wrong is the kind
+  /// of thing that goes right the second time.
+  ///
+  /// A refusal — a UPnP error, a 4xx — is not tried again; the set has
+  /// answered. A timeout, a dropped socket or a «not now» (701) is.
+  Future<T> _retrying<T>(
+    Future<T> Function() run, {
+    required String what,
+    Duration pause = const Duration(seconds: 1),
+  }) async {
+    for (var attempt = 1;; attempt++) {
+      try {
+        return await run();
+      } catch (e) {
+        if (attempt >= _tries || !_transient(e)) rethrow;
+        debugPrint('[cast] $what ($attempt/$_tries): $e');
+        await Future<void>.delayed(pause * attempt);
+      }
+    }
+  }
+
+  static bool _transient(Object e) =>
+      e is TimeoutException ||
+      e is SocketException ||
+      e is HttpException ||
+      (e is CastException && e.retryable);
 
   /// Asks the set what it can actually play, and writes it down.
   ///
@@ -326,6 +423,15 @@ class DlnaCastService implements CastService {
           .where((f) => f.contains('video/'))
           .toList();
       debugPrint('[cast] ${renderer.name} accepts ${video.length} video formats');
+      // Whether a Matroska file is worth sending. A set that names the
+      // format plays it; one that lists formats and leaves it out will
+      // refuse it, and is handed the mp4 straight away rather than after a
+      // failed try; one that says `*` has not said.
+      final lower = sink.toLowerCase();
+      renderer.acceptsMatroska = lower.contains('matroska') || lower.contains('mkv')
+          ? true
+          : (lower.contains(':*:*') ? null : false);
+      debugPrint('[cast] ${renderer.name} plays matroska: ${renderer.acceptsMatroska ?? "unknown"}');
       // The profile names are what matter, and there can be hundreds, so
       // only the distinct ones are worth the log.
       final profiles = <String>{};
@@ -342,6 +448,7 @@ class DlnaCastService implements CastService {
 
   @override
   Future<void> disconnect() async {
+    _generation++;
     _poll?.cancel();
     _poll = null;
     _silence?.cancel();
@@ -350,19 +457,39 @@ class DlnaCastService implements CastService {
     // that outlived its film would be a signed url left lying about.
     _local.clear();
     final renderer = _target;
-    _target = null;
     if (renderer == null) return;
     try {
       await _soap(renderer.avTransport, _avTransport, 'Stop',
-          '<InstanceID>0</InstanceID>');
+          '<InstanceID>0</InstanceID>').timeout(const Duration(seconds: 4));
+      await _clearScreen();
     } catch (_) {}
+    _target = null;
   }
 
   // -------------------------------------------------------------- playback
+  /// Which sending of a film is the current one.
+  ///
+  /// Bumped by every load, stop and disconnect. The watchers a load leaves
+  /// behind — the one that checks the set actually started, the one that
+  /// falls back to the mp4 — compare against it and stand down when the
+  /// film they were watching has been replaced.
+  int _generation = 0;
+
+  /// How long the set is given to start before it is judged to have
+  /// refused the film.
+  ///
+  /// Generous, because on a slow connection the phone's first window
+  /// takes a while to arrive from the CDN and the set sits in
+  /// TRANSITIONING honestly while it waits. A set that has rejected the
+  /// file says STOPPED long before this; the limit is for the one that
+  /// says nothing at all.
+  static const Duration _confirmFor = Duration(seconds: 45);
+
   @override
   Future<void> loadMedia(CastMedia media) async {
     final renderer = _target;
     if (renderer == null) throw const CastException('لا يوجد جهاز متصل');
+    final generation = ++_generation;
 
     final mime = media.contentType ??
         (media.isHls ? 'application/x-mpegURL' : 'video/mp4');
@@ -372,51 +499,244 @@ class DlnaCastService implements CastService {
     // the redirect the CDN answers with — handed the real address it opens
     // its player, fails without a word and drops back out.
     //
-    // If the phone cannot put up a server, the original address is used
-    // anyway: on a set that does cope with https it still works, and a
-    // stream that might play beats one that certainly will not.
-    final served =
-        await _local.publish(media.streamUrl, contentType: mime) ?? media.streamUrl;
+    // The subtitle goes with it. A television's player shows no sidecar
+    // subtitle, whatever it is told about one; what it does show is a
+    // subtitle track inside a Matroska file, so the server is handed the
+    // text and puts the film inside one — unless the set has said it plays
+    // no Matroska, in which case the mp4 goes and the subtitle stays.
+    final clock = Stopwatch()..start();
+    // Started now and waited for later, inside the server, once the film's
+    // index has been read: the two downloads overlap instead of queueing.
+    final wantsSubtitle = !media.isLive &&
+        !media.isHls &&
+        media.subtitleUrl != null &&
+        renderer.acceptsMatroska != false;
+    final subtitle = wantsSubtitle ? _subtitleText(media.subtitleUrl!) : null;
 
-    // DLNA.ORG_OP=01 says byte-seeking is available, which is what gives the
-    // television a scrubber instead of a bare play button. The flags mark it
-    // as a stream that can be played as it arrives.
-    final protocol = 'http-get:*:$mime:'
-        'DLNA.ORG_OP=01;DLNA.ORG_CI=0;'
-        'DLNA.ORG_FLAGS=01700000000000000000000000000000';
-
-    // Without this block a television shows the url as the title, and some
-    // refuse a stream whose kind they have not been told.
-    final didl = '<DIDL-Lite xmlns="urn:schemas-upnp-org:metadata-1-0/DIDL-Lite/" '
-        'xmlns:dc="http://purl.org/dc/elements/1.1/" '
-        'xmlns:upnp="urn:schemas-upnp-org:metadata-1-0/upnp/">'
-        '<item id="0" parentID="-1" restricted="1">'
-        '<dc:title>${_escape(media.title)}</dc:title>'
-        '<upnp:class>object.item.videoItem</upnp:class>'
-        '<res protocolInfo="${_escape(protocol)}">${_escape(served)}</res>'
-        '</item></DIDL-Lite>';
-
-    await _soap(
-      renderer.avTransport,
-      _avTransport,
-      'SetAVTransportURI',
-      '<InstanceID>0</InstanceID>'
-      '<CurrentURI>${_escape(served)}</CurrentURI>'
-      '<CurrentURIMetaData>${_escape(didl)}</CurrentURIMetaData>',
+    final plan = _Plan(
+      media: media,
+      mime: mime,
+      subtitle: subtitle,
+      withSubtitle: wantsSubtitle,
     );
+    await _start(renderer, plan, generation, clock: clock);
+  }
 
-    await play();
+  /// Publishes the film in the form [plan] currently calls for, hands the
+  /// set the address and starts it.
+  ///
+  /// When the set refuses the address outright and there is a plainer form
+  /// to offer — the mp4 without its subtitle — that is offered instead,
+  /// here and now. A refusal that comes later, after the set has looked at
+  /// the file, is caught by [_confirm].
+  Future<void> _start(
+    _Renderer renderer,
+    _Plan plan,
+    int generation, {
+    Stopwatch? clock,
+  }) async {
+    while (true) {
+      if (generation != _generation) return;
+      final media = plan.media;
+      final timer = clock ?? (Stopwatch()..start());
+      final before = timer.elapsedMilliseconds;
 
-    if (!media.isLive && media.position > Duration.zero) {
-      // Seeking before the set has loaded the stream is refused, so it waits
-      // a moment rather than starting the film over from the beginning.
-      unawaited(Future<void>.delayed(const Duration(milliseconds: 1200), () {
-        seek(media.position).catchError((Object _) {});
-      }));
+      // If the phone cannot put up a server, the original address is used
+      // anyway: on a set that does cope with https it still works, and a
+      // stream that might play beats one that certainly will not.
+      //
+      // The film is told to fill the screen: a cinema film is wider than
+      // the set, and left alone a fifth of the screen is black bars. The
+      // sides are cropped to 16:9 - the set's own "zoom" - which the user
+      // chose over a stretched picture.
+      final served = await _local.publish(
+            media.streamUrl,
+            contentType: plan.mime,
+            subtitleFuture: plan.withSubtitle ? plan.subtitle : null,
+            fill: MkvFill.crop,
+          ) ??
+          media.streamUrl;
+      if (generation != _generation) return;
+      final publishTook = timer.elapsedMilliseconds - before;
+      // The server's word on what it ended up serving is the extension.
+      plan.servedMkv = served.endsWith('.mkv');
+      final servedMime = plan.servedMkv ? 'video/x-matroska' : plan.mime;
+
+      // The same features the server puts in its replies: a set that
+      // compares the two refuses a film whose description and delivery
+      // disagree. OP=01 is what gives the television a scrubber.
+      final protocol = 'http-get:*:$servedMime:${LocalStreamServer.dlnaFeatures}';
+
+      // Size and duration where they are known. A Samsung reads the size
+      // before it reads a byte of the film, and shows «cannot play» for a
+      // resource that has none; LG sets draw the scrubber from the
+      // duration.
+      final res = StringBuffer('<res protocolInfo="${_escape(protocol)}"');
+      final length = _local.lastLength;
+      if (length != null) res.write(' size="$length"');
+      final duration = media.duration;
+      if (!media.isLive && duration != null && duration > Duration.zero) {
+        res.write(' duration="${_clock(duration)}.000"');
+      }
+      res.write('>${_escape(served)}</res>');
+
+      // Without this block a television shows the url as the title, and some
+      // refuse a stream whose kind they have not been told.
+      final didl = '<DIDL-Lite xmlns="urn:schemas-upnp-org:metadata-1-0/DIDL-Lite/" '
+          'xmlns:dc="http://purl.org/dc/elements/1.1/" '
+          'xmlns:upnp="urn:schemas-upnp-org:metadata-1-0/upnp/" '
+          'xmlns:dlna="urn:schemas-dlna-org:metadata-1-0/">'
+          '<item id="0" parentID="-1" restricted="1">'
+          '<dc:title>${_escape(media.title)}</dc:title>'
+          '<upnp:class>object.item.videoItem</upnp:class>'
+          '$res'
+          '</item></DIDL-Lite>';
+
+      try {
+        await _retrying(
+          () => _soap(
+            renderer.avTransport,
+            _avTransport,
+            'SetAVTransportURI',
+            '<InstanceID>0</InstanceID>'
+            '<CurrentURI>${_escape(served)}</CurrentURI>'
+            '<CurrentURIMetaData>${_escape(didl)}</CurrentURIMetaData>',
+          ),
+          what: 'SetAVTransportURI',
+        );
+      } on CastException catch (e) {
+        if (plan.canFallBack && !e.retryable) {
+          debugPrint('[cast] ${renderer.name} refused the mkv (${e.message}); '
+              'sending the mp4 without its subtitle');
+          plan.withSubtitle = false;
+          continue;
+        }
+        rethrow;
+      } catch (e) {
+        debugPrint('[cast] SetAVTransportURI: $e');
+        throw const CastException(
+          'التلفاز لم يستجب — تأكّد أنه ما زال على نفس الشبكة',
+          retryable: true,
+        );
+      }
+      if (generation != _generation) return;
+
+      // Play, and again when the set says «not now»: 701 is what a set
+      // answers when Play arrives before it has finished looking at the
+      // address it was just handed, and the same Play a second later is
+      // taken.
+      try {
+        await _retrying(play, what: 'Play', pause: const Duration(milliseconds: 1200));
+      } on CastException {
+        rethrow;
+      } catch (e) {
+        debugPrint('[cast] Play: $e');
+        throw const CastException('التلفاز لم يستجب لأمر التشغيل', retryable: true);
+      }
+      // Where the seconds before the picture went, so the next «it is slow»
+      // can be answered with a number rather than a guess.
+      debugPrint('[cast] timings: publish (index, subtitle, plan) ${publishTook}ms, '
+          'commands ${timer.elapsedMilliseconds - before - publishTook}ms, '
+          'Play sent at ${timer.elapsedMilliseconds}ms');
+      plan.playSentAt = DateTime.now();
+
+      if (!media.isLive && media.position > Duration.zero) {
+        // Seeking before the set has loaded the stream is refused, so it waits
+        // a moment rather than starting the film over from the beginning.
+        unawaited(Future<void>.delayed(const Duration(milliseconds: 1200), () {
+          if (generation != _generation) return;
+          seek(media.position).catchError((Object _) {});
+        }));
+      }
+
+      _startPolling();
+      _watchForSilence();
+      unawaited(_confirm(renderer, plan, generation));
+      return;
     }
+  }
 
-    _startPolling();
-    _watchForSilence();
+  /// Watches the first minute of a film and acts when the set gives up on
+  /// it.
+  ///
+  /// The set takes the address and says nothing more; whether it then
+  /// played the film or quietly threw it away is only visible by asking.
+  /// PLAYING, twice, is a film on the screen. STOPPED, twice, a few
+  /// seconds after Play, is a set that looked at the file and put it down
+  /// — which, for an mkv, means the mp4 is sent instead; for the mp4, that
+  /// the set cannot play this film and someone should be told so, in
+  /// words, rather than left with a black screen and a remote that says
+  /// «playing».
+  Future<void> _confirm(_Renderer renderer, _Plan plan, int generation) async {
+    final started = DateTime.now();
+    var stoppedReads = 0;
+    var playingReads = 0;
+    while (DateTime.now().difference(started) < _confirmFor) {
+      await Future<void>.delayed(const Duration(seconds: 2));
+      if (generation != _generation || _lost || _events.isClosed || _target == null) {
+        return;
+      }
+      String state;
+      try {
+        final reply = await _soap(renderer.avTransport, _avTransport,
+            'GetTransportInfo', '<InstanceID>0</InstanceID>');
+        state = _tag(reply ?? '', 'CurrentTransportState') ?? '';
+      } catch (_) {
+        // The position poll counts the silences; this only counts states.
+        continue;
+      }
+      if (state == 'PLAYING' || state == 'PAUSED_PLAYBACK') {
+        if (playingReads == 0) {
+          final sent = plan.playSentAt;
+          debugPrint('[cast] ${renderer.name} reports $state'
+              '${sent == null ? '' : ' ${DateTime.now().difference(sent).inMilliseconds}ms after Play'}');
+        }
+        if (++playingReads >= 2) return;
+        continue;
+      }
+      playingReads = 0;
+      if (state == 'STOPPED' || state == 'NO_MEDIA_PRESENT') {
+        // Right after SetAVTransportURI a set is STOPPED, honestly: it has
+        // not been told to play yet, or has only just been. The verdict
+        // needs a few seconds and two readings.
+        if (DateTime.now().difference(started) < const Duration(seconds: 5)) continue;
+        if (++stoppedReads < 2) continue;
+        await _gaveUp(renderer, plan, generation, 'stopped');
+        return;
+      }
+      // TRANSITIONING: still trying. Waiting is the right thing.
+    }
+    if (generation != _generation || _lost || _events.isClosed) return;
+    await _gaveUp(renderer, plan, generation, 'never started');
+  }
+
+  /// The set did not play what it was sent. Sends the plainer form if
+  /// there is one, and says so if there is not.
+  Future<void> _gaveUp(_Renderer renderer, _Plan plan, int generation, String how) async {
+    // A set that never came for the film has a different problem, and the
+    // silence watchdog has already named it.
+    if (!_local.wasFetched) return;
+    if (plan.canFallBack) {
+      debugPrint('[cast] ${renderer.name} $how on the mkv; '
+          'sending the mp4 without its subtitle');
+      plan.withSubtitle = false;
+      try {
+        await _start(renderer, plan, generation);
+      } on CastException catch (e) {
+        if (!_events.isClosed) _events.add(CastPlaybackEvent(error: e.message));
+      } catch (e) {
+        debugPrint('[cast] fallback: $e');
+        if (!_events.isClosed) {
+          _events.add(const CastPlaybackEvent(error: 'تعذّر إرسال الفيلم إلى التلفاز'));
+        }
+      }
+      return;
+    }
+    debugPrint('[cast] ${renderer.name} $how on the ${plan.servedMkv ? "mkv" : "mp4"}');
+    if (_events.isClosed) return;
+    _events.add(const CastPlaybackEvent(
+      error: 'التلفاز لم يستطع تشغيل هذا الفيلم — جرّب جودة أقل من زر الجودة في نافذة البث',
+    ));
   }
 
   /// Says something when the television never comes to collect the film.
@@ -430,9 +750,11 @@ class DlnaCastService implements CastService {
   void _watchForSilence() {
     if (!_local.isRunning) return;
     _silence?.cancel();
+    final generation = _generation;
     _silence = Timer(const Duration(seconds: 12), () {
       _silence = null;
       if (_events.isClosed || _target == null || _lost) return;
+      if (generation != _generation) return;
       if (_local.wasFetched) return;
       // The poll would only go on to say the same thing in other words.
       _lost = true;
@@ -459,11 +781,37 @@ class DlnaCastService implements CastService {
 
   @override
   Future<void> stop() async {
+    _generation++;
     _poll?.cancel();
     _poll = null;
     _silence?.cancel();
     _silence = null;
+    // Nothing more is served: an address that outlives its film is a
+    // door left open, and a set still fetching would keep the picture up.
+    _local.clear();
     await _transport('Stop', '<InstanceID>0</InstanceID>');
+    await _clearScreen();
+  }
+
+  /// Takes the film off the set altogether.
+  ///
+  /// Stop alone leaves many sets sitting in their player on the last frame,
+  /// title and scrubber still up, until somebody presses back on the
+  /// remote. Handing them an empty address afterwards is what sends them
+  /// home. A set that refuses the empty address has already stopped, so a
+  /// refusal is not worth a word.
+  Future<void> _clearScreen() async {
+    final renderer = _target;
+    if (renderer == null) return;
+    try {
+      await _soap(
+        renderer.avTransport,
+        _avTransport,
+        'SetAVTransportURI',
+        '<InstanceID>0</InstanceID><CurrentURI></CurrentURI>'
+        '<CurrentURIMetaData></CurrentURIMetaData>',
+      ).timeout(const Duration(seconds: 4));
+    } catch (_) {}
   }
 
   @override
@@ -513,7 +861,53 @@ class DlnaCastService implements CastService {
     _silentPolls = 0;
     _lost = false;
     _asking = false;
+    _lastPosition = null;
+    _lastMoved = DateTime.now();
+    _stallSaid = false;
     _poll = Timer.periodic(const Duration(seconds: 2), (_) => _askPosition());
+  }
+
+  /// Where the set was at the last poll, and when it last moved.
+  Duration? _lastPosition;
+  DateTime _lastMoved = DateTime.now();
+
+  /// True once this stall has been reported; reset when the picture moves.
+  bool _stallSaid = false;
+
+  /// A picture that has not moved for this long, on a set that says it is
+  /// playing, is a link that cannot keep up.
+  static const Duration _stallAfter = Duration(seconds: 14);
+
+  /// Says so when the set is stuck buffering.
+  ///
+  /// Only when the set itself says PLAYING or TRANSITIONING: paused is
+  /// paused, and a set that has stopped is the other watchdog's business.
+  /// Said once per stall, and only when the film is not already on the
+  /// phone in full — a stall with the whole film here is the set's, not
+  /// the link's.
+  Future<void> _noticeStall(_Renderer renderer, Duration position) async {
+    final last = _lastPosition;
+    if (last == null || position != last) {
+      _lastPosition = position;
+      _lastMoved = DateTime.now();
+      _stallSaid = false;
+      return;
+    }
+    if (_stallSaid || DateTime.now().difference(_lastMoved) < _stallAfter) return;
+    String state;
+    try {
+      final reply = await _soap(renderer.avTransport, _avTransport,
+          'GetTransportInfo', '<InstanceID>0</InstanceID>');
+      state = _tag(reply ?? '', 'CurrentTransportState') ?? '';
+    } catch (_) {
+      return;
+    }
+    if (state != 'PLAYING' && state != 'TRANSITIONING') return;
+    if (_local.isComplete) return;
+    _stallSaid = true;
+    debugPrint('[cast] ${renderer.name} has not moved for '
+        '${DateTime.now().difference(_lastMoved).inSeconds}s at ${_clock(position)}');
+    if (!_events.isClosed) _events.add(const CastPlaybackEvent(stalled: true));
   }
 
   Future<void> _askPosition() async {
@@ -537,6 +931,7 @@ class DlnaCastService implements CastService {
         // the remote's scrubber jump to the end.
         duration: (duration?.inSeconds ?? 0) > 0 ? duration : null,
       ));
+      if (position != null) unawaited(_noticeStall(renderer, position));
     } catch (e) {
       if (_lost || _events.isClosed) return;
       _silentPolls++;
@@ -550,8 +945,12 @@ class DlnaCastService implements CastService {
       _poll = null;
       _silence?.cancel();
       _silence = null;
+      // Recoverable: the controller tries to get the set back — it is
+      // usually a wifi hiccup, and the film picks up where it was — before
+      // anyone reads this.
       _events.add(const CastPlaybackEvent(
         error: 'التلفاز توقّف عن الاستجابة للهاتف — أعد تشغيل التلفاز أو أعد الاتصال بالشبكة',
+        recoverable: true,
       ));
     } finally {
       _asking = false;
@@ -568,6 +967,35 @@ class DlnaCastService implements CastService {
   // list back for the full six. Three is still generous for a LAN.
   final HttpClient _http = HttpClient()
     ..connectionTimeout = const Duration(seconds: 3);
+
+  /// The subtitle file, as text — or null, in which case the film goes
+  /// without rather than not at all.
+  Future<String?> _subtitleText(String url) async {
+    try {
+      final request = await _http.getUrl(Uri.parse(url));
+      request.followRedirects = true;
+      final response = await request.close().timeout(const Duration(seconds: 10));
+      if (response.statusCode != 200) return null;
+      final builder = BytesBuilder(copy: false);
+      await for (final chunk in response) {
+        builder.add(chunk);
+        // A film's subtitle is a hundred kilobytes; a megabyte is not one.
+        if (builder.length > 2 * 1024 * 1024) return null;
+      }
+      final bytes = builder.takeBytes();
+      try {
+        return utf8.decode(bytes);
+      } on FormatException {
+        // Not utf-8: an Arabic file in a Windows code page would come out
+        // as noise on the screen, which is worse than no subtitle.
+        debugPrint('[cast] subtitle is not utf-8; skipped');
+        return null;
+      }
+    } catch (e) {
+      debugPrint('[cast] subtitle: $e');
+      return null;
+    }
+  }
 
   Future<String?> _get(String url) async {
     final request = await _http.getUrl(Uri.parse(url));
@@ -625,7 +1053,18 @@ class DlnaCastService implements CastService {
     final text = _decode(bytes);
 
     if (response.statusCode >= 400) {
-      throw CastException('رفض التلفاز الأمر (${response.statusCode})');
+      final code = int.tryParse(_tag(text, 'errorCode') ?? '');
+      final why = _tag(text, 'errorDescription') ?? '';
+      debugPrint('[cast] $action refused: http ${response.statusCode} '
+          'upnp ${code ?? "-"} $why');
+      // 701, «transition not available», is a set that is between states —
+      // still reading the address it was just given — and the same
+      // command a moment later is taken. Everything else is an answer.
+      throw CastException(
+        'رفض التلفاز الأمر (${code ?? response.statusCode})',
+        code: code ?? response.statusCode,
+        retryable: code == 701,
+      );
     }
     return text;
   }
@@ -665,13 +1104,43 @@ class DlnaCastService implements CastService {
   }
 }
 
+/// One sending of a film: the forms it can take and which is in use.
+class _Plan {
+  _Plan({
+    required this.media,
+    required this.mime,
+    required this.subtitle,
+    required this.withSubtitle,
+  });
+
+  final CastMedia media;
+  final String mime;
+
+  /// The subtitle text on its way down, or null when there is none.
+  final Future<String?>? subtitle;
+
+  /// Whether the film goes as an mkv with its subtitle inside. Turned off
+  /// when the set refuses that, after which the mp4 goes alone.
+  bool withSubtitle;
+
+  /// What the server actually handed out last time round.
+  bool servedMkv = false;
+
+  /// When Play last went out, for the log line that says how long the set
+  /// took to start.
+  DateTime? playSentAt;
+
+  /// Whether there is a plainer form still to offer.
+  bool get canFallBack => withSubtitle && servedMkv;
+}
+
 /// One media renderer, and where to reach its services.
-@immutable
 class _Renderer {
-  const _Renderer({
+  _Renderer({
     required this.id,
     required this.name,
     required this.model,
+    required this.maker,
     required this.avTransport,
     required this.renderingControl,
     required this.connectionManager,
@@ -681,6 +1150,9 @@ class _Renderer {
   final String name;
   final String model;
 
+  /// Manufacturer and model, as the description gave them.
+  final String maker;
+
   /// Loading, playing, pausing, seeking.
   final String avTransport;
 
@@ -689,4 +1161,9 @@ class _Renderer {
 
   /// Where to ask what the set can play.
   final String? connectionManager;
+
+  /// What the set said, when asked, about Matroska: true when it names the
+  /// format, false when it lists formats and leaves it out, null when it
+  /// has not been asked or did not say.
+  bool? acceptsMatroska;
 }

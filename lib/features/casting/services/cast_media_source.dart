@@ -1,8 +1,11 @@
+import 'package:flutter/foundation.dart';
 import 'package:youtube_downloader/features/cinemana/data/cinemana_subtitles.dart';
 import 'package:youtube_downloader/features/cinemana/data/models/cinemana_models.dart';
 import 'package:youtube_downloader/features/cinemana/data/services/cinemana_service.dart';
 
 import '../models/cast_models.dart';
+import 'link_speed.dart';
+import 'resume_store.dart';
 
 /// Turns a catalogue title into something another screen can play.
 ///
@@ -18,11 +21,16 @@ class CastMediaSource {
   ///
   /// Returns null when the title has no direct stream — the same case the
   /// player shows «لا تتوفر روابط تشغيل مباشرة».
+  ///
+  /// With [adaptive], the link is measured first and the ceiling lowered
+  /// to what it carries; [CastMedia.quality] then says what was chosen and
+  /// why, for the remote to show.
   Future<CastMedia?> forItem(
     CinemanaItem item, {
     CinemanaEpisode? episode,
     Duration position = Duration.zero,
     int maxHeight = maxCastHeight,
+    bool adaptive = false,
   }) async {
     final videoId = episode?.id ?? item.id;
     final streams = await _service.fetchStreamFiles(videoId);
@@ -39,7 +47,34 @@ class CastMediaSource {
     final subtitleUrl = subtitles.ar ?? subtitles.en;
     final subtitleLabel = subtitles.ar != null ? 'العربية' : 'English';
 
-    final best = pickBest(streams, maxHeight: maxHeight);
+    var best = pickBest(streams, maxHeight: maxHeight);
+    String? quality;
+    if (adaptive) {
+      final speed = await LinkSpeed.measure(best.videoUrl);
+      if (speed != null) {
+        final ceiling = LinkSpeed.ceilingFor(speed);
+        if (ceiling < heightOf(best)) {
+          best = pickBest(streams, maxHeight: ceiling);
+        }
+        quality = '${heightOf(best)}p · ${LinkSpeed.describe(speed)}';
+        // ignore: avoid_print
+        debugPrint('[cast] link ${LinkSpeed.describe(speed)} -> ${heightOf(best)}p');
+      }
+    }
+    // Where it was left last time, on the phone or on a screen, unless
+    // the caller has a place of its own in mind.
+    final startAt = position > Duration.zero
+        ? position
+        : (await ResumeStore.read(videoId) ?? Duration.zero);
+
+    // Every other picture on offer under the ceiling, for a link that
+    // turns out slower than it measured.
+    final fallbacks = [
+      for (final s in streams)
+        if (heightOf(s) > 0 && heightOf(s) <= maxCastHeight)
+          CastStreamOption(url: s.videoUrl, height: heightOf(s)),
+    ];
+
     final episodeName = episode == null
         ? ''
         : (episode.arTitle.trim().isNotEmpty
@@ -60,7 +95,10 @@ class CastMediaSource {
           : 'video/mp4',
       subtitleUrl: subtitleUrl,
       subtitleLabel: subtitleUrl == null ? null : subtitleLabel,
-      position: position,
+      position: startAt,
+      quality: quality,
+      height: heightOf(best),
+      fallbacks: fallbacks,
     );
   }
 
@@ -102,6 +140,13 @@ class CastMediaSource {
         isLive: true,
       );
 
+  /// The height of a stream, read out of its name: 1080 for «1080p».
+  static int heightOf(CinemanaStreamFile s) {
+    final text = '${s.resolution} ${s.name}';
+    final digits = RegExp(r'(\d{3,4})').firstMatch(text)?.group(1);
+    return int.tryParse(digits ?? '') ?? 0;
+  }
+
   /// The most a screen at the other end should be asked to take.
   ///
   /// Not the sharpest on offer, which is what this used to pick. The
@@ -121,11 +166,7 @@ class CastMediaSource {
     List<CinemanaStreamFile> streams, {
     int maxHeight = maxCastHeight,
   }) {
-    int rank(CinemanaStreamFile s) {
-      final text = '${s.resolution} ${s.name}';
-      final digits = RegExp(r'(\d{3,4})').firstMatch(text)?.group(1);
-      return int.tryParse(digits ?? '') ?? 0;
-    }
+    const rank = heightOf;
 
     // The best that fits under the ceiling.
     CinemanaStreamFile? best;

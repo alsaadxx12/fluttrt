@@ -1,6 +1,8 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import '../services/link_speed.dart';
+
 
 /// How sharp a picture to send the other screen.
 ///
@@ -15,6 +17,14 @@ import 'package:shared_preferences/shared_preferences.dart';
 /// So the app defaults to what reliably arrives and lets anyone who knows
 /// their network and their television ask for more.
 enum CastQuality {
+  /// Decided for each film from how fast the internet is at that moment:
+  /// 1080p when the link carries it, 720p or 480p when it does not.
+  ///
+  /// The default, because the honest answer to «which quality» on a link
+  /// that changes from one hour to the next is «measure it». See
+  /// [LinkSpeed].
+  auto(label: 'تلقائي حسب سرعة الإنترنت', short: 'تلقائي', maxHeight: 1080),
+
   /// 1080p at most. What every receiver here handles.
   balanced(label: 'جودة عالية', short: '1080p', maxHeight: 1080),
 
@@ -39,15 +49,19 @@ enum CastQuality {
 
   final int maxHeight;
 
+  /// True when the link is measured before each film and the ceiling set
+  /// from that.
+  bool get adaptive => this == CastQuality.auto;
+
   static CastQuality byName(String? name) => values.firstWhere(
         (q) => q.name == name,
-        orElse: () => CastQuality.balanced,
+        orElse: () => CastQuality.auto,
       );
 }
 
 /// The chosen quality, remembered between runs.
 class CastQualityNotifier extends StateNotifier<CastQuality> {
-  CastQualityNotifier() : super(CastQuality.balanced) {
+  CastQualityNotifier() : super(CastQuality.auto) {
     _load();
   }
 

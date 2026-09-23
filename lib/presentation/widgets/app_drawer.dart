@@ -4,7 +4,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:youtube_downloader/core/constants/app_colors.dart';
 import 'package:youtube_downloader/core/constants/app_palette.dart';
-import 'package:youtube_downloader/features/cinemana/presentation/providers/cinemana_provider.dart';
 import 'package:youtube_downloader/features/settings/presentation/providers/settings_provider.dart';
 import 'package:youtube_downloader/features/update/presentation/update_controller.dart';
 import 'package:youtube_downloader/features/subscription/presentation/providers/subscription_provider.dart';
@@ -24,7 +23,6 @@ class _AppDrawerState extends ConsumerState<AppDrawer> {
   @override
   Widget build(BuildContext context) {
     final strings = ref.watch(stringsProvider);
-    final favorites = ref.watch(cinemanaFavoritesProvider);
     final update = ref.watch(updateControllerProvider);
     final installed = ref.watch(installedVersionProvider);
     final isDark = Theme.of(context).brightness == Brightness.dark;
@@ -360,20 +358,6 @@ class _AppDrawerState extends ConsumerState<AppDrawer> {
                     onTap: () {
                       Navigator.pop(context);
                       context.go('/youtube_cinematic');
-                    },
-                  ),
-
-                  const SizedBox(height: 10),
-
-                  _DrawerItem(
-                    icon: Icons.favorite_rounded,
-                    title: 'المفضلة',
-                    badgeText:
-                        favorites.isNotEmpty ? '${favorites.length}' : null,
-                    isSelected: currentPath == '/cinemana/favorites',
-                    onTap: () {
-                      Navigator.pop(context);
-                      context.push('/cinemana/favorites');
                     },
                   ),
 

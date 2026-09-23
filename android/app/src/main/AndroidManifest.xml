@@ -9,6 +9,10 @@
     <!-- Casting: the Cast SDK runs its media notification as a foreground
          service, which Android 14 requires a matching permission for. -->
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MEDIA_PLAYBACK"/>
+    <!-- The line in the notification shade while a film plays on another
+         screen, with play/pause/stop on it. Android 13 asks before it is
+         shown; the app asks when the first film is cast. -->
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS"/>
 
     <!-- Finding a Chromecast means mDNS over the local wifi, and from
          Android 13 that is gated behind this. Without it discovery runs,

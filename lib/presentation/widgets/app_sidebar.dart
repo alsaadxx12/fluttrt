@@ -3,7 +3,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:youtube_downloader/core/constants/app_colors.dart';
 import 'package:youtube_downloader/core/constants/app_palette.dart';
-import 'package:youtube_downloader/features/cinemana/presentation/providers/cinemana_provider.dart';
 import 'package:youtube_downloader/features/downloads/presentation/providers/downloads_provider.dart';
 import 'package:youtube_downloader/features/settings/presentation/providers/settings_provider.dart';
 import 'package:youtube_downloader/features/update/data/update_service.dart';
@@ -33,7 +32,6 @@ class _AppSidebarState extends ConsumerState<AppSidebar> {
   @override
   Widget build(BuildContext context) {
     final strings = ref.watch(stringsProvider);
-    final favorites = ref.watch(cinemanaFavoritesProvider);
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final palette = AppPalette.of(context);
     final currentPath = GoRouterState.of(context).uri.path;
@@ -330,14 +328,6 @@ class _AppSidebarState extends ConsumerState<AppSidebar> {
 
                 const SizedBox(height: 10),
 
-                _buildSidebarItem(
-                  icon: Icons.favorite_rounded,
-                  title: 'المفضلة',
-                  badgeCount: favorites.isNotEmpty ? favorites.length : null,
-                  isSelected: currentPath == '/cinemana/favorites',
-                  isDark: isDark,
-                  onTap: () => context.push('/cinemana/favorites'),
-                ),
                 _buildSidebarItem(
                   icon: Icons.history_rounded,
                   title: 'سجل المشاهدة',

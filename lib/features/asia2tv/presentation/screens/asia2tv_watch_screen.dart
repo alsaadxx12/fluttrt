@@ -109,7 +109,8 @@ class _Asia2TvWatchScreenState extends ConsumerState<Asia2TvWatchScreen> {
       if (playback.streams.isEmpty) {
         setState(() {
           _isLoading = false;
-          _errorMessage = 'لم يتم العثور على سيرفر مباشر متاح لهذه الحلقة حالياً.';
+          _errorMessage =
+              'لم يتم العثور على سيرفر مباشر متاح لهذه الحلقة حالياً.';
           _servers = playback.servers;
         });
         return;
@@ -131,12 +132,14 @@ class _Asia2TvWatchScreenState extends ConsumerState<Asia2TvWatchScreen> {
       if (!mounted || token != _streamToken) return;
       setState(() {
         _isLoading = false;
-        _errorMessage = 'حدث خطأ أثناء تحميل السيرفرات. يرجى المحاولة مرة أخرى.';
+        _errorMessage =
+            'حدث خطأ أثناء تحميل السيرفرات. يرجى المحاولة مرة أخرى.';
       });
     }
   }
 
-  Future<void> _startPlayback(String streamUrl, {required int token, Duration? startAt}) async {
+  Future<void> _startPlayback(String streamUrl,
+      {required int token, Duration? startAt}) async {
     _closeController();
     setState(() {
       _isLoading = true;
@@ -212,8 +215,10 @@ class _Asia2TvWatchScreenState extends ConsumerState<Asia2TvWatchScreen> {
 
   void _playNextEpisode() {
     final episodes = widget.allEpisodes;
-    if (episodes == null || episodes.isEmpty || _currentEpNumber == null) return;
-    final nextIdx = episodes.indexWhere((e) => e.number == _currentEpNumber! + 1);
+    if (episodes == null || episodes.isEmpty || _currentEpNumber == null)
+      return;
+    final nextIdx =
+        episodes.indexWhere((e) => e.number == _currentEpNumber! + 1);
     if (nextIdx != -1) {
       final nextEp = episodes[nextIdx];
       setState(() {
@@ -227,8 +232,10 @@ class _Asia2TvWatchScreenState extends ConsumerState<Asia2TvWatchScreen> {
 
   void _playPreviousEpisode() {
     final episodes = widget.allEpisodes;
-    if (episodes == null || episodes.isEmpty || _currentEpNumber == null) return;
-    final prevIdx = episodes.indexWhere((e) => e.number == _currentEpNumber! - 1);
+    if (episodes == null || episodes.isEmpty || _currentEpNumber == null)
+      return;
+    final prevIdx =
+        episodes.indexWhere((e) => e.number == _currentEpNumber! - 1);
     if (prevIdx != -1) {
       final prevEp = episodes[prevIdx];
       setState(() {
@@ -244,8 +251,10 @@ class _Asia2TvWatchScreenState extends ConsumerState<Asia2TvWatchScreen> {
   Widget build(BuildContext context) {
     final palette = AppPalette.of(context);
     final episodes = widget.allEpisodes ?? const [];
-    final hasPrev = _currentEpNumber != null && episodes.any((e) => e.number == _currentEpNumber! - 1);
-    final hasNext = _currentEpNumber != null && episodes.any((e) => e.number == _currentEpNumber! + 1);
+    final hasPrev = _currentEpNumber != null &&
+        episodes.any((e) => e.number == _currentEpNumber! - 1);
+    final hasNext = _currentEpNumber != null &&
+        episodes.any((e) => e.number == _currentEpNumber! + 1);
 
     if (_isFullscreen) {
       return Scaffold(
@@ -271,20 +280,8 @@ class _Asia2TvWatchScreenState extends ConsumerState<Asia2TvWatchScreen> {
 
     return Scaffold(
       backgroundColor: palette.bg,
-      appBar: AppBar(
-        backgroundColor: palette.bg,
-        elevation: 0,
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back_rounded, color: Colors.white),
-          onPressed: () => Navigator.of(context).pop(),
-        ),
-        title: Text(
-          _currentTitle,
-          style: const TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold),
-          maxLines: 1,
-          overflow: TextOverflow.ellipsis,
-        ),
-      ),
+      // No app bar: the player draws its own back, title and fullscreen;
+      // a bar above it with the same things was those things twice.
       body: SafeArea(
         child: Column(
           children: [
@@ -332,11 +329,13 @@ class _Asia2TvWatchScreenState extends ConsumerState<Asia2TvWatchScreen> {
                       ),
                       if (_selectedStream != null) ...[
                         Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 8, vertical: 4),
                           decoration: BoxDecoration(
                             color: Colors.white.withOpacity(0.08),
                             borderRadius: BorderRadius.circular(6),
-                            border: Border.all(color: Colors.white24, width: 0.8),
+                            border:
+                                Border.all(color: Colors.white24, width: 0.8),
                           ),
                           child: Text(
                             'سيرفر $_activeServer',
@@ -349,16 +348,19 @@ class _Asia2TvWatchScreenState extends ConsumerState<Asia2TvWatchScreen> {
                         ),
                         const SizedBox(width: 8),
                         Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 8, vertical: 4),
                           decoration: BoxDecoration(
                             color: AppColors.primary.withOpacity(0.18),
                             borderRadius: BorderRadius.circular(6),
-                            border: Border.all(color: AppColors.primary, width: 1),
+                            border:
+                                Border.all(color: AppColors.primary, width: 1),
                           ),
                           child: Row(
                             mainAxisSize: MainAxisSize.min,
                             children: [
-                              const Icon(Icons.hd_rounded, color: AppColors.primary, size: 14),
+                              const Icon(Icons.hd_rounded,
+                                  color: AppColors.primary, size: 14),
                               const SizedBox(width: 4),
                               Text(
                                 _selectedStream!.resolution,
@@ -379,20 +381,27 @@ class _Asia2TvWatchScreenState extends ConsumerState<Asia2TvWatchScreen> {
 
                   // Ad-Free & Highest Quality status indicator
                   Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                     decoration: BoxDecoration(
                       color: const Color(0xFF0E1A14),
                       borderRadius: BorderRadius.circular(8),
-                      border: Border.all(color: const Color(0xFF10B981).withOpacity(0.4), width: 1),
+                      border: Border.all(
+                          color: const Color(0xFF10B981).withOpacity(0.4),
+                          width: 1),
                     ),
                     child: const Row(
                       children: [
-                        Icon(Icons.verified_user_rounded, color: Color(0xFF10B981), size: 16),
+                        Icon(Icons.verified_user_rounded,
+                            color: Color(0xFF10B981), size: 16),
                         SizedBox(width: 8),
                         Expanded(
                           child: Text(
                             'بث مباشر أصلي وبدون إعلانات نهائياً • تحويل تلقائي لأعلى دقة متوفرة',
-                            style: TextStyle(color: Color(0xFF10B981), fontSize: 11.5, fontWeight: FontWeight.bold),
+                            style: TextStyle(
+                                color: Color(0xFF10B981),
+                                fontSize: 11.5,
+                                fontWeight: FontWeight.bold),
                           ),
                         ),
                       ],
@@ -403,9 +412,14 @@ class _Asia2TvWatchScreenState extends ConsumerState<Asia2TvWatchScreen> {
                     const SizedBox(height: 12),
                     Row(
                       children: [
-                        const Icon(Icons.dns_rounded, color: Colors.white54, size: 14),
+                        const Icon(Icons.dns_rounded,
+                            color: Colors.white54, size: 14),
                         const SizedBox(width: 6),
-                        const Text('السيرفرات:', style: TextStyle(color: Colors.white70, fontSize: 12, fontWeight: FontWeight.bold)),
+                        const Text('السيرفرات:',
+                            style: TextStyle(
+                                color: Colors.white70,
+                                fontSize: 12,
+                                fontWeight: FontWeight.bold)),
                         const SizedBox(width: 8),
                         Expanded(
                           child: SingleChildScrollView(
@@ -414,20 +428,36 @@ class _Asia2TvWatchScreenState extends ConsumerState<Asia2TvWatchScreen> {
                               children: [
                                 for (final s in _servers)
                                   Padding(
-                                    padding: const EdgeInsetsDirectional.only(end: 6),
+                                    padding: const EdgeInsetsDirectional.only(
+                                        end: 6),
                                     child: ChoiceChip(
-                                      label: Text(s.name, style: const TextStyle(fontSize: 11)),
-                                      selected: _activeServer.toLowerCase().contains(s.name.toLowerCase()) ||
-                                          s.name.toLowerCase().contains(_activeServer.toLowerCase()),
-                                      selectedColor: AppColors.primary.withOpacity(0.25),
+                                      label: Text(s.name,
+                                          style: const TextStyle(fontSize: 11)),
+                                      selected: _activeServer
+                                              .toLowerCase()
+                                              .contains(s.name.toLowerCase()) ||
+                                          s.name.toLowerCase().contains(
+                                              _activeServer.toLowerCase()),
+                                      selectedColor:
+                                          AppColors.primary.withOpacity(0.25),
                                       backgroundColor: const Color(0xFF141A26),
                                       labelStyle: TextStyle(
-                                        color: _activeServer.toLowerCase().contains(s.name.toLowerCase()) ? Colors.white : Colors.white60,
+                                        color: _activeServer
+                                                .toLowerCase()
+                                                .contains(s.name.toLowerCase())
+                                            ? Colors.white
+                                            : Colors.white60,
                                         fontWeight: FontWeight.bold,
                                       ),
-                                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6)),
+                                      shape: RoundedRectangleBorder(
+                                          borderRadius:
+                                              BorderRadius.circular(6)),
                                       side: BorderSide(
-                                        color: _activeServer.toLowerCase().contains(s.name.toLowerCase()) ? AppColors.primary : Colors.white12,
+                                        color: _activeServer
+                                                .toLowerCase()
+                                                .contains(s.name.toLowerCase())
+                                            ? AppColors.primary
+                                            : Colors.white12,
                                       ),
                                       onSelected: (_) {
                                         setState(() => _activeServer = s.name);
@@ -451,14 +481,17 @@ class _Asia2TvWatchScreenState extends ConsumerState<Asia2TvWatchScreen> {
                         Expanded(
                           child: ElevatedButton.icon(
                             onPressed: hasPrev ? _playPreviousEpisode : null,
-                            icon: const Icon(Icons.skip_previous_rounded, color: Colors.white, size: 18),
+                            icon: const Icon(Icons.skip_previous_rounded,
+                                color: Colors.white, size: 18),
                             label: const Text('الحلقة السابقة'),
                             style: ElevatedButton.styleFrom(
                               backgroundColor: const Color(0xFF141A26),
                               foregroundColor: Colors.white,
-                              disabledBackgroundColor: Colors.white.withOpacity(0.04),
+                              disabledBackgroundColor:
+                                  Colors.white.withOpacity(0.04),
                               disabledForegroundColor: Colors.white24,
-                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                              shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(8)),
                             ),
                           ),
                         ),
@@ -466,14 +499,17 @@ class _Asia2TvWatchScreenState extends ConsumerState<Asia2TvWatchScreen> {
                         Expanded(
                           child: ElevatedButton.icon(
                             onPressed: hasNext ? _playNextEpisode : null,
-                            icon: const Icon(Icons.skip_next_rounded, color: Colors.white, size: 18),
+                            icon: const Icon(Icons.skip_next_rounded,
+                                color: Colors.white, size: 18),
                             label: const Text('الحلقة التالية'),
                             style: ElevatedButton.styleFrom(
                               backgroundColor: AppColors.primary,
                               foregroundColor: Colors.white,
-                              disabledBackgroundColor: Colors.white.withOpacity(0.04),
+                              disabledBackgroundColor:
+                                  Colors.white.withOpacity(0.04),
                               disabledForegroundColor: Colors.white24,
-                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                              shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(8)),
                             ),
                           ),
                         ),
@@ -497,7 +533,8 @@ class _Asia2TvWatchScreenState extends ConsumerState<Asia2TvWatchScreen> {
                         ),
                         Text(
                           '${episodes.length} حلقة',
-                          style: const TextStyle(color: Colors.white54, fontSize: 12),
+                          style: const TextStyle(
+                              color: Colors.white54, fontSize: 12),
                         ),
                       ],
                     ),

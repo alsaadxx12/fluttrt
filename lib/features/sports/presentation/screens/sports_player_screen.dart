@@ -18,6 +18,9 @@ import '../../../../core/constants/app_palette.dart';
 import '../../../casting/controllers/cast_controller.dart';
 import '../../../casting/services/cast_media_source.dart';
 import '../../../casting/services/cast_service.dart';
+import '../../../subscription/presentation/providers/subscription_provider.dart';
+import 'package:go_router/go_router.dart';
+import 'package:youtube_downloader/presentation/widgets/house_notice.dart';
 import '../../../casting/widgets/cast_device_sheet.dart';
 
 class PlayerChannelItem {
@@ -44,6 +47,11 @@ class PlayerChannelItem {
   });
 }
 
+/// A match on screen — behind the subscription, whichever way in.
+///
+/// Every list of matches in the app opens this, and this is where the
+/// subscription is checked, so no list can forget to. Someone without one
+/// gets the joker and a button to the activation page, not the stream.
 class SportsPlayerScreen extends ConsumerStatefulWidget {
   final SportMatchItem match;
   final String? directUrl;
@@ -58,11 +66,80 @@ class SportsPlayerScreen extends ConsumerStatefulWidget {
     this.initialSportsChannel,
   });
 
+  static const String lockedLine = 'ماتشترك؟ محد مات';
+  static const String lockedReason = 'وخذهن وياه لمن ضامهن يحضي';
+  static const String lockedButton = 'اشترك هسه 💳';
+
   @override
-  ConsumerState<SportsPlayerScreen> createState() => _SportsPlayerScreenState();
+  ConsumerState<SportsPlayerScreen> createState() => _SportsGateState();
 }
 
-class _SportsPlayerScreenState extends ConsumerState<SportsPlayerScreen> with WidgetsBindingObserver {
+class _SportsGateState extends ConsumerState<SportsPlayerScreen> {
+  @override
+  void initState() {
+    super.initState();
+    // What is remembered may be stale - a code entered a moment ago, a
+    // subscription that ran out overnight - so the server is asked again
+    // before anyone is turned away.
+    // After the first frame: a provider may not be touched while the tree
+    // is being built.
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted || ref.read(isSportsUnlockedProvider)) return;
+      ref.read(sportsSubscriptionProvider.notifier).refresh();
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final subscription = ref.watch(sportsSubscriptionProvider);
+    final known = subscription.valueOrNull;
+    if (known != null && known.isUnlocked) {
+      return _SportsPlayerBody(
+        match: widget.match,
+        directUrl: widget.directUrl,
+        headers: widget.headers,
+        initialSportsChannel: widget.initialSportsChannel,
+      );
+    }
+    if (subscription.isLoading && known == null) {
+      return const Scaffold(
+        backgroundColor: Colors.black,
+        body: Center(child: CircularProgressIndicator(color: Colors.white70)),
+      );
+    }
+    return Scaffold(
+      backgroundColor: Colors.black,
+      body: HouseNotice(
+        animation: 'assets/animations/funny_joker.json',
+        line: SportsPlayerScreen.lockedLine,
+        reason: SportsPlayerScreen.lockedReason,
+        button: SportsPlayerScreen.lockedButton,
+        tapAnywhere: false,
+        onClose: () => Navigator.of(context).maybePop(),
+        onDone: () => context.pushReplacement('/sports-activation'),
+      ),
+    );
+  }
+}
+
+class _SportsPlayerBody extends ConsumerStatefulWidget {
+  final SportMatchItem match;
+  final String? directUrl;
+  final Map<String, String>? headers;
+  final SportsChannel? initialSportsChannel;
+
+  const _SportsPlayerBody({
+    required this.match,
+    this.directUrl,
+    this.headers,
+    this.initialSportsChannel,
+  });
+
+  @override
+  ConsumerState<_SportsPlayerBody> createState() => _SportsPlayerScreenState();
+}
+
+class _SportsPlayerScreenState extends ConsumerState<_SportsPlayerBody> with WidgetsBindingObserver {
   VideoPlayerController? _videoController;
   Player? _desktopPlayer;
   VideoController? _desktopVideoController;
@@ -1671,17 +1748,20 @@ class _SportsPlayerScreenState extends ConsumerState<SportsPlayerScreen> with Wi
                       if (!_activeChannel.isWebStream &&
                           (_activeChannel.streamUrl?.isNotEmpty ?? false))
                         Consumer(
-                          builder: (context, ref, _) => IconButton(
-                            onPressed: () => _castChannel(_activeChannel),
-                            icon: Icon(
-                              ref.watch(isCastingProvider)
-                                  ? Icons.cast_connected_rounded
-                                  : Icons.cast_rounded,
-                              color: Colors.white,
-                              size: 22,
-                            ),
-                            tooltip: 'البث إلى شاشة',
-                          ),
+                          builder: (context, ref, _) {
+                            final casting = ref.watch(isCastingProvider);
+                            return IconButton(
+                              onPressed: () => _castChannel(_activeChannel),
+                              icon: Icon(
+                                casting
+                                    ? Icons.cast_connected_rounded
+                                    : Icons.cast_rounded,
+                                color: casting ? const Color(0xFFE50914) : Colors.white,
+                                size: 22,
+                              ),
+                              tooltip: 'البث إلى شاشة',
+                            );
+                          },
                         ),
                       // Video Fit Toggle Button (ملء العرض / تكبير / أبعاد أصلية)
                       IconButton(
