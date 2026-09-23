@@ -1,15 +1,15 @@
 {
   "updateEnabled": true,
-  "versionCode": 2201,
-  "versionName": "1.0.195",
-  "apkUrl": "https://cineball.netlify.app/download/app.apk?v=201",
-  "apkUrlArm64": "https://cineball.netlify.app/download/app-arm64-v8a-release.apk?v=201",
-  "apkUrlArm32": "https://cineball.netlify.app/download/app-armeabi-v7a-release.apk?v=201",
-  "sha256": "fdcabc7bd42182f5be4beb63fa8137c0105dce6db46da77c86138b6e8315e948",
-  "sha256Arm64": "fdcabc7bd42182f5be4beb63fa8137c0105dce6db46da77c86138b6e8315e948",
-  "sha256Arm32": "dc64d45d49003d045edc1649070aafd12f94cb588992dfa007451ce9710d174e",
-  "sizeBytes": 25520243,
+  "versionCode": 2202,
+  "versionName": "1.0.196",
+  "apkUrl": "https://cineball.netlify.app/download/app.apk?v=202",
+  "apkUrlArm64": "https://cineball.netlify.app/download/app-arm64-v8a-release.apk?v=202",
+  "apkUrlArm32": "https://cineball.netlify.app/download/app-armeabi-v7a-release.apk?v=202",
+  "sha256": "43a0a00be8868c7b72a7f1e40d47805eb03c4e23a86a50ed0aa2fd0af6241d95",
+  "sha256Arm64": "43a0a00be8868c7b72a7f1e40d47805eb03c4e23a86a50ed0aa2fd0af6241d95",
+  "sha256Arm32": "cce4accd4b123216ae75f9ed7c09007dcc4fdcf818ec8de2470f15f9e16fc946",
+  "sizeBytes": 25529042,
   "forceUpdate": false,
   "minSupportedVersion": 1,
-  "notes": "تاريخ المباراة في كل بطاقة"
+  "notes": "صور عريضة حقيقية لبطاقات المسلسلات العربية"
 }
