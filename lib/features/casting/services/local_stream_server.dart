@@ -52,12 +52,10 @@ class LocalStreamServer {
     if (dir == null) {
       try {
         final base = await getTemporaryDirectory();
-        dir = Directory(
-            '${base.path}${Platform.pathSeparator}cineball_cast_cache');
+        dir = Directory('${base.path}${Platform.pathSeparator}cineball_cast_cache');
       } catch (_) {
         // Off the phone — a test, a desktop — there is no plugin to ask.
-        dir = Directory(
-            '${Directory.systemTemp.path}${Platform.pathSeparator}cineball_cast_cache');
+        dir = Directory('${Directory.systemTemp.path}${Platform.pathSeparator}cineball_cast_cache');
       }
       _cacheDir = dir;
     }
@@ -115,9 +113,8 @@ class LocalStreamServer {
     // A token rather than the url in a query string: the address ends up in
     // the television's memory, its logs, and sometimes on its screen, and a
     // signed url has no business in any of those.
-    final token = List<int>.generate(16, (_) => _random.nextInt(256))
-        .map((b) => b.toRadixString(16).padLeft(2, '0'))
-        .join();
+    final token =
+        List<int>.generate(16, (_) => _random.nextInt(256)).map((b) => b.toRadixString(16).padLeft(2, '0')).join();
 
     // And an extension on the end of it, which matters more than it should.
     //
@@ -165,9 +162,7 @@ class LocalStreamServer {
   int? get lastLength {
     final source = _lastToken == null ? null : _sources[_lastToken];
     if (source == null) return null;
-    return source.mkv?.length ??
-        source.layout?.length ??
-        (source.total > 0 ? source.total : null);
+    return source.mkv?.length ?? source.layout?.length ?? (source.total > 0 ? source.total : null);
   }
 
   /// True when the whole of the last published film is on the phone.
@@ -184,8 +179,7 @@ class LocalStreamServer {
   /// `protocolInfo` the set is given and in the `contentFeatures.dlna.org`
   /// header it reads back when it fetches - and a set that compares the two
   /// (Samsung does) refuses the film if they differ.
-  static const String dlnaFeatures =
-      'DLNA.ORG_OP=01;DLNA.ORG_CI=0;DLNA.ORG_FLAGS=01700000000000000000000000000000';
+  static const String dlnaFeatures = 'DLNA.ORG_OP=01;DLNA.ORG_CI=0;DLNA.ORG_FLAGS=01700000000000000000000000000000';
 
   /// The file extension to put on the end of a served address.
   ///
@@ -202,14 +196,7 @@ class LocalStreamServer {
     if (type.contains('mp4')) return '.mp4';
 
     final path = (Uri.tryParse(url)?.path ?? '').toLowerCase();
-    for (final known in const [
-      '.m3u8',
-      '.mkv',
-      '.webm',
-      '.mp4',
-      '.mov',
-      '.avi'
-    ]) {
+    for (final known in const ['.m3u8', '.mkv', '.webm', '.mp4', '.mov', '.avi']) {
       if (path.endsWith(known)) return known;
     }
     return '.mp4';
@@ -241,12 +228,10 @@ class LocalStreamServer {
       // its subtitle - with nothing to say why.
       for (var attempt = 1; attempt <= _attempts; attempt++) {
         try {
-          final response =
-              await _openUpstream(source, range: 'bytes=$start-$endInclusive');
+          final response = await _openUpstream(source, range: 'bytes=$start-$endInclusive');
           if (response.statusCode >= 400) return null;
           if (total == 0) {
-            final contentRange =
-                response.headers.value(HttpHeaders.contentRangeHeader);
+            final contentRange = response.headers.value(HttpHeaders.contentRangeHeader);
             if (contentRange != null && contentRange.contains('/')) {
               total = int.tryParse(contentRange.split('/').last) ?? 0;
             }
@@ -280,22 +265,18 @@ class LocalStreamServer {
       final file = await Mp4FastStart.read(fetch: range, totalSize: total);
       if (file == null) return;
 
-      final text =
-          subtitle ?? (subtitleFuture == null ? null : await subtitleFuture);
+      final text = subtitle ?? (subtitleFuture == null ? null : await subtitleFuture);
       final cues = text == null ? const <SrtCue>[] : SrtCue.parse(text);
       if (cues.isNotEmpty) {
         final movie = Mp4Movie.parse(file.moov);
-        final mkv = movie == null
-            ? null
-            : MkvRemux.plan(movie: movie, cues: cues, fill: fill);
+        final mkv = movie == null ? null : MkvRemux.plan(movie: movie, cues: cues, fill: fill);
         if (mkv != null) {
           source.mkv = mkv;
           debugPrint('[cast] remuxed as mkv: ${mkv.clusterCount} clusters, '
               '${mkv.subtitleCount} subtitle lines, ${mkv.length} bytes');
           return;
         }
-        debugPrint(
-            '[cast] could not remux; serving the mp4 without its subtitle');
+        debugPrint('[cast] could not remux; serving the mp4 without its subtitle');
       }
 
       if (file.indexFirst) return;
@@ -321,10 +302,8 @@ class LocalStreamServer {
   void _warmFront(_Source source) {
     final cache = source.cache;
     if (cache == null || source.total <= 0) return;
-    unawaited(_readSource(source, 0, min(SourceCache.chunk, source.total) - 1,
-            planning: true)
-        .then<void>((_) {},
-            onError: (Object e) => debugPrint('[cast] warming the front: $e')));
+    unawaited(_readSource(source, 0, min(SourceCache.chunk, source.total) - 1, planning: true)
+        .then<void>((_) {}, onError: (Object e) => debugPrint('[cast] warming the front: $e')));
   }
 
   /// Gives [source] a file on the phone to fill in, when there is
@@ -392,16 +371,13 @@ class LocalStreamServer {
       try {
         final request = await _client.openUrl(
           method,
-          url != null
-              ? Uri.parse(url)
-              : (source.resolved ?? Uri.parse(source.url)),
+          url != null ? Uri.parse(url) : (source.resolved ?? Uri.parse(source.url)),
         );
         request.followRedirects = true;
         request.maxRedirects = 5;
         source.headers.forEach(request.headers.set);
         if (range != null) request.headers.set(HttpHeaders.rangeHeader, range);
-        final response =
-            await request.close().timeout(const Duration(seconds: 20));
+        final response = await request.close().timeout(const Duration(seconds: 20));
         if (url == null && response.redirects.isNotEmpty) {
           source.resolved = response.redirects.last.location;
         }
@@ -487,8 +463,7 @@ class LocalStreamServer {
         includeLoopback: false,
       );
       return pickLanAddress({
-        for (final i in interfaces)
-          i.name: [for (final a in i.addresses) a.address],
+        for (final i in interfaces) i.name: [for (final a in i.addresses) a.address],
       });
     } catch (e) {
       debugPrint('[cast] interfaces: $e');
@@ -560,9 +535,7 @@ class LocalStreamServer {
     // `/p/<token>?u=…` is one piece of a live playlist, fetched on the
     // set's behalf from the address the playlist named.
     final piece = path.length == 2 && path.first == 'p';
-    final token = path.length == 2 && (path.first == 's' || piece)
-        ? path[1].split('.').first
-        : null;
+    final token = path.length == 2 && (path.first == 's' || piece) ? path[1].split('.').first : null;
     final source = token == null ? null : _sources[token];
 
     if (source == null) {
@@ -627,8 +600,7 @@ class LocalStreamServer {
   /// [absolute], fetched the way the playlist itself was: through the
   /// relay when the playlist came through it.
   static String _viaSameRoute(String playlistUrl, String absolute) {
-    if (playlistUrl.startsWith(_relayPrefix) &&
-        !absolute.startsWith(_relayPrefix)) {
+    if (playlistUrl.startsWith(_relayPrefix) && !absolute.startsWith(_relayPrefix)) {
       return '$_relayPrefix${Uri.encodeQueryComponent(absolute)}';
     }
     return absolute;
@@ -668,8 +640,7 @@ class LocalStreamServer {
   }
 
   /// Serves the playlist at [url], rewritten.
-  Future<void> _relayPlaylist(
-      HttpRequest request, _Source source, String url) async {
+  Future<void> _relayPlaylist(HttpRequest request, _Source source, String url) async {
     final response = await _openUpstream(source, url: url);
     final builder = BytesBuilder(copy: false);
     await for (final chunk in response) {
@@ -679,9 +650,7 @@ class LocalStreamServer {
     final text = utf8.decode(builder.takeBytes(), allowMalformed: true);
     // Where the playlist really came from: the CDN's final address after
     // its redirects, or the original address behind the relay.
-    final landed = response.redirects.isNotEmpty
-        ? response.redirects.last.location.toString()
-        : url;
+    final landed = response.redirects.isNotEmpty ? response.redirects.last.location.toString() : url;
     final base = _originOf(landed);
     final token = source.token;
     final rewritten = rewritePlaylist(
@@ -706,8 +675,7 @@ class LocalStreamServer {
 
   /// Serves one piece named by a playlist: a nested playlist is rewritten
   /// like the first, anything else is passed through as it comes.
-  Future<void> _relayPiece(
-      HttpRequest request, _Source source, String url) async {
+  Future<void> _relayPiece(HttpRequest request, _Source source, String url) async {
     if (isPlaylist(null, _originOf(url))) {
       return _relayPlaylist(request, source, url);
     }
@@ -718,8 +686,7 @@ class LocalStreamServer {
       method: request.method == 'HEAD' ? 'HEAD' : 'GET',
       range: range,
     );
-    final upstreamType =
-        response.headers.value(HttpHeaders.contentTypeHeader) ?? '';
+    final upstreamType = response.headers.value(HttpHeaders.contentTypeHeader) ?? '';
     // A piece that turns out to be a playlist after all (no extension in
     // its name) is rewritten rather than handed over raw.
     if (upstreamType.toLowerCase().contains('mpegurl')) {
@@ -745,8 +712,7 @@ class LocalStreamServer {
     }
     var sent = 0;
     final outcome = await _pump(response, socket, (n) => sent += n);
-    debugPrint(
-        '[cast] piece sent=${(sent / 1e6).toStringAsFixed(2)}MB -> $outcome');
+    debugPrint('[cast] piece sent=${(sent / 1e6).toStringAsFixed(2)}MB -> $outcome');
   }
 
   // ------------------------------------------------------------- the wire
@@ -866,8 +832,7 @@ class LocalStreamServer {
     if (head && source.total > 0) {
       final bounds = _bounds(range, source.total);
       if (bounds == null) {
-        final socket =
-            await _open(request, HttpStatus.requestedRangeNotSatisfiable, {
+        final socket = await _open(request, HttpStatus.requestedRangeNotSatisfiable, {
           'Content-Range': 'bytes */${source.total}',
           'Content-Length': '0',
         });
@@ -895,8 +860,7 @@ class LocalStreamServer {
     if (!head && source.total > 0) {
       final bounds = _bounds(range, source.total);
       if (bounds == null) {
-        final socket =
-            await _open(request, HttpStatus.requestedRangeNotSatisfiable, {
+        final socket = await _open(request, HttpStatus.requestedRangeNotSatisfiable, {
           'Content-Range': 'bytes */${source.total}',
           'Content-Length': '0',
         });
@@ -947,8 +911,7 @@ class LocalStreamServer {
     var sent = 0;
     final outcome = await _pump(response, socket, (n) => sent += n);
     final seconds = DateTime.now().difference(started).inMilliseconds / 1000;
-    debugPrint(
-        '[cast] served range=${range ?? "-"} status=${response.statusCode} '
+    debugPrint('[cast] served range=${range ?? "-"} status=${response.statusCode} '
         'sent=${(sent / 1e6).toStringAsFixed(2)}MB in ${seconds.toStringAsFixed(1)}s -> $outcome');
   }
 
@@ -1012,14 +975,12 @@ class LocalStreamServer {
   /// requested stretch is served in windows: the source ranges of one
   /// window are fetched (coalesced, since they nearly abut), the window is
   /// put together in memory, sent, and the next one is already on its way.
-  Future<void> _relayMkv(
-      HttpRequest request, _Source source, MkvLayout mkv) async {
+  Future<void> _relayMkv(HttpRequest request, _Source source, MkvLayout mkv) async {
     final total = mkv.length;
     final rangeHeader = request.headers.value(HttpHeaders.rangeHeader);
     final bounds = _bounds(rangeHeader, total);
     if (bounds == null) {
-      final socket =
-          await _open(request, HttpStatus.requestedRangeNotSatisfiable, {
+      final socket = await _open(request, HttpStatus.requestedRangeNotSatisfiable, {
         'Content-Range': 'bytes */$total',
         'Content-Length': '0',
       });
@@ -1027,8 +988,7 @@ class LocalStreamServer {
       return;
     }
     final (from, to) = bounds;
-    final status =
-        rangeHeader != null ? HttpStatus.partialContent : HttpStatus.ok;
+    final status = rangeHeader != null ? HttpStatus.partialContent : HttpStatus.ok;
     final socket = await _open(request, status, {
       ..._mediaHeaders('video/x-matroska'),
       'Content-Length': '${to - from + 1}',
@@ -1060,13 +1020,11 @@ class LocalStreamServer {
     Socket socket,
     int from,
     int to,
-    Future<Uint8List> Function(int from, int to, bool Function() abandoned)
-        read, {
+    Future<Uint8List> Function(int from, int to, bool Function() abandoned) read, {
     required String log,
   }) async {
     var closed = false;
-    unawaited(socket.done.then<void>((_) => closed = true,
-        onError: (Object _) => closed = true));
+    unawaited(socket.done.then<void>((_) => closed = true, onError: (Object _) => closed = true));
 
     final started = DateTime.now();
     var sent = 0;
@@ -1173,10 +1131,7 @@ class LocalStreamServer {
     final fetched = <(int, Uint8List)>[];
     for (final run in runs) {
       if (abandoned()) throw const _Abandoned();
-      fetched.add((
-        run.$1,
-        await _readSource(source, run.$1, run.$2, abandoned: abandoned)
-      ));
+      fetched.add((run.$1, await _readSource(source, run.$1, run.$2, abandoned: abandoned)));
     }
 
     final out = Uint8List(to - from + 1);
@@ -1187,9 +1142,8 @@ class LocalStreamServer {
         out.setRange(at, at + piece.length, literal);
         continue;
       }
-      final run = fetched.firstWhere((f) =>
-          piece.sourceOffset >= f.$1 &&
-          piece.sourceOffset + piece.length <= f.$1 + f.$2.length);
+      final run = fetched
+          .firstWhere((f) => piece.sourceOffset >= f.$1 && piece.sourceOffset + piece.length <= f.$1 + f.$2.length);
       out.setRange(at, at + piece.length, run.$2, piece.sourceOffset - run.$1);
     }
     return out;
@@ -1232,14 +1186,12 @@ class LocalStreamServer {
   /// from there; everything after them is the original file from a byte
   /// offset, streamed through untouched. A range that straddles the two is
   /// served from both in turn, which is what a set does when it seeks.
-  Future<void> _relayRearranged(
-      HttpRequest request, _Source source, Mp4Layout layout) async {
+  Future<void> _relayRearranged(HttpRequest request, _Source source, Mp4Layout layout) async {
     final total = layout.length;
     final rangeHeader = request.headers.value(HttpHeaders.rangeHeader);
     final bounds = _bounds(rangeHeader, total);
     if (bounds == null) {
-      final socket =
-          await _open(request, HttpStatus.requestedRangeNotSatisfiable, {
+      final socket = await _open(request, HttpStatus.requestedRangeNotSatisfiable, {
         'Content-Range': 'bytes */$total',
         'Content-Length': '0',
       });
@@ -1248,8 +1200,7 @@ class LocalStreamServer {
     }
     final (from, to) = bounds;
     final length = to - from + 1;
-    final status =
-        rangeHeader != null ? HttpStatus.partialContent : HttpStatus.ok;
+    final status = rangeHeader != null ? HttpStatus.partialContent : HttpStatus.ok;
 
     final headers = <String, String>{
       ..._mediaHeaders('video/mp4'),

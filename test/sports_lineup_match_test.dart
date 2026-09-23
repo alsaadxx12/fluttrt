@@ -6,25 +6,17 @@ import 'package:youtube_downloader/features/sports/data/services/sports_service.
 /// used only when both its teams are the teams that were asked about.
 void main() {
   test('the same two teams agree, whatever the prefix or the order', () {
-    expect(
-        SportsService.teamsAgree(
-            'العراق', 'عمان', 'منتخب العراق', 'منتخب عمان'),
-        isTrue);
+    expect(SportsService.teamsAgree('العراق', 'عمان', 'منتخب العراق', 'منتخب عمان'), isTrue);
     expect(SportsService.teamsAgree('Iraq', 'Oman', 'Oman', 'Iraq'), isTrue);
-    expect(
-        SportsService.teamsAgree('Al Hilal FC', 'Al Nassr', 'Hilal', 'Nassr'),
-        isTrue);
+    expect(SportsService.teamsAgree('Al Hilal FC', 'Al Nassr', 'Hilal', 'Nassr'), isTrue);
   });
 
   test('a game with neither team is refused', () {
-    expect(SportsService.teamsAgree('العراق', 'عمان', 'السنغال', 'الكاميرون'),
-        isFalse);
-    expect(SportsService.teamsAgree('Iraq', 'Oman', 'Senegal', 'Cameroon'),
-        isFalse);
+    expect(SportsService.teamsAgree('العراق', 'عمان', 'السنغال', 'الكاميرون'), isFalse);
+    expect(SportsService.teamsAgree('Iraq', 'Oman', 'Senegal', 'Cameroon'), isFalse);
   });
 
-  test('one team is enough: the other side is often named in another language',
-      () {
+  test('one team is enough: the other side is often named in another language', () {
     expect(SportsService.teamsAgree('Iraq', 'عمان', 'Iraq', 'Oman'), isTrue);
   });
 }
