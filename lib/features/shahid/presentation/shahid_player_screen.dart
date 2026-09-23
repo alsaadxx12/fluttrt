@@ -340,21 +340,34 @@ class _ShahidPlayerScreenState extends ConsumerState<ShahidPlayerScreen> {
             child: Stack(
               alignment: Alignment.center,
               children: [
+                // The picture fills whatever it is given, its own shape kept
+                // and its edges cropped: no black bars beside a 16:9 picture
+                // on a wider screen.
                 if (isDesktop && _desktopVideoController != null)
-                  Center(
-                    child: AspectRatio(
-                      aspectRatio: 16 / 9,
-                      child: Video(
-                        controller: _desktopVideoController!,
-                        controls: NoVideoControls,
+                  SizedBox.expand(
+                    child: FittedBox(
+                      fit: BoxFit.cover,
+                      clipBehavior: Clip.hardEdge,
+                      child: SizedBox(
+                        width: 16,
+                        height: 9,
+                        child: Video(
+                          controller: _desktopVideoController!,
+                          controls: NoVideoControls,
+                        ),
                       ),
                     ),
                   )
                 else if (v != null && v.value.isInitialized)
-                  Center(
-                    child: AspectRatio(
-                      aspectRatio: v.value.aspectRatio == 0 ? 16 / 9 : v.value.aspectRatio,
-                      child: VideoPlayer(v),
+                  SizedBox.expand(
+                    child: FittedBox(
+                      fit: BoxFit.cover,
+                      clipBehavior: Clip.hardEdge,
+                      child: SizedBox(
+                        width: v.value.size.width > 0 ? v.value.size.width : 1280,
+                        height: v.value.size.height > 0 ? v.value.size.height : 720,
+                        child: VideoPlayer(v),
+                      ),
                     ),
                   ),
                 if (_loading || (buffering && _error == null))

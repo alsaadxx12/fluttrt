@@ -157,7 +157,9 @@ class _SportsPlayerScreenState extends ConsumerState<_SportsPlayerBody> with Wid
   bool _isPlaying = true;
   Timer? _hideControlsTimer;
   int _streamLoadToken = 0;
-  BoxFit _videoFit = BoxFit.fill;
+  // Cover from the start: the picture fills the screen with its shape
+  // kept and a sliver cropped at the sides, never black bars.
+  BoxFit _videoFit = BoxFit.cover;
   String? _fitToastText;
   Timer? _fitToastTimer;
 
@@ -176,12 +178,12 @@ class _SportsPlayerScreenState extends ConsumerState<_SportsPlayerBody> with Wid
 
   void _cycleVideoFit() {
     setState(() {
-      if (_videoFit == BoxFit.fill) {
-        _videoFit = BoxFit.cover;
-      } else if (_videoFit == BoxFit.cover) {
+      if (_videoFit == BoxFit.cover) {
+        _videoFit = BoxFit.fill;
+      } else if (_videoFit == BoxFit.fill) {
         _videoFit = BoxFit.contain;
       } else {
-        _videoFit = BoxFit.fill;
+        _videoFit = BoxFit.cover;
       }
     });
     _showFitToast(_videoFitTitle);
