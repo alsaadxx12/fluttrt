@@ -1,33 +1,41 @@
-import 'dart:convert';
 import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:youtube_downloader/features/casting/services/local_stream_server.dart';
 
-/// A live channel is an HLS playlist. A television handed the playlist as
-/// it is would resolve the pieces against the phone and get nothing, or go
-/// to a CDN that wants https and a Referer; so every piece is rewritten to
-/// an address on the phone, which fetches the real one.
+/// A live channel is an HLS playlist: a text file naming the pieces of the
+/// stream. A television handed the playlist read it once and stopped when
+/// its pieces ran out, so the phone follows the playlist itself and hands
+/// the set the pieces laid end to end, as one stream with no end.
 void main() {
-  group('rewriting a playlist', () {
-    String piece(String absolute) => 'http://phone:1/p/tok?u=${Uri.encodeQueryComponent(absolute)}';
-
-    test('relative pieces are resolved against the playlist and pointed at the phone', () {
-      const text = '#EXTM3U\n#EXT-X-TARGETDURATION:6\n#EXTINF:6.0,\nseg1.ts\n#EXTINF:6.0,\n../other/seg2.ts\n';
-      final out = LocalStreamServer.rewritePlaylist(text, 'https://cdn.example.com/live/ch/index.m3u8', piece);
-      final lines = out.trim().split('\n');
-      expect(lines[3], piece('https://cdn.example.com/live/ch/seg1.ts'));
-      expect(lines[5], piece('https://cdn.example.com/live/other/seg2.ts'));
-      expect(lines[0], '#EXTM3U', reason: 'tags are kept as they are');
+  group('reading a playlist', () {
+    test('pieces are resolved against the playlist, with their durations and sequence', () {
+      const text = '#EXTM3U\n#EXT-X-TARGETDURATION:6\n#EXT-X-MEDIA-SEQUENCE:41\n'
+          '#EXTINF:6.0,\nseg41.ts\n#EXTINF:5.5,\n../other/seg42.ts\n';
+      final list = LocalStreamServer.parsePlaylist(text, 'https://cdn.example.com/live/ch/index.m3u8');
+      expect(list.sequence, 41);
+      expect(list.target, 6.0);
+      expect(list.ended, isFalse);
+      expect(list.pieces.map((p) => p.url),
+          ['https://cdn.example.com/live/ch/seg41.ts', 'https://cdn.example.com/live/other/seg42.ts']);
+      expect(list.pieces.map((p) => p.duration), [6.0, 5.5]);
     });
 
-    test('absolute pieces and URI attributes are rewritten too', () {
-      const text = '#EXTM3U\n#EXT-X-KEY:METHOD=AES-128,URI="key.bin"\n#EXT-X-MAP:URI="https://x.example.com/init.mp4"\n'
-          '#EXT-X-STREAM-INF:BANDWIDTH=1\nhttps://cdn.example.com/hd.m3u8\n';
-      final out = LocalStreamServer.rewritePlaylist(text, 'https://cdn.example.com/a/b.m3u8', piece);
-      expect(out, contains('URI="${piece('https://cdn.example.com/a/key.bin')}"'));
-      expect(out, contains('URI="${piece('https://x.example.com/init.mp4')}"'));
-      expect(out, contains(piece('https://cdn.example.com/hd.m3u8')));
+    test('a master playlist names the variant with the most bandwidth', () {
+      const text = '#EXTM3U\n#EXT-X-STREAM-INF:BANDWIDTH=800000,RESOLUTION=640x360\nsd.m3u8\n'
+          '#EXT-X-STREAM-INF:BANDWIDTH=3000000,RESOLUTION=1280x720\nhttps://x.example.com/hd.m3u8\n';
+      final list = LocalStreamServer.parsePlaylist(text, 'https://cdn.example.com/a/b.m3u8');
+      expect(list.variant, 'https://x.example.com/hd.m3u8');
+      expect(list.pieces, isEmpty);
+    });
+
+    test('an init segment, an end and encryption are all noticed', () {
+      const text = '#EXTM3U\n#EXT-X-MAP:URI="init.mp4"\n#EXT-X-KEY:METHOD=AES-128,URI="k"\n'
+          '#EXTINF:4,\na.m4s\n#EXT-X-ENDLIST\n';
+      final list = LocalStreamServer.parsePlaylist(text, 'https://cdn.example.com/a/b.m3u8');
+      expect(list.init, 'https://cdn.example.com/a/init.mp4');
+      expect(list.ended, isTrue);
+      expect(list.encrypted, isTrue);
     });
 
     test('a stream is a playlist by its type or its name', () {
@@ -37,22 +45,53 @@ void main() {
     });
   });
 
-  group('serving a playlist', () {
+  group('rewriting a playlist (the fallback for encrypted channels)', () {
+    String piece(String absolute) => 'http://phone:1/p/tok?u=${Uri.encodeQueryComponent(absolute)}';
+
+    test('relative and absolute pieces, and URI attributes, are pointed at the phone', () {
+      const text = '#EXTM3U\n#EXT-X-KEY:METHOD=AES-128,URI="key.bin"\n#EXTINF:6.0,\nseg1.ts\n'
+          '#EXTINF:6.0,\nhttps://x.example.com/seg2.ts\n';
+      final out = LocalStreamServer.rewritePlaylist(text, 'https://cdn.example.com/a/b.m3u8', piece);
+      expect(out, contains('URI="${piece('https://cdn.example.com/a/key.bin')}"'));
+      expect(out, contains(piece('https://cdn.example.com/a/seg1.ts')));
+      expect(out, contains(piece('https://x.example.com/seg2.ts')));
+      expect(out.split('\n').first, '#EXTM3U', reason: 'tags are kept as they are');
+    });
+  });
+
+  group('serving a live channel', () {
     late HttpServer origin;
     LocalStreamServer? served;
+    var fetches = 0;
+
+    /// A piece is 1000 bytes: a transport-stream sync byte, then its number.
+    List<int> pieceBytes(int n) => [0x47, ...List<int>.filled(999, n)];
 
     setUp(() async {
       HttpOverrides.global = null;
+      fetches = 0;
       origin = await HttpServer.bind(InternetAddress.loopbackIPv4, 0);
       origin.listen((request) async {
         final path = request.uri.path;
         final response = request.response;
-        if (path.endsWith('.m3u8')) {
+        if (path.endsWith('ended.m3u8')) {
           response.headers.contentType = ContentType('application', 'vnd.apple.mpegurl');
-          response.write('#EXTM3U\n#EXTINF:4.0,\nseg-0.ts\n#EXTINF:4.0,\nseg-1.ts\n');
+          response.write('#EXTM3U\n#EXTINF:4.0,\nseg-1.ts\n#EXTINF:4.0,\nseg-2.ts\n#EXT-X-ENDLIST\n');
+        } else if (path.endsWith('rolling.m3u8')) {
+          // Each reading moves the window on by one piece; the third
+          // reading says the channel has ended.
+          final k = fetches++;
+          response.headers.contentType = ContentType('application', 'vnd.apple.mpegurl');
+          final lines = ['#EXTM3U', '#EXT-X-TARGETDURATION:4', '#EXT-X-MEDIA-SEQUENCE:$k'];
+          for (var n = k; n < k + 4; n++) {
+            lines.addAll(['#EXTINF:4.0,', 'seg-$n.ts']);
+          }
+          if (k >= 2) lines.add('#EXT-X-ENDLIST');
+          response.write('${lines.join('\n')}\n');
         } else {
+          final n = int.parse(RegExp(r'seg-(\d+)').firstMatch(path)!.group(1)!);
           response.headers.contentType = ContentType('video', 'mp2t');
-          response.add(List<int>.filled(1500, path.endsWith('0.ts') ? 7 : 9));
+          response.add(pieceBytes(n));
         }
         await response.close();
       });
@@ -63,32 +102,46 @@ void main() {
       await origin.close(force: true);
     });
 
-    test('the set gets the playlist with pieces on the phone, and the pieces themselves', () async {
+    Future<(HttpClientResponse, List<int>)> fetch(String address) async {
+      final response = await (await HttpClient().getUrl(Uri.parse(address))).close();
+      final bytes = await response.fold<List<int>>(<int>[], (a, b) => a..addAll(b));
+      return (response, bytes);
+    }
+
+    test('the set is handed one mpeg-ts stream made of the pieces, not the playlist', () async {
       final server = served = LocalStreamServer(cacheDir: Directory.systemTemp.createTempSync('hls_'));
       final address = await server.publish(
-        'http://127.0.0.1:${origin.port}/live/ch.m3u8',
+        'http://127.0.0.1:${origin.port}/live/ended.m3u8',
         contentType: 'application/x-mpegURL',
       );
       if (address == null) return;
-      expect(address, endsWith('.m3u8'));
+      expect(address, endsWith('.ts'));
+      expect(server.lastMime, 'video/mpeg');
+      expect(server.lastFeatures, LocalStreamServer.liveFeatures);
 
-      final client = HttpClient();
-      final list = await (await client.getUrl(Uri.parse(address))).close();
-      expect(list.headers.value('content-type'), 'application/vnd.apple.mpegurl');
-      final text = await utf8.decoder.bind(list).join();
-      final pieces = text.split('\n').where((l) => l.isNotEmpty && !l.startsWith('#')).toList();
-      expect(pieces, hasLength(2));
-      expect(pieces.first, startsWith(address.substring(0, address.indexOf('/s/'))),
-          reason: 'every piece is on the phone, not on the origin');
-      expect(pieces.first, contains('/p/'));
+      final (response, bytes) = await fetch(address);
+      expect(response.statusCode, 200);
+      expect(response.headers.value('content-type'), 'video/mpeg');
+      expect(response.headers.value('contentFeatures.dlna.org'), LocalStreamServer.liveFeatures);
+      expect(bytes.length, 2000);
+      expect(bytes[1], 1, reason: 'the first piece first');
+      expect(bytes[1001], 2);
+    });
 
-      // And a piece, fetched through the phone, is the origin's bytes.
-      final seg = await (await client.getUrl(Uri.parse(pieces.first))).close();
-      expect(seg.statusCode, 200);
-      expect(seg.headers.value('content-type'), 'video/mp2t');
-      final bytes = await seg.fold<List<int>>(<int>[], (a, b) => a..addAll(b));
-      expect(bytes.length, 1500);
-      expect(bytes.first, 7);
+    test('a channel that keeps going is followed: new pieces, each once, in order', () async {
+      final server = served = LocalStreamServer(cacheDir: Directory.systemTemp.createTempSync('hls_'));
+      final address = await server.publish(
+        'http://127.0.0.1:${origin.port}/live/rolling.m3u8',
+        contentType: 'application/x-mpegURL',
+      );
+      if (address == null) return;
+      fetches = 0;
+
+      final (_, bytes) = await fetch(address);
+      // First reading: pieces 0..3, joined three from the end: 1, 2, 3.
+      // Second: 1..4, only 4 is new. Third: 2..5 and the end: 5.
+      final order = [for (var i = 1; i < bytes.length; i += 1000) bytes[i]];
+      expect(order, [1, 2, 3, 4, 5]);
     });
   });
 }

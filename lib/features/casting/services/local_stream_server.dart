@@ -136,10 +136,20 @@ class LocalStreamServer {
           '.webm' => 'video/webm',
           _ => 'video/mp4',
         };
+    // A live channel is not handed over as a playlist but joined into one
+    // continuous stream; see _relayLive for why.
+    if (isPlaylist(source.mime, url)) {
+      final live = await _probeLive(source, url);
+      if (live != null) {
+        source.live = live;
+        source.mime = live.mime;
+        suffix = live.suffix;
+      }
+    }
     // Worked out now rather than when the set comes knocking: it costs a
     // few megabytes and a moment, and doing it while the television waits
     // on its first request risks the set giving up first.
-    if (suffix == '.mp4' || suffix == '.mov') {
+    if (source.live == null && (suffix == '.mp4' || suffix == '.mov')) {
       await _plan(source, subtitle, subtitleFuture, fill);
       if (source.mkv != null) suffix = '.mkv';
     }
@@ -741,6 +751,286 @@ class LocalStreamServer {
   /// [headers] is written in the order and spelling given. `Connection:
   /// close` is added, because from here the connection is this method's
   /// to end, and a set opens a fresh one for every request anyway.
+  // ------------------------------------------------------------- live relay
+  //
+  // Handed a rewritten playlist, a television played the pieces it named
+  // and then stopped: it had read the playlist once, as if it were a file,
+  // and never came back for the pieces the channel added afterwards. So a
+  // live channel is not given to the set as a playlist at all. The phone
+  // follows the playlist itself - fetching it again as often as the channel
+  // adds a piece - and hands the set one endless stream made of the pieces
+  // laid end to end. MPEG-TS pieces join cleanly (that is what the format
+  // is for); fragmented-mp4 pieces join after their init segment. To the
+  // set it is one long file of unknown length, which any DLNA player takes.
+
+  /// The DLNA features a live stream is served with: no byte ranges (there
+  /// is nothing to seek in) and the flags that say both ends of it move.
+  static const String liveFeatures = 'DLNA.ORG_OP=00;DLNA.ORG_CI=0;DLNA.ORG_FLAGS=0D700000000000000000000000000000';
+
+  /// What the set was told the last published stream is; null when nothing
+  /// has been published.
+  String? get lastMime {
+    final source = _lastToken == null ? null : _sources[_lastToken];
+    return source?.mime;
+  }
+
+  /// The DLNA features the last published stream is served with.
+  String get lastFeatures {
+    final source = _lastToken == null ? null : _sources[_lastToken];
+    return source?.live != null ? liveFeatures : dlnaFeatures;
+  }
+
+  /// Reads the playlist at [url] and decides how to serve it: which variant
+  /// to follow and what its pieces are, and so what the set is told.
+  ///
+  /// Null when the pieces cannot be joined - encrypted ones, which the set
+  /// would have to decrypt itself - and the playlist then goes to the set
+  /// rewritten, the old way.
+  Future<_Live?> _probeLive(_Source source, String url) async {
+    try {
+      var listUrl = url;
+      LivePlaylist? list;
+      for (var hop = 0; hop < 3; hop++) {
+        list = await _fetchPlaylist(source, listUrl);
+        if (list == null) return null;
+        final variant = list.variant;
+        if (variant == null) break;
+        debugPrint('[cast] live: the playlist lists variants; following ${variant.split("?").first}');
+        listUrl = variant;
+        list = null;
+      }
+      if (list == null || list.pieces.isEmpty) return null;
+      if (list.encrypted) {
+        debugPrint('[cast] live: the pieces are encrypted; the set gets the playlist itself');
+        return null;
+      }
+      var fragmented = list.init != null;
+      if (!fragmented) {
+        final name = Uri.tryParse(list.pieces.last.url)?.path.toLowerCase() ?? '';
+        if (name.endsWith('.m4s') || name.endsWith('.mp4')) {
+          fragmented = true;
+        } else if (!name.endsWith('.ts')) {
+          fragmented = await _looksFragmented(source, list.pieces.last.url);
+        }
+      }
+      debugPrint('[cast] live: ${list.pieces.length} pieces of ~${list.target}s from sequence ${list.sequence}, '
+          '${fragmented ? "fragmented mp4" : "mpeg-ts"}');
+      return _Live(listUrl, fragmented: fragmented);
+    } catch (e) {
+      debugPrint('[cast] live: could not read the playlist: $e');
+      return null;
+    }
+  }
+
+  /// Whether the piece at [url] starts like an mp4 box rather than a
+  /// transport-stream packet.
+  Future<bool> _looksFragmented(_Source source, String url) async {
+    final response = await _openUpstream(source, url: url, range: 'bytes=0-15');
+    final first = await response.first.timeout(const Duration(seconds: 8));
+    if (first.length >= 8 && first[0] == 0x47) return false;
+    final tag = first.length >= 8 ? String.fromCharCodes(first.sublist(4, 8)) : '';
+    return tag == 'ftyp' || tag == 'styp' || tag == 'moof' || tag == 'moov';
+  }
+
+  /// Fetches and reads the playlist at [url]; null when it cannot be had.
+  Future<LivePlaylist?> _fetchPlaylist(_Source source, String url) async {
+    final response = await _openUpstream(source, url: url);
+    if (response.statusCode >= 400) {
+      await response.drain<void>().catchError((Object _) {});
+      debugPrint('[cast] live: the playlist answered ${response.statusCode}');
+      return null;
+    }
+    final builder = BytesBuilder(copy: false);
+    await for (final chunk in response) {
+      builder.add(chunk);
+      if (builder.length > 4 * 1024 * 1024) break;
+    }
+    final text = utf8.decode(builder.takeBytes(), allowMalformed: true);
+    final landed = response.redirects.isNotEmpty ? response.redirects.last.location.toString() : url;
+    return parsePlaylist(text, _originOf(landed), (absolute) => _viaSameRoute(url, absolute));
+  }
+
+  /// Reads an HLS playlist: its pieces with their durations and the
+  /// sequence number of the first - or, for a master playlist, the variant
+  /// with the most bandwidth to follow instead. Names are resolved against
+  /// [base]; [route] then turns each real address into the one to fetch it
+  /// by.
+  @visibleForTesting
+  static LivePlaylist parsePlaylist(String text, String base, [String Function(String absolute)? route]) {
+    final root = Uri.parse(base);
+    String resolve(String ref) {
+      final absolute = root.resolve(ref.trim()).toString();
+      return route == null ? absolute : route(absolute);
+    }
+
+    String after(String line) => line.substring(line.indexOf(':') + 1).trim();
+
+    final pieces = <LivePiece>[];
+    var sequence = 0;
+    var target = 6.0;
+    var ended = false;
+    var encrypted = false;
+    String? init;
+    String? variant;
+    var bestBandwidth = -1;
+    var variantNext = false;
+    var variantBandwidth = 0;
+    var duration = 0.0;
+    for (final raw in text.split('\n')) {
+      final line = raw.trim();
+      if (line.isEmpty) continue;
+      if (line.startsWith('#')) {
+        if (line.startsWith('#EXTINF:')) {
+          duration = double.tryParse(after(line).split(',').first.trim()) ?? duration;
+        } else if (line.startsWith('#EXT-X-MEDIA-SEQUENCE:')) {
+          sequence = int.tryParse(after(line)) ?? 0;
+        } else if (line.startsWith('#EXT-X-TARGETDURATION:')) {
+          target = double.tryParse(after(line)) ?? target;
+        } else if (line.startsWith('#EXT-X-ENDLIST')) {
+          ended = true;
+        } else if (line.startsWith('#EXT-X-MAP:')) {
+          final m = RegExp(r'URI="([^"]+)"').firstMatch(line);
+          if (m != null) init = resolve(m.group(1)!);
+        } else if (line.startsWith('#EXT-X-KEY:')) {
+          if (!line.contains('METHOD=NONE')) encrypted = true;
+        } else if (line.startsWith('#EXT-X-STREAM-INF:')) {
+          variantNext = true;
+          final m = RegExp(r'BANDWIDTH=(\d+)').firstMatch(line);
+          variantBandwidth = int.tryParse(m?.group(1) ?? '') ?? 0;
+        }
+        continue;
+      }
+      if (variantNext) {
+        variantNext = false;
+        if (variantBandwidth > bestBandwidth) {
+          bestBandwidth = variantBandwidth;
+          variant = resolve(line);
+        }
+        continue;
+      }
+      pieces.add(LivePiece(resolve(line), duration));
+      duration = 0;
+    }
+    return LivePlaylist(
+      pieces: pieces,
+      sequence: sequence,
+      target: target,
+      ended: ended,
+      encrypted: encrypted,
+      init: init,
+      variant: variant,
+    );
+  }
+
+  /// Serves [live] as one continuous stream, for as long as the set keeps
+  /// reading and the channel keeps going.
+  Future<void> _relayLive(HttpRequest request, _Source source, _Live live) async {
+    final socket = await _open(request, HttpStatus.ok, {
+      'Content-Type': source.mime ?? live.mime,
+      'Accept-Ranges': 'none',
+      'transferMode.dlna.org': 'Streaming',
+      'contentFeatures.dlna.org': liveFeatures,
+    });
+    if (request.method == 'HEAD') {
+      await socket.close();
+      return;
+    }
+    var closed = false;
+    unawaited(socket.done.then<void>((_) => closed = true, onError: (Object _) => closed = true));
+    // The set hung up, or casting stopped and the source was forgotten.
+    bool gone() => closed || _sources[source.token] != source;
+
+    final clock = Stopwatch()..start();
+    var sent = 0;
+    var last = -1; // the sequence number of the last piece sent
+    String? initSent;
+    var misses = 0;
+    var why = 'done';
+    try {
+      while (!gone()) {
+        LivePlaylist? list;
+        try {
+          list = await _fetchPlaylist(source, live.url);
+        } catch (e) {
+          debugPrint('[cast] live: playlist: $e');
+        }
+        if (list == null) {
+          if (++misses > 6) {
+            why = 'the playlist stopped answering';
+            break;
+          }
+          await Future<void>.delayed(const Duration(seconds: 2));
+          continue;
+        }
+        misses = 0;
+        final pieces = list.pieces;
+        // The first time, from near the live edge - three pieces back, so
+        // the set has something to buffer. After that, from the piece after
+        // the last one sent; and when the window has moved past that, from
+        // the start of the window, with a gap the set will ride over.
+        var from = last < 0 ? max(0, pieces.length - 3) : last + 1 - list.sequence;
+        if (from < 0) {
+          debugPrint('[cast] live: fell ${-from} pieces behind; catching up');
+          from = 0;
+        }
+        var any = false;
+        for (var i = from; i < pieces.length && !gone(); i++) {
+          any = true;
+          final init = list.init;
+          if (init != null && init != initSent) {
+            await _copyPiece(source, init, socket, (n) => sent += n);
+            initSent = init;
+          }
+          if (!await _copyPiece(source, pieces[i].url, socket, (n) => sent += n)) {
+            debugPrint('[cast] live: piece ${list.sequence + i} skipped');
+          }
+          last = list.sequence + i;
+        }
+        if (list.ended) {
+          why = 'the channel ended';
+          break;
+        }
+        if (!any) {
+          // Nothing new yet: back for the playlist in about half a piece.
+          final wait = ((pieces.isEmpty ? list.target : pieces.last.duration) * 500).round();
+          await Future<void>.delayed(Duration(milliseconds: wait.clamp(1000, 6000)));
+        }
+      }
+      await socket.flush();
+      await socket.close();
+    } catch (e) {
+      why = e.runtimeType.toString();
+      socket.destroy();
+    }
+    if (why == 'done' && gone()) why = closed ? 'the set hung up' : 'casting stopped';
+    debugPrint('[cast] live: ${(sent / 1e6).toStringAsFixed(1)}MB in ${(clock.elapsedMilliseconds / 1000).round()}s, '
+        'last piece $last -> $why');
+  }
+
+  /// Copies one piece to the set; false when it could not be fetched.
+  Future<bool> _copyPiece(_Source source, String url, Socket socket, void Function(int) count) async {
+    HttpClientResponse response;
+    try {
+      response = await _openUpstream(source, url: url);
+    } catch (e) {
+      debugPrint('[cast] live: piece: $e');
+      return false;
+    }
+    if (response.statusCode >= 400) {
+      await response.drain<void>().catchError((Object _) {});
+      debugPrint('[cast] live: a piece answered ${response.statusCode}');
+      return false;
+    }
+    await for (final chunk in response) {
+      socket.add(chunk);
+      count(chunk.length);
+    }
+    // Waited for here, so that no more than a piece is ever queued in
+    // memory for a set that reads slowly.
+    await socket.flush();
+    return true;
+  }
+
   static Future<Socket> _open(
     HttpRequest request,
     int status,
@@ -814,6 +1104,8 @@ class LocalStreamServer {
     if (mkv != null) return _relayMkv(request, source, mkv);
     final layout = source.layout;
     if (layout != null) return _relayRearranged(request, source, layout);
+    final live = source.live;
+    if (live != null) return _relayLive(request, source, live);
     if (isPlaylist(source.mime, source.url)) {
       return _relayPlaylist(request, source, source.url);
     }
@@ -1274,6 +1566,62 @@ class LocalStreamServer {
   int? get port => _server?.port;
 }
 
+/// How a live channel is served: the playlist the phone follows and what
+/// its pieces are.
+class _Live {
+  _Live(this.url, {required this.fragmented});
+
+  final String url;
+  final bool fragmented;
+
+  String get mime => fragmented ? 'video/mp4' : 'video/mpeg';
+  String get suffix => fragmented ? '.mp4' : '.ts';
+}
+
+/// One reading of an HLS playlist.
+class LivePlaylist {
+  const LivePlaylist({
+    required this.pieces,
+    required this.sequence,
+    required this.target,
+    required this.ended,
+    required this.encrypted,
+    this.init,
+    this.variant,
+  });
+
+  /// The pieces, oldest first, by the address to fetch each one at.
+  final List<LivePiece> pieces;
+
+  /// The sequence number of the first piece.
+  final int sequence;
+
+  /// How long a piece is at most, in seconds.
+  final double target;
+
+  /// True when the channel has ended: nothing more will be added.
+  final bool ended;
+
+  /// True when the pieces are encrypted and cannot be handed over as they are.
+  final bool encrypted;
+
+  /// The init segment fragmented-mp4 pieces follow, if any.
+  final String? init;
+
+  /// For a master playlist: the variant to follow instead.
+  final String? variant;
+}
+
+/// One piece of a live channel.
+class LivePiece {
+  const LivePiece(this.url, this.duration);
+
+  final String url;
+
+  /// In seconds.
+  final double duration;
+}
+
 class _Source {
   _Source(this.url, this.headers);
 
@@ -1301,6 +1649,9 @@ class _Source {
 
   /// Where the source's redirect led, once followed.
   Uri? resolved;
+
+  /// Set when the source is a live channel served as one joined stream.
+  _Live? live;
 
   /// The phone's copy of the film, filling in; null when there is nowhere
   /// to keep one.

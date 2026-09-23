@@ -30,11 +30,9 @@ class DlnaCastService implements CastService {
 
   static const String _avTransport = 'urn:schemas-upnp-org:service:AVTransport:1';
   static const String _rendering = 'urn:schemas-upnp-org:service:RenderingControl:1';
-  static const String _connection =
-      'urn:schemas-upnp-org:service:ConnectionManager:1';
+  static const String _connection = 'urn:schemas-upnp-org:service:ConnectionManager:1';
 
-  final StreamController<CastPlaybackEvent> _events =
-      StreamController<CastPlaybackEvent>.broadcast();
+  final StreamController<CastPlaybackEvent> _events = StreamController<CastPlaybackEvent>.broadcast();
 
   /// Control endpoints for every renderer found, by device id.
   final Map<String, _Renderer> _found = <String, _Renderer>{};
@@ -98,9 +96,8 @@ class DlnaCastService implements CastService {
 
     // Descriptions are fetched together: a television that is slow to answer
     // should not hold up one that is quick.
-    final described = locations.isEmpty
-        ? const <_Renderer?>[]
-        : await Future.wait(locations.map(_describe), eagerError: false);
+    final described =
+        locations.isEmpty ? const <_Renderer?>[] : await Future.wait(locations.map(_describe), eagerError: false);
 
     final seen = <String>{};
     for (final renderer in described) {
@@ -114,8 +111,7 @@ class DlnaCastService implements CastService {
       // A set that restarted comes back on a new port; the one being talked
       // to follows it there rather than going on knocking at the old one.
       final target = _target;
-      if (target != null && target.id == renderer.id &&
-          target.avTransport != renderer.avTransport) {
+      if (target != null && target.id == renderer.id && target.avTransport != renderer.avTransport) {
         _target = renderer;
       }
     }
@@ -193,11 +189,11 @@ class DlnaCastService implements CastService {
       final messages = [
         for (final st in _searchTargets)
           'M-SEARCH * HTTP/1.1\r\n'
-              'HOST: $_group:$_port\r\n'
-              'MAN: "ssdp:discover"\r\n'
-              'MX: 2\r\n'
-              'ST: $st\r\n'
-              '\r\n'
+                  'HOST: $_group:$_port\r\n'
+                  'MAN: "ssdp:discover"\r\n'
+                  'MX: 2\r\n'
+                  'ST: $st\r\n'
+                  '\r\n'
               .codeUnits,
       ];
 
@@ -342,8 +338,8 @@ class DlnaCastService implements CastService {
     // that was merely slow.
     try {
       await _retrying(
-        () => _soap(renderer.avTransport, _avTransport, 'GetTransportInfo',
-            '<InstanceID>0</InstanceID>').timeout(const Duration(seconds: 6)),
+        () => _soap(renderer.avTransport, _avTransport, 'GetTransportInfo', '<InstanceID>0</InstanceID>')
+            .timeout(const Duration(seconds: 6)),
         what: 'GetTransportInfo on ${renderer.name}',
       );
     } on CastException {
@@ -361,8 +357,7 @@ class DlnaCastService implements CastService {
     // as an mkv with its subtitle or as a plain mp4 depends on the answer,
     // and the film is usually sent the moment this returns.
     if (renderer.acceptsMatroska == null) {
-      await _reportWhatItAccepts(renderer)
-          .timeout(const Duration(seconds: 4), onTimeout: () {});
+      await _reportWhatItAccepts(renderer).timeout(const Duration(seconds: 4), onTimeout: () {});
     }
   }
 
@@ -391,10 +386,7 @@ class DlnaCastService implements CastService {
   }
 
   static bool _transient(Object e) =>
-      e is TimeoutException ||
-      e is SocketException ||
-      e is HttpException ||
-      (e is CastException && e.retryable);
+      e is TimeoutException || e is SocketException || e is HttpException || (e is CastException && e.retryable);
 
   /// Asks the set what it can actually play, and writes it down.
   ///
@@ -411,26 +403,25 @@ class DlnaCastService implements CastService {
     if (control == null) return;
     try {
       final reply = await _soap(
-        control, _connection, 'GetProtocolInfo', '',
+        control,
+        _connection,
+        'GetProtocolInfo',
+        '',
       );
       final sink = _tag(reply ?? '', 'Sink') ?? '';
       if (sink.isEmpty) {
         debugPrint('[cast] ${renderer.name} lists no formats');
         return;
       }
-      final video = sink
-          .split(',')
-          .where((f) => f.contains('video/'))
-          .toList();
+      final video = sink.split(',').where((f) => f.contains('video/')).toList();
       debugPrint('[cast] ${renderer.name} accepts ${video.length} video formats');
       // Whether a Matroska file is worth sending. A set that names the
       // format plays it; one that lists formats and leaves it out will
       // refuse it, and is handed the mp4 straight away rather than after a
       // failed try; one that says `*` has not said.
       final lower = sink.toLowerCase();
-      renderer.acceptsMatroska = lower.contains('matroska') || lower.contains('mkv')
-          ? true
-          : (lower.contains(':*:*') ? null : false);
+      renderer.acceptsMatroska =
+          lower.contains('matroska') || lower.contains('mkv') ? true : (lower.contains(':*:*') ? null : false);
       debugPrint('[cast] ${renderer.name} plays matroska: ${renderer.acceptsMatroska ?? "unknown"}');
       // The profile names are what matter, and there can be hundreds, so
       // only the distinct ones are worth the log.
@@ -459,8 +450,8 @@ class DlnaCastService implements CastService {
     final renderer = _target;
     if (renderer == null) return;
     try {
-      await _soap(renderer.avTransport, _avTransport, 'Stop',
-          '<InstanceID>0</InstanceID>').timeout(const Duration(seconds: 4));
+      await _soap(renderer.avTransport, _avTransport, 'Stop', '<InstanceID>0</InstanceID>')
+          .timeout(const Duration(seconds: 4));
       await _clearScreen();
     } catch (_) {}
     _target = null;
@@ -491,8 +482,7 @@ class DlnaCastService implements CastService {
     if (renderer == null) throw const CastException('لا يوجد جهاز متصل');
     final generation = ++_generation;
 
-    final mime = media.contentType ??
-        (media.isHls ? 'application/x-mpegURL' : 'video/mp4');
+    final mime = media.contentType ?? (media.isHls ? 'application/x-mpegURL' : 'video/mp4');
 
     // The set fetches through the phone rather than straight from the CDN.
     // It cannot do the https the catalogue serves, and it will not follow
@@ -507,10 +497,8 @@ class DlnaCastService implements CastService {
     final clock = Stopwatch()..start();
     // Started now and waited for later, inside the server, once the film's
     // index has been read: the two downloads overlap instead of queueing.
-    final wantsSubtitle = !media.isLive &&
-        !media.isHls &&
-        media.subtitleUrl != null &&
-        renderer.acceptsMatroska != false;
+    final wantsSubtitle =
+        !media.isLive && !media.isHls && media.subtitleUrl != null && renderer.acceptsMatroska != false;
     final subtitle = wantsSubtitle ? _subtitleText(media.subtitleUrl!) : null;
 
     final plan = _Plan(
@@ -560,12 +548,14 @@ class DlnaCastService implements CastService {
       final publishTook = timer.elapsedMilliseconds - before;
       // The server's word on what it ended up serving is the extension.
       plan.servedMkv = served.endsWith('.mkv');
-      final servedMime = plan.servedMkv ? 'video/x-matroska' : plan.mime;
+      // A live channel goes out as one joined mpeg-ts (or mp4) stream, and
+      // the set is told so, not "playlist".
+      final servedMime = plan.servedMkv ? 'video/x-matroska' : (_local.lastMime ?? plan.mime);
 
       // The same features the server puts in its replies: a set that
       // compares the two refuses a film whose description and delivery
       // disagree. OP=01 is what gives the television a scrubber.
-      final protocol = 'http-get:*:$servedMime:${LocalStreamServer.dlnaFeatures}';
+      final protocol = 'http-get:*:$servedMime:${_local.lastFeatures}';
 
       // Size and duration where they are known. A Samsung reads the size
       // before it reads a byte of the film, and shows «cannot play» for a
@@ -599,8 +589,8 @@ class DlnaCastService implements CastService {
             _avTransport,
             'SetAVTransportURI',
             '<InstanceID>0</InstanceID>'
-            '<CurrentURI>${_escape(served)}</CurrentURI>'
-            '<CurrentURIMetaData>${_escape(didl)}</CurrentURIMetaData>',
+                '<CurrentURI>${_escape(served)}</CurrentURI>'
+                '<CurrentURIMetaData>${_escape(didl)}</CurrentURIMetaData>',
           ),
           what: 'SetAVTransportURI',
         );
@@ -678,8 +668,7 @@ class DlnaCastService implements CastService {
       }
       String state;
       try {
-        final reply = await _soap(renderer.avTransport, _avTransport,
-            'GetTransportInfo', '<InstanceID>0</InstanceID>');
+        final reply = await _soap(renderer.avTransport, _avTransport, 'GetTransportInfo', '<InstanceID>0</InstanceID>');
         state = _tag(reply ?? '', 'CurrentTransportState') ?? '';
       } catch (_) {
         // The position poll counts the silences; this only counts states.
@@ -776,7 +765,7 @@ class DlnaCastService implements CastService {
   Future<void> seek(Duration position) => _transport(
         'Seek',
         '<InstanceID>0</InstanceID><Unit>REL_TIME</Unit>'
-        '<Target>${_clock(position)}</Target>',
+            '<Target>${_clock(position)}</Target>',
       );
 
   @override
@@ -809,7 +798,7 @@ class DlnaCastService implements CastService {
         _avTransport,
         'SetAVTransportURI',
         '<InstanceID>0</InstanceID><CurrentURI></CurrentURI>'
-        '<CurrentURIMetaData></CurrentURIMetaData>',
+            '<CurrentURIMetaData></CurrentURIMetaData>',
       ).timeout(const Duration(seconds: 4));
     } catch (_) {}
   }
@@ -822,9 +811,12 @@ class DlnaCastService implements CastService {
     final value = (volume.clamp(0.0, 1.0) * 100).round();
     if (value > 0) _volumeBeforeMute = volume.clamp(0.0, 1.0);
     try {
-      await _soap(control, _rendering, 'SetVolume',
+      await _soap(
+          control,
+          _rendering,
+          'SetVolume',
           '<InstanceID>0</InstanceID><Channel>Master</Channel>'
-          '<DesiredVolume>$value</DesiredVolume>');
+              '<DesiredVolume>$value</DesiredVolume>');
     } catch (e) {
       debugPrint('[cast] volume: $e');
     }
@@ -838,9 +830,12 @@ class DlnaCastService implements CastService {
     // needed when a set turns out not to implement it.
     if (control == null) return setVolume(muted ? 0 : _volumeBeforeMute);
     try {
-      await _soap(control, _rendering, 'SetMute',
+      await _soap(
+          control,
+          _rendering,
+          'SetMute',
           '<InstanceID>0</InstanceID><Channel>Master</Channel>'
-          '<DesiredMute>${muted ? 1 : 0}</DesiredMute>');
+              '<DesiredMute>${muted ? 1 : 0}</DesiredMute>');
     } catch (_) {
       await setVolume(muted ? 0 : _volumeBeforeMute);
     }
@@ -896,8 +891,7 @@ class DlnaCastService implements CastService {
     if (_stallSaid || DateTime.now().difference(_lastMoved) < _stallAfter) return;
     String state;
     try {
-      final reply = await _soap(renderer.avTransport, _avTransport,
-          'GetTransportInfo', '<InstanceID>0</InstanceID>');
+      final reply = await _soap(renderer.avTransport, _avTransport, 'GetTransportInfo', '<InstanceID>0</InstanceID>');
       state = _tag(reply ?? '', 'CurrentTransportState') ?? '';
     } catch (_) {
       return;
@@ -915,8 +909,7 @@ class DlnaCastService implements CastService {
     if (renderer == null || _events.isClosed || _lost || _asking) return;
     _asking = true;
     try {
-      final reply = await _soap(renderer.avTransport, _avTransport,
-          'GetPositionInfo', '<InstanceID>0</InstanceID>');
+      final reply = await _soap(renderer.avTransport, _avTransport, 'GetPositionInfo', '<InstanceID>0</InstanceID>');
       // The verdict may have come in while this was waiting.
       if (_lost || _events.isClosed) return;
       if (reply == null) return;
@@ -965,8 +958,7 @@ class DlnaCastService implements CastService {
   // parallel, but the sheet shows nothing until the slowest answers — and a
   // set that has stopped answering the phone (which happens) held the whole
   // list back for the full six. Three is still generous for a LAN.
-  final HttpClient _http = HttpClient()
-    ..connectionTimeout = const Duration(seconds: 3);
+  final HttpClient _http = HttpClient()..connectionTimeout = const Duration(seconds: 3);
 
   /// The subtitle file, as text — or null, in which case the film goes
   /// without rather than not at all.
@@ -1069,11 +1061,8 @@ class DlnaCastService implements CastService {
     return text;
   }
 
-  static String _escape(String text) => text
-      .replaceAll('&', '&amp;')
-      .replaceAll('<', '&lt;')
-      .replaceAll('>', '&gt;')
-      .replaceAll('"', '&quot;');
+  static String _escape(String text) =>
+      text.replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('>', '&gt;').replaceAll('"', '&quot;');
 
   /// UPnP wants `H:MM:SS`, and will not take anything else.
   static String _clock(Duration d) {
