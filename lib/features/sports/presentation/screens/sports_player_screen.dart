@@ -1397,6 +1397,9 @@ class _SportsPlayerScreenState extends ConsumerState<_SportsPlayerBody> with Wid
             SizedBox.expand(
               child: FittedBox(
                 fit: _videoFit,
+                // Anchored to the top: what a cover crops comes off the
+                // foot of the picture, never the scoreboard at its head.
+                alignment: Alignment.topCenter,
                 clipBehavior: Clip.hardEdge,
                 child: SizedBox(
                   width: 16,
@@ -1413,6 +1416,7 @@ class _SportsPlayerScreenState extends ConsumerState<_SportsPlayerBody> with Wid
               child: SizedBox.expand(
                 child: FittedBox(
                   fit: _videoFit,
+                  alignment: Alignment.topCenter,
                   clipBehavior: Clip.hardEdge,
                   child: Transform.scale(
                     scaleX: 1.018,

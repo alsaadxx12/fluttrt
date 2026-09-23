@@ -351,6 +351,8 @@ class _ShahidPlayerScreenState extends ConsumerState<ShahidPlayerScreen> {
                   SizedBox.expand(
                     child: FittedBox(
                       fit: BoxFit.cover,
+                      // Cropped at the foot, never the head.
+                      alignment: Alignment.topCenter,
                       clipBehavior: Clip.hardEdge,
                       child: SizedBox(
                         width: 16,
@@ -366,6 +368,8 @@ class _ShahidPlayerScreenState extends ConsumerState<ShahidPlayerScreen> {
                   SizedBox.expand(
                     child: FittedBox(
                       fit: BoxFit.cover,
+                      // Cropped at the foot, never the head.
+                      alignment: Alignment.topCenter,
                       clipBehavior: Clip.hardEdge,
                       child: SizedBox(
                         width: v.value.size.width > 0 ? v.value.size.width : 1280,

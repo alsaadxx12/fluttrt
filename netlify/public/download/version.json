@@ -1,15 +1,15 @@
 {
   "updateEnabled": true,
-  "versionCode": 2206,
-  "versionName": "1.0.200",
-  "apkUrl": "https://cineball.netlify.app/download/app.apk?v=206",
-  "apkUrlArm64": "https://cineball.netlify.app/download/app-arm64-v8a-release.apk?v=206",
-  "apkUrlArm32": "https://cineball.netlify.app/download/app-armeabi-v7a-release.apk?v=206",
-  "sha256": "0bf7156aaa681e2c22b8cbd50f81917b71da6570bab855866a325659a0445dfe",
-  "sha256Arm64": "0bf7156aaa681e2c22b8cbd50f81917b71da6570bab855866a325659a0445dfe",
-  "sha256Arm32": "81417c349a5e090bb2a22cebcc72882b8d3b5af7f0e5e008a5bf78cc1a76f800",
-  "sizeBytes": 25525751,
+  "versionCode": 2207,
+  "versionName": "1.0.201",
+  "apkUrl": "https://cineball.netlify.app/download/app.apk?v=207",
+  "apkUrlArm64": "https://cineball.netlify.app/download/app-arm64-v8a-release.apk?v=207",
+  "apkUrlArm32": "https://cineball.netlify.app/download/app-armeabi-v7a-release.apk?v=207",
+  "sha256": "758e1b23654244d52e87ea3795b535e90563f7285bf1fac5237bd0edad0d7b90",
+  "sha256Arm64": "758e1b23654244d52e87ea3795b535e90563f7285bf1fac5237bd0edad0d7b90",
+  "sha256Arm32": "3aa094169d62737a99f05369ec23cd52d61b99520f7c5f70076d36001c72aa0e",
+  "sizeBytes": 25531813,
   "forceUpdate": false,
   "minSupportedVersion": 1,
-  "notes": "دراما آسيوية بلا تبويب فارغ، وبطاقات عريضة بلا قصّ"
+  "notes": "قناة الرياضية 1 في قسم القنوات بأعلى جودة"
 }
