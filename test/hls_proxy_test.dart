@@ -38,11 +38,12 @@ void main() {
       expect(list.encrypted, isTrue);
     });
 
-    test('the first pieces sent leave the set about twelve seconds in hand, no more', () {
+    test('the first pieces sent leave the set about eight seconds in hand, no more', () {
       List<LivePiece> pieces(double seconds, int count) =>
           List.generate(count, (i) => LivePiece('https://a/$i.ts', seconds));
-      expect(LocalStreamServer.liveStart(pieces(10, 7)), 5, reason: 'two ten-second pieces');
-      expect(LocalStreamServer.liveStart(pieces(4, 6)), 3, reason: 'three four-second pieces');
+      expect(LocalStreamServer.liveStart(pieces(10, 7)), 6, reason: 'one ten-second piece');
+      expect(LocalStreamServer.liveStart(pieces(4, 6)), 4, reason: 'two four-second pieces');
+      expect(LocalStreamServer.liveStart(pieces(2, 8)), 4, reason: 'four two-second pieces');
       expect(LocalStreamServer.liveStart(pieces(30, 5)), 4, reason: 'one long piece is enough');
       expect(LocalStreamServer.liveStart(pieces(10, 1)), 0);
     });
@@ -155,10 +156,10 @@ void main() {
       fetches = 0;
 
       final (_, bytes) = await fetch(address);
-      // First reading: pieces 0..3, joined three from the end: 1, 2, 3.
+      // First reading: pieces 0..3, joined two from the end: 2, 3.
       // Second: 1..4, only 4 is new. Third: 2..5 and the end: 5.
       final order = [for (var i = 1; i < bytes.length; i += 1000) bytes[i]];
-      expect(order, [1, 2, 3, 4, 5]);
+      expect(order, [2, 3, 4, 5]);
     });
   });
 }

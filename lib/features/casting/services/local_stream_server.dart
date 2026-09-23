@@ -953,6 +953,14 @@ class LocalStreamServer {
     var misses = 0;
     var why = 'done';
     var reported = 0;
+    // When each piece first showed up in the playlist, by this clock, and
+    // the newest one seen so far: the next is due about a piece after it,
+    // which is when the playlist is worth reading again.
+    final seenAt = <int, int>{};
+    var newestSeen = -1;
+    var newestAt = 0;
+    var lagTotal = 0;
+    var lagCount = 0;
     try {
       while (!gone()) {
         LivePlaylist? list;
@@ -971,6 +979,15 @@ class LocalStreamServer {
         }
         misses = 0;
         final pieces = list.pieces;
+        final newest = list.sequence + pieces.length - 1;
+        if (pieces.isNotEmpty && newest > newestSeen) {
+          final now = clock.elapsedMilliseconds;
+          for (var s = max(newestSeen + 1, list.sequence); s <= newest; s++) {
+            seenAt[s] = now;
+          }
+          newestSeen = newest;
+          newestAt = now;
+        }
         // The first time, from near the live edge, leaving the set a few
         // seconds in hand. After that, from the piece after the last one
         // sent; and when the window has moved past that, from the start of
@@ -992,6 +1009,11 @@ class LocalStreamServer {
             debugPrint('[cast] live: piece ${list.sequence + i} skipped');
           }
           last = list.sequence + i;
+          final appeared = seenAt.remove(last);
+          if (appeared != null) {
+            lagTotal += clock.elapsedMilliseconds - appeared;
+            lagCount++;
+          }
         }
         if (list.ended) {
           why = 'the channel ended';
@@ -1002,22 +1024,26 @@ class LocalStreamServer {
         // playlist says when each piece was.
         if (clock.elapsedMilliseconds - reported > 30000 && pieces.isNotEmpty) {
           reported = clock.elapsedMilliseconds;
-          final newest = list.sequence + pieces.length - 1;
           final sentAt = last - list.sequence;
           final piece = sentAt >= 0 && sentAt < pieces.length ? pieces[sentAt] : null;
           final at = piece?.at;
           final age = at == null
               ? ''
               : ', ${DateTime.now().toUtc().difference(at.toUtc()).inSeconds - piece!.duration.round()}s old';
-          debugPrint('[cast] live: at piece $last of $newest (${newest - last} back$age), '
+          final handed =
+              lagCount == 0 ? '' : ', handed on ${(lagTotal / lagCount / 1000).toStringAsFixed(1)}s after appearing';
+          debugPrint('[cast] live: at piece $last of $newest (${newest - last} back$age$handed), '
               '${(sent / 1e6).toStringAsFixed(1)}MB in ${(clock.elapsedMilliseconds / 1000).round()}s');
         }
         if (!any) {
-          // Nothing new yet: back for the playlist in a moment. A quarter
-          // of a piece, and never more than three seconds - every second
-          // waited here is a second further behind the game.
-          final wait = (list.target * 250).round();
-          await Future<void>.delayed(Duration(milliseconds: wait.clamp(1000, 3000)));
+          // Nothing new yet. The next piece is due about a piece after the
+          // newest appeared: sleep until just before then, and from there
+          // look every third of a second. Every second spent waiting here
+          // is a second further behind the game.
+          final period = ((pieces.isNotEmpty ? pieces.last.duration : list.target) * 1000).round();
+          final untilDue = newestAt + period - clock.elapsedMilliseconds;
+          final wait = untilDue > 1500 ? min(untilDue - 1000, 3000) : 350;
+          await Future<void>.delayed(Duration(milliseconds: wait));
         }
       }
       await socket.flush();
@@ -1032,13 +1058,16 @@ class LocalStreamServer {
   }
 
   /// Where to begin in a playlist read for the first time: as close to the
-  /// end as leaves the set about twelve seconds in hand. Every piece back
-  /// from the end is that much further behind the game.
+  /// end as leaves the set about eight seconds in hand - one piece, on a
+  /// channel cut into ten-second pieces. Every piece back from the end is
+  /// that much further behind the game, and the next piece is on its way
+  /// before this one has played out: a piece takes a few seconds to hand
+  /// on and appears a piece-length after the one before.
   @visibleForTesting
   static int liveStart(List<LivePiece> pieces) {
     var covered = 0.0;
     var i = pieces.length;
-    while (i > 0 && covered < 12) {
+    while (i > 0 && covered < 8) {
       i--;
       covered += pieces[i].duration > 0 ? pieces[i].duration : 6;
     }
