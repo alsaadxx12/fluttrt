@@ -277,15 +277,6 @@ class _FilmCard extends StatelessWidget {
                 ],
               ),
             ),
-            const Positioned(
-              top: 10,
-              left: 10,
-              child: CircleAvatar(
-                radius: 17,
-                backgroundColor: Color(0xE6E50914),
-                child: Icon(Icons.play_arrow_rounded, color: Colors.white, size: 22),
-              ),
-            ),
           ],
         ),
       ),

@@ -257,9 +257,6 @@ class _FranchiseCard extends ConsumerWidget {
     if (async.hasValue && films.length < DynamicFranchise.minParts)
       return const SizedBox.shrink();
 
-    final partsCountLabel = films.isNotEmpty
-        ? FilmFranchise.countLabel(films)
-        : '${franchise.entries.length} أجزاء';
 
     return FranchisePressable(
       onTap: films.isEmpty
@@ -291,37 +288,8 @@ class _FranchiseCard extends ConsumerWidget {
                       ? const PosterFanPlaceholder()
                       : PosterFan(films: films),
                 ),
-                // No words under the fan: the posters say what the series
-                // is, and the button says what to do. The count is the
-                // tooltip's, for whoever holds the button.
-                Padding(
-                  padding: const EdgeInsets.fromLTRB(12, 2, 12, 10),
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.end,
-                    children: [
-                      Tooltip(
-                        message: partsCountLabel,
-                        child: Container(
-                          width: 34,
-                          height: 34,
-                          decoration: BoxDecoration(
-                            color: const Color(0xFFE50914),
-                            shape: BoxShape.circle,
-                            boxShadow: [
-                              BoxShadow(
-                                color: const Color(0xFFE50914).withOpacity(0.4),
-                                blurRadius: 8,
-                                offset: const Offset(0, 3),
-                              ),
-                            ],
-                          ),
-                          child: const Icon(Icons.play_arrow_rounded,
-                              color: Colors.white, size: 22),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
+                // Nothing under the fan: the posters are the card.
+                const SizedBox(height: 8),
               ],
             ),
           ],
@@ -709,26 +677,6 @@ class _FranchiseFilmTileState extends State<FranchiseFilmTile> {
 
               // Center Play button on hover
               if (_isHovered)
-                Center(
-                  child: Container(
-                    width: 44,
-                    height: 44,
-                    decoration: BoxDecoration(
-                      color: const Color(0xFFE50914).withOpacity(0.92),
-                      shape: BoxShape.circle,
-                      boxShadow: [
-                        BoxShadow(
-                          color: Colors.black.withOpacity(0.4),
-                          blurRadius: 10,
-                          offset: const Offset(0, 3),
-                        ),
-                      ],
-                    ),
-                    child: const Icon(Icons.play_arrow_rounded,
-                        color: Colors.white, size: 28),
-                  ),
-                ),
-
               // 4. Content INSIDE the card (Year, Rating — the poster
               //    carries the name)
               Positioned(

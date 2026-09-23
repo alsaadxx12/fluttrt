@@ -349,9 +349,6 @@ class _DynCardState extends ConsumerState<_DynCard> {
     final p = AppPalette.of(context);
     final f = widget.franchise;
     final parts = f.parts;
-    final label = f.partsResolved
-        ? FilmFranchise.countLabel(parts)
-        : (f.lead.isSeries ? 'مسلسل • جارٍ جلب الأجزاء…' : 'جارٍ جلب الأجزاء…');
 
     return FranchisePressable(
       onTap: () async {
@@ -379,37 +376,8 @@ class _DynCardState extends ConsumerState<_DynCard> {
             Column(
               children: [
                 Expanded(child: PosterFan(films: parts)),
-                // No words under the fan: the posters say what the series
-                // is, and the button says what to do. The count is the
-                // tooltip's, for whoever holds the button.
-                Padding(
-                  padding: const EdgeInsets.fromLTRB(12, 2, 12, 10),
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.end,
-                    children: [
-                      Tooltip(
-                        message: label,
-                        child: Container(
-                          width: 34,
-                          height: 34,
-                          decoration: BoxDecoration(
-                            color: const Color(0xFFE50914),
-                            shape: BoxShape.circle,
-                            boxShadow: [
-                              BoxShadow(
-                                color: const Color(0xFFE50914).withOpacity(0.4),
-                                blurRadius: 8,
-                                offset: const Offset(0, 3),
-                              ),
-                            ],
-                          ),
-                          child: const Icon(Icons.play_arrow_rounded,
-                              color: Colors.white, size: 22),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
+                // Nothing under the fan: the posters are the card.
+                const SizedBox(height: 8),
               ],
             ),
           ],

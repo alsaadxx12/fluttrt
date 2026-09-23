@@ -1628,23 +1628,6 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                                   ),
                                 ],
                               ],
-                              const SizedBox(height: 8),
-                              // Play / Watch - flat, no glow
-                              Container(
-                                width: 34,
-                                height: 34,
-                                decoration: BoxDecoration(
-                                  shape: BoxShape.circle,
-                                  color: match.isLive
-                                      ? const Color(0xFFFF2A4A)
-                                      : const Color(0xFFE50914),
-                                ),
-                                child: const Icon(
-                                  Icons.play_arrow_rounded,
-                                  color: Colors.white,
-                                  size: 22,
-                                ),
-                              ),
                             ],
                           ),
                         ),
