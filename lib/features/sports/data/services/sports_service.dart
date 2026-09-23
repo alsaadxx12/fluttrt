@@ -560,6 +560,9 @@ class SportsService {
         final isBadgeEnded = badgeClass.contains('status-ended') || badgeText.contains('انتهت');
         final isBadgeLive = badgeClass.contains('status-live') || badgeText.contains('مباشر');
         final isYesterdayMatch = matchDay.contains('أمس') || matchDay.contains('yesterday');
+        // The today page lists tomorrow's games too, each marked «غدًا»;
+        // their time is tomorrow's, not today's.
+        final isTomorrowMatch = matchDay.contains('غد') || matchDay.contains('tomorrow');
 
         // When viewing today's or tomorrow's tab: If Kora x90 is displaying yesterday's matches (or ended matches)
         // because there are no matches scheduled, filter them out so the tab accurately reflects that there are no matches.
@@ -609,7 +612,7 @@ class SportsService {
         if (dataStart != null && dataStart > 0) {
           kickoffAt = DateTime.fromMillisecondsSinceEpoch(dataStart * 1000, isUtc: true).toIso8601String();
         } else if (scoreTime.contains(':')) {
-          kickoffAt = parseTimeToUtcIso(scoreTime, day: day);
+          kickoffAt = parseTimeToUtcIso(scoreTime, day: isTomorrowMatch && day == 'today' ? 'tomorrow' : day);
         } else {
           kickoffAt = '';
         }

@@ -1149,6 +1149,36 @@ class _SportsScreenState extends ConsumerState<SportsScreen> {
     );
   }
 
+  /// «اليوم», «غدًا», «أمس», or the day and month: when the match is.
+  String _dateLabel(String kickoffAt) {
+    final at = DateTime.tryParse(kickoffAt)?.toLocal();
+    if (at == null) return '';
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+    final day = DateTime(at.year, at.month, at.day);
+    final diff = day.difference(today).inDays;
+    if (diff == 0) return 'اليوم';
+    if (diff == 1) return 'غدًا';
+    if (diff == -1) return 'أمس';
+    return '${at.day.toString().padLeft(2, '0')}/${at.month.toString().padLeft(2, '0')}';
+  }
+
+  Widget _buildDateLine(SportMatchItem match, bool isDark) {
+    final label = _dateLabel(match.kickoffAt);
+    if (label.isEmpty) return const SizedBox.shrink();
+    return Padding(
+      padding: const EdgeInsets.only(top: 2),
+      child: Text(
+        label,
+        style: TextStyle(
+          fontSize: 11,
+          fontWeight: FontWeight.w700,
+          color: isDark ? Colors.white60 : Colors.black45,
+        ),
+      ),
+    );
+  }
+
   Widget _buildCenterVsSection(SportMatchItem match, bool isDark) {
     final kickoffTime = _formatKickoff(match.kickoffAt);
 
@@ -1170,6 +1200,7 @@ class _SportsScreenState extends ConsumerState<SportsScreen> {
               ),
             ),
           ),
+          _buildDateLine(match, isDark),
         ],
       );
     }
@@ -1193,6 +1224,7 @@ class _SportsScreenState extends ConsumerState<SportsScreen> {
               ),
             ),
           ),
+          _buildDateLine(match, isDark),
         ],
       );
     }
@@ -1220,6 +1252,7 @@ class _SportsScreenState extends ConsumerState<SportsScreen> {
             ],
           ),
         ),
+        _buildDateLine(match, isDark),
         const SizedBox(height: 6),
         _buildVsBadge(isDark, isProminent: true),
       ],
