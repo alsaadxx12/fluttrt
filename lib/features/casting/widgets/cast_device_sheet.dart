@@ -87,13 +87,14 @@ class _CastSheetState extends ConsumerState<_CastSheet> {
       // it is given, and a modal sheet is given the whole screen to fill —
       // so «at least half» became «all of it», and the sheet climbed to the
       // top. A height says what it means.
-      // Six tenths of the screen: room for the animation at the size it is
-      // shown now and two or three screens under it.
-      height: MediaQuery.of(context).size.height * 0.62,
-      decoration: const BoxDecoration(
-        // Black to the edges, the same ground the animation is drawn for.
-        color: Colors.black,
-        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      // Half the screen: the animation strip, a line of words, and two or
+      // three screens under it.
+      height: MediaQuery.of(context).size.height * 0.5,
+      decoration: BoxDecoration(
+        // The same colour as the bar under it, exactly: the two read as
+        // one surface.
+        color: p.bg,
+        borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
       ),
       padding:
           EdgeInsets.only(bottom: MediaQuery.of(context).viewInsets.bottom),
@@ -597,8 +598,15 @@ class _CastMark extends StatelessWidget {
   /// Smaller, when there are words to make room for under it.
   final bool compact;
 
-  static const double _full = 250;
-  static const double _small = 190;
+  /// The strip the animation is shown in.
+  static const double _full = 150;
+  static const double _small = 112;
+
+  /// The Lottie draws its mark in the middle third of a square canvas and
+  /// leaves the rest empty, so shown whole it is small. The canvas is
+  /// scaled to this many times the strip and clipped to it: the mark
+  /// itself is then what fills the width.
+  static const double _zoom = 3.7;
 
   @override
   Widget build(BuildContext context) {
@@ -613,28 +621,31 @@ class _CastMark extends StatelessWidget {
       );
     }
 
+    final canvas = size * _zoom;
     return AnimatedSize(
       duration: const Duration(milliseconds: 220),
       curve: Curves.easeOut,
       child: SizedBox(
         height: size,
-        child: Center(
-          child: GestureDetector(
-            onLongPress: () => CastDiagnosticsPage.open(context),
-            // Straight onto the black sheet, no plate: the animation is
-            // drawn for a dark ground and is the whole head of the sheet.
-            child: SizedBox(
-              width: size,
-              height: size,
+        width: double.infinity,
+        child: GestureDetector(
+          onLongPress: () => CastDiagnosticsPage.open(context),
+          child: ClipRect(
+            child: OverflowBox(
+              minWidth: canvas,
+              maxWidth: canvas,
+              minHeight: canvas,
+              maxHeight: canvas,
+              alignment: Alignment.center,
               child: Lottie.asset(
                 'assets/animations/live_tv.json',
                 repeat: true,
+                width: canvas,
+                height: canvas,
                 fit: BoxFit.contain,
                 // One asset failing is no reason for the sheet to arrive empty.
-                errorBuilder: (_, __, ___) => const Icon(
-                  Icons.tv_rounded,
-                  color: Color(0xFFE50914),
-                  size: 96,
+                errorBuilder: (_, __, ___) => const Center(
+                  child: Icon(Icons.tv_rounded, color: Color(0xFFE50914), size: 96),
                 ),
               ),
             ),

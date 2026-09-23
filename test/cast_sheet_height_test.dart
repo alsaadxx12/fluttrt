@@ -27,7 +27,7 @@ void main() {
     );
   });
 
-  testWidgets('the sheet is six tenths of the screen, not all of it', (tester) async {
+  testWidgets('the sheet is half the screen, not all of it', (tester) async {
     const screen = Size(400, 800);
     // The view, not the surface: setSurfaceSize resizes what is drawn but
     // leaves MediaQuery reporting the default 800x600, and the sheet sizes
@@ -68,8 +68,8 @@ void main() {
     final sheet = find.byKey(const ValueKey('cast-sheet'));
     final height = tester.getSize(sheet).height;
 
-    expect(height, moreOrLessEquals(screen.height * 0.62, epsilon: 1),
-        reason: 'six tenths of the display, so the sheet stops well short of the top');
+    expect(height, moreOrLessEquals(screen.height * 0.5, epsilon: 1),
+        reason: 'half the display, so the sheet stops around the middle');
     expect(height, lessThan(screen.height * 0.7),
         reason: 'it should never climb to the top of the screen');
 
