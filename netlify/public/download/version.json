@@ -1,15 +1,15 @@
 {
   "updateEnabled": true,
-  "versionCode": 2183,
-  "versionName": "1.0.177",
-  "apkUrl": "https://cineball.netlify.app/download/app.apk?v=183",
-  "apkUrlArm64": "https://cineball.netlify.app/download/app-arm64-v8a-release.apk?v=183",
-  "apkUrlArm32": "https://cineball.netlify.app/download/app-armeabi-v7a-release.apk?v=183",
-  "sha256": "a54d66a44ec22ff220e49ac016af20b612e3d9b05eb6aac9aedd0404b93c6e53",
-  "sha256Arm64": "a54d66a44ec22ff220e49ac016af20b612e3d9b05eb6aac9aedd0404b93c6e53",
-  "sha256Arm32": "0bc4590253102e955c9a95e1e9db058926cc027e3f41c80ab6ec40915c32b8a3",
-  "sizeBytes": 25496497,
+  "versionCode": 2184,
+  "versionName": "1.0.178",
+  "apkUrl": "https://cineball.netlify.app/download/app.apk?v=184",
+  "apkUrlArm64": "https://cineball.netlify.app/download/app-arm64-v8a-release.apk?v=184",
+  "apkUrlArm32": "https://cineball.netlify.app/download/app-armeabi-v7a-release.apk?v=184",
+  "sha256": "b18336791ccfa15521fd99904f8781459e82669ff3d27955fc15d79cc9b76eef",
+  "sha256Arm64": "b18336791ccfa15521fd99904f8781459e82669ff3d27955fc15d79cc9b76eef",
+  "sha256Arm32": "df0cbc9d1b6af1d9ea77eb00f2761ccf79c470c8eefc0443fb021021ec8df307",
+  "sizeBytes": 25496379,
   "forceUpdate": false,
   "minSupportedVersion": 1,
-  "notes": "صفحة رئيسية جديدة: بطاقات أصغر وأنظف بلا تسميات، قسم السلاسل الكبير، شريطان زجاجيان، وصور عريضة عالية الدقة للمسلسلات"
+  "notes": "بث المباريات على التلفاز، وتصحيح تشكيلات المباريات، ورفع أسرع للتحديثات"
 }
