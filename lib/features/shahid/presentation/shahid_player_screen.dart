@@ -273,7 +273,9 @@ class _ShahidPlayerScreenState extends ConsumerState<ShahidPlayerScreen> {
   /// the player was opened straight into it, out of the player altogether.
   void _leaveFullscreen() {
     if (widget.startFullscreen) {
-      Navigator.of(context).maybePop();
+      // pop, not maybePop: the PopScope round the full-screen picture
+      // answers maybePop by calling this again, and the app stood still.
+      Navigator.of(context).pop();
     } else {
       _setFullscreen(false);
     }
@@ -330,152 +332,157 @@ class _ShahidPlayerScreenState extends ConsumerState<ShahidPlayerScreen> {
         onTapDown: (_) => _holdControls(),
         onTap: _toggleControls,
         onTapCancel: _scheduleHide,
-        child: ColoredBox(
-          color: Colors.black,
-          child: Stack(
-            alignment: Alignment.center,
-            children: [
-              if (isDesktop && _desktopVideoController != null)
-                Center(
-                  child: AspectRatio(
-                    aspectRatio: 16 / 9,
-                    child: Video(
-                      controller: _desktopVideoController!,
-                      controls: NoVideoControls,
+        // Filling whatever it is given: a stack left to size itself round
+        // a spinner put the spinner in the corner of the screen.
+        child: SizedBox.expand(
+          child: ColoredBox(
+            color: Colors.black,
+            child: Stack(
+              alignment: Alignment.center,
+              children: [
+                if (isDesktop && _desktopVideoController != null)
+                  Center(
+                    child: AspectRatio(
+                      aspectRatio: 16 / 9,
+                      child: Video(
+                        controller: _desktopVideoController!,
+                        controls: NoVideoControls,
+                      ),
+                    ),
+                  )
+                else if (v != null && v.value.isInitialized)
+                  Center(
+                    child: AspectRatio(
+                      aspectRatio: v.value.aspectRatio == 0 ? 16 / 9 : v.value.aspectRatio,
+                      child: VideoPlayer(v),
                     ),
                   ),
-                )
-              else if (v != null && v.value.isInitialized)
-                Center(
-                  child: AspectRatio(
-                    aspectRatio: v.value.aspectRatio == 0 ? 16 / 9 : v.value.aspectRatio,
-                    child: VideoPlayer(v),
-                  ),
-                ),
-              if (_loading || (buffering && _error == null)) const CircularProgressIndicator(color: Color(0xFFE50914)),
-              if (_error != null)
-                Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    const Icon(Icons.wifi_off_rounded, color: Colors.white54, size: 34),
-                    const SizedBox(height: 8),
-                    Text(_error!, style: const TextStyle(color: Colors.white, fontSize: 13)),
-                    const SizedBox(height: 12),
-                    Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        ElevatedButton.icon(
-                          onPressed: () => _open(_current),
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: const Color(0xFFE50914),
-                            foregroundColor: Colors.white,
+                if (_loading || (buffering && _error == null))
+                  const CircularProgressIndicator(color: Color(0xFFE50914)),
+                if (_error != null)
+                  Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const Icon(Icons.wifi_off_rounded, color: Colors.white54, size: 34),
+                      const SizedBox(height: 8),
+                      Text(_error!, style: const TextStyle(color: Colors.white, fontSize: 13)),
+                      const SizedBox(height: 12),
+                      Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          ElevatedButton.icon(
+                            onPressed: () => _open(_current),
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: const Color(0xFFE50914),
+                              foregroundColor: Colors.white,
+                            ),
+                            icon: const Icon(Icons.refresh_rounded, size: 18),
+                            label: const Text('إعادة المحاولة'),
                           ),
-                          icon: const Icon(Icons.refresh_rounded, size: 18),
-                          label: const Text('إعادة المحاولة'),
-                        ),
-                        const SizedBox(width: 8),
-                        OutlinedButton.icon(
-                          onPressed: () => Navigator.of(context).maybePop(),
-                          style: OutlinedButton.styleFrom(
-                            foregroundColor: Colors.white,
-                            side: const BorderSide(color: Colors.white38),
+                          const SizedBox(width: 8),
+                          OutlinedButton.icon(
+                            onPressed: () => Navigator.of(context).maybePop(),
+                            style: OutlinedButton.styleFrom(
+                              foregroundColor: Colors.white,
+                              side: const BorderSide(color: Colors.white38),
+                            ),
+                            icon: const Icon(Icons.arrow_back_rounded, size: 18),
+                            label: const Text('رجوع'),
                           ),
-                          icon: const Icon(Icons.arrow_back_rounded, size: 18),
-                          label: const Text('رجوع'),
-                        ),
-                      ],
-                    ),
-                  ],
-                ),
-              // Pause and resume, in the middle of the picture: the one
-              // control a live channel needs.
-              if (_controlsVisible &&
-                  (_video != null || _desktopVideoController != null) &&
-                  _error == null &&
-                  !_loading)
-                GestureDetector(
-                  onTap: _togglePlay,
-                  child: Container(
-                    width: 66,
-                    height: 66,
-                    decoration: BoxDecoration(
-                      color: Colors.black.withOpacity(0.45),
-                      shape: BoxShape.circle,
-                      border: Border.all(color: Colors.white30, width: 0.8),
-                    ),
-                    child: Icon(
-                      _playing ? Icons.pause_rounded : Icons.play_arrow_rounded,
-                      color: Colors.white,
-                      size: 42,
-                    ),
+                        ],
+                      ),
+                    ],
                   ),
-                ),
-              if (_controlsVisible && (_video != null || _desktopVideoController != null) && _error == null) ...[
-                // Back button on fullscreen
-                if (_fullscreen)
-                  PositionedDirectional(
-                    top: 10,
-                    start: 10,
-                    child: SafeArea(
-                      child: IconButton(
-                        icon: const Icon(Icons.arrow_back_rounded, color: Colors.white, size: 24),
-                        onPressed: _leaveFullscreen,
-                        tooltip: 'رجوع',
+                // Pause and resume, in the middle of the picture: the one
+                // control a live channel needs.
+                if (_controlsVisible &&
+                    (_video != null || _desktopVideoController != null) &&
+                    _error == null &&
+                    !_loading)
+                  GestureDetector(
+                    onTap: _togglePlay,
+                    child: Container(
+                      width: 66,
+                      height: 66,
+                      decoration: BoxDecoration(
+                        color: Colors.black.withOpacity(0.45),
+                        shape: BoxShape.circle,
+                        border: Border.all(color: Colors.white30, width: 0.8),
+                      ),
+                      child: Icon(
+                        _playing ? Icons.pause_rounded : Icons.play_arrow_rounded,
+                        color: Colors.white,
+                        size: 42,
                       ),
                     ),
                   ),
-                // LIVE
-                PositionedDirectional(
-                  top: 10,
-                  end: 14,
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
-                    decoration: BoxDecoration(
-                      color: const Color(0xFFE50914),
-                      borderRadius: BorderRadius.circular(4),
+                if (_controlsVisible && (_video != null || _desktopVideoController != null) && _error == null) ...[
+                  // Back button on fullscreen
+                  if (_fullscreen)
+                    PositionedDirectional(
+                      top: 10,
+                      start: 10,
+                      child: SafeArea(
+                        child: IconButton(
+                          icon: const Icon(Icons.arrow_back_rounded, color: Colors.white, size: 24),
+                          onPressed: _leaveFullscreen,
+                          tooltip: 'رجوع',
+                        ),
+                      ),
                     ),
-                    child: const Text(
-                      'LIVE',
-                      style: TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.w900),
+                  // LIVE
+                  PositionedDirectional(
+                    top: 10,
+                    end: 14,
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFE50914),
+                        borderRadius: BorderRadius.circular(4),
+                      ),
+                      child: const Text(
+                        'LIVE',
+                        style: TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.w900),
+                      ),
                     ),
                   ),
-                ),
-                // To the television, from the picture itself.
-                if (_fullscreen)
+                  // To the television, from the picture itself.
+                  if (_fullscreen)
+                    PositionedDirectional(
+                      bottom: 8,
+                      end: 52,
+                      child: Consumer(
+                        builder: (context, ref, _) {
+                          final casting = ref.watch(isCastingProvider);
+                          return IconButton(
+                            onPressed: _castCurrent,
+                            tooltip: 'البث على التلفاز',
+                            icon: Icon(
+                              casting ? Icons.cast_connected_rounded : Icons.cast_rounded,
+                              color: casting ? const Color(0xFFE50914) : Colors.white,
+                              size: 24,
+                            ),
+                          );
+                        },
+                      ),
+                    ),
+                  // fullscreen toggle
                   PositionedDirectional(
                     bottom: 8,
-                    end: 52,
-                    child: Consumer(
-                      builder: (context, ref, _) {
-                        final casting = ref.watch(isCastingProvider);
-                        return IconButton(
-                          onPressed: _castCurrent,
-                          tooltip: 'البث على التلفاز',
-                          icon: Icon(
-                            casting ? Icons.cast_connected_rounded : Icons.cast_rounded,
-                            color: casting ? const Color(0xFFE50914) : Colors.white,
-                            size: 24,
-                          ),
-                        );
-                      },
+                    end: 8,
+                    child: IconButton(
+                      onPressed: () => _fullscreen ? _leaveFullscreen() : _setFullscreen(true),
+                      icon: Icon(
+                        _fullscreen ? Icons.fullscreen_exit_rounded : Icons.fullscreen_rounded,
+                        color: Colors.white,
+                        size: 28,
+                      ),
+                      tooltip: _fullscreen ? 'إلغاء ملء الشاشة' : 'ملء الشاشة',
                     ),
                   ),
-                // fullscreen toggle
-                PositionedDirectional(
-                  bottom: 8,
-                  end: 8,
-                  child: IconButton(
-                    onPressed: () => _fullscreen ? _leaveFullscreen() : _setFullscreen(true),
-                    icon: Icon(
-                      _fullscreen ? Icons.fullscreen_exit_rounded : Icons.fullscreen_rounded,
-                      color: Colors.white,
-                      size: 28,
-                    ),
-                    tooltip: _fullscreen ? 'إلغاء ملء الشاشة' : 'ملء الشاشة',
-                  ),
-                ),
+                ],
               ],
-            ],
+            ),
           ),
         ),
       ),

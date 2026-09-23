@@ -1,3 +1,5 @@
+import 'dart:ui';
+
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -11,15 +13,21 @@ import '../../../shahid/presentation/shahid_player_screen.dart';
 import '../../../sports/data/services/alkass_service.dart';
 import '../../../sports/presentation/providers/alkass_provider.dart';
 
-/// Alkass's free channels on the home page: one page-black tile per channel
-/// with its mark filling it, and a tap opens the channel full-screen at
-/// once, the other channels a tap away over the picture.
+/// Alkass's free channels on the home page: one glass tile per channel with
+/// its mark across it, and a tap opens the channel full-screen at once.
 class AlkassChannelsRow extends ConsumerWidget {
   const AlkassChannelsRow({super.key});
 
-  static const double _tileW = 236;
-  static const double _tileH = 140;
+  static const double _tileW = 176;
+  static const double _tileH = 104;
   static const double _gap = 12;
+
+  /// The marks come as 1000x1000 pictures with the mark itself a strip
+  /// across the middle, about half the width and a fifth of the height,
+  /// the rest transparent. Shown whole in a card the mark is a thumbnail;
+  /// so the picture is blown up until the mark alone is as wide as the
+  /// card, and the transparent margins fall outside the clip.
+  static const double _zoom = 1.85;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -139,25 +147,44 @@ class _Tile extends StatelessWidget {
           child: ClipRRect(
             borderRadius: BorderRadius.circular(6),
             clipBehavior: Clip.antiAliasWithSaveLayer,
-            // The page's own black under the mark, and the mark as big as
-            // the card allows: no edge, no name.
-            child: ColoredBox(
-              color: AppPalette.of(context).bg,
-              child: Padding(
-                padding: const EdgeInsets.all(4),
+            // Glass, like the match card: a deep blur under a white sheen
+            // and a thin light edge, with the mark across it.
+            child: BackdropFilter(
+              filter: ImageFilter.blur(sigmaX: 24, sigmaY: 24),
+              child: Container(
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                    colors: [Colors.white.withOpacity(0.16), Colors.white.withOpacity(0.05)],
+                  ),
+                  borderRadius: BorderRadius.circular(6),
+                  border: Border.all(color: Colors.white.withOpacity(0.22), width: 0.8),
+                ),
                 child: channel.logo.isEmpty
                     ? const Icon(Icons.live_tv_rounded, color: Colors.white54, size: 40)
-                    : CachedNetworkImage(
-                        imageUrl: channel.logo,
-                        cacheManager: appImageCache,
-                        fit: BoxFit.contain,
-                        filterQuality: FilterQuality.high,
-                        memCacheWidth: 480,
-                        fadeInDuration: Duration.zero,
-                        fadeOutDuration: Duration.zero,
-                        placeholderFadeInDuration: Duration.zero,
-                        placeholder: (_, __) => const SizedBox.shrink(),
-                        errorWidget: (_, __, ___) => const Icon(Icons.live_tv_rounded, color: Colors.white54, size: 40),
+                    : ClipRect(
+                        child: OverflowBox(
+                          maxWidth: double.infinity,
+                          maxHeight: double.infinity,
+                          child: SizedBox(
+                            width: AlkassChannelsRow._tileW * AlkassChannelsRow._zoom,
+                            height: AlkassChannelsRow._tileW * AlkassChannelsRow._zoom,
+                            child: CachedNetworkImage(
+                              imageUrl: channel.logo,
+                              cacheManager: appImageCache,
+                              fit: BoxFit.contain,
+                              filterQuality: FilterQuality.high,
+                              memCacheWidth: 800,
+                              fadeInDuration: Duration.zero,
+                              fadeOutDuration: Duration.zero,
+                              placeholderFadeInDuration: Duration.zero,
+                              placeholder: (_, __) => const SizedBox.shrink(),
+                              errorWidget: (_, __, ___) =>
+                                  const Icon(Icons.live_tv_rounded, color: Colors.white54, size: 40),
+                            ),
+                          ),
+                        ),
                       ),
               ),
             ),
