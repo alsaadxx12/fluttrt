@@ -1,15 +1,15 @@
 {
   "updateEnabled": true,
-  "versionCode": 2198,
-  "versionName": "1.0.192",
-  "apkUrl": "https://cineball.netlify.app/download/app.apk?v=198",
-  "apkUrlArm64": "https://cineball.netlify.app/download/app-arm64-v8a-release.apk?v=198",
-  "apkUrlArm32": "https://cineball.netlify.app/download/app-armeabi-v7a-release.apk?v=198",
-  "sha256": "569d15dfbb27b12fad8e021d199facd22a796570a01b34f36df87bc988c0d449",
-  "sha256Arm64": "569d15dfbb27b12fad8e021d199facd22a796570a01b34f36df87bc988c0d449",
-  "sha256Arm32": "9dabdc89e0037ed09933c4241e6cd38f21454f3b875ea742f4589e8da9204ac2",
-  "sizeBytes": 25517648,
+  "versionCode": 2199,
+  "versionName": "1.0.193",
+  "apkUrl": "https://cineball.netlify.app/download/app.apk?v=199",
+  "apkUrlArm64": "https://cineball.netlify.app/download/app-arm64-v8a-release.apk?v=199",
+  "apkUrlArm32": "https://cineball.netlify.app/download/app-armeabi-v7a-release.apk?v=199",
+  "sha256": "87998a5972b2a5e6ff3c86cb0495bb95d1a2fdf28581dff940bd8aa5001c08f8",
+  "sha256Arm64": "87998a5972b2a5e6ff3c86cb0495bb95d1a2fdf28581dff940bd8aa5001c08f8",
+  "sha256Arm32": "7c8db33cdee8e75f9972abdc02e386be36e925233dc2dbf2cf0ac543c0e61f96",
+  "sizeBytes": 25522564,
   "forceUpdate": false,
   "minSupportedVersion": 1,
-  "notes": "قائمة جانبية أنظف، وبطاقات مباريات بلا وقت مكرر"
+  "notes": "صورة رئيسية تتحرك وحدها مع زرّي + وشاهد"
 }

@@ -31,6 +31,13 @@ class AlkassChannelsRow extends ConsumerWidget {
   /// card, and the transparent margins fall outside the clip.
   static const double _zoom = 1.6;
 
+  /// How wide each mark is inside its 1000x1000 picture, as measured: the
+  /// third is wider than the rest, so it is blown up less, and all four
+  /// come out the same size on the page.
+  static const Map<String, double> _markWidth = {'one': 0.52, 'two': 0.51, 'three': 0.64, 'four': 0.55};
+
+  static double zoomFor(String webname) => _zoom * 0.52 / (_markWidth[webname] ?? 0.52);
+
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final channels = ref.watch(alkassChannelsProvider);
@@ -177,8 +184,8 @@ class _Tile extends ConsumerWidget {
                           maxWidth: double.infinity,
                           maxHeight: double.infinity,
                           child: SizedBox(
-                            width: AlkassChannelsRow._tileW * AlkassChannelsRow._zoom,
-                            height: AlkassChannelsRow._tileW * AlkassChannelsRow._zoom,
+                            width: AlkassChannelsRow._tileW * AlkassChannelsRow.zoomFor(channel.webname),
+                            height: AlkassChannelsRow._tileW * AlkassChannelsRow.zoomFor(channel.webname),
                             child: CachedNetworkImage(
                               imageUrl: channel.logo,
                               cacheManager: appImageCache,
