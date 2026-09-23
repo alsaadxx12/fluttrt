@@ -34,7 +34,14 @@ class AlkassChannelsRow extends ConsumerWidget {
   /// How wide each mark is inside its 1000x1000 picture, as measured: the
   /// third is wider than the rest, so it is blown up less, and all four
   /// come out the same size on the page.
-  static const Map<String, double> _markWidth = {'one': 0.52, 'two': 0.51, 'three': 0.64, 'four': 0.55};
+  static const Map<String, double> _markWidth = {
+    'one': 0.52,
+    'two': 0.51,
+    'three': 0.64,
+    'four': 0.55,
+    // KSA Sports 1: the mark spans nearly the whole picture.
+    'riyadiya1': 0.98,
+  };
 
   static double zoomFor(String webname) => _zoom * 0.52 / (_markWidth[webname] ?? 0.52);
 
@@ -214,7 +221,10 @@ class _Tile extends ConsumerWidget {
 /// Opens [channel] straight into the full-screen picture, with [all] in a
 /// strip over it to switch to: no channel page on the way.
 void openAlkassChannel(BuildContext context, AlkassChannel channel, List<AlkassChannel> all) {
-  final items = all.map(asShahidItem).toList();
+  // A channel from another broadcaster goes in on its own: none of the
+  // others are offered beside it.
+  final siblings = channel.page == null ? all.where((c) => c.page == null) : [channel];
+  final items = siblings.map(asShahidItem).toList();
   Navigator.of(context).push(
     MaterialPageRoute(
       builder: (_) => ShahidPlayerScreen(channel: asShahidItem(channel), channels: items, startFullscreen: true),

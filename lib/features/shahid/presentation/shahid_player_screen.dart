@@ -71,12 +71,16 @@ class _ShahidPlayerScreenState extends ConsumerState<ShahidPlayerScreen> {
   Future<String?> _freshUrl(ShahidItem channel) async {
     final fromShahid = channel.pageUrl.contains('shahid.mbc.net');
     final fromAlkass = channel.pageUrl.contains('alkass.net');
-    return (fromShahid
-            ? await ref.read(shahidServiceProvider).fetchStreamUrl(channel.id)
-            : fromAlkass
-                ? await ref.read(alkassServiceProvider).streamFor(channel.id)
-                : null) ??
-        channel.streamUrl;
+    final fromAloula = channel.pageUrl.contains('aloula.sba.sa');
+    final fresh = fromShahid
+        ? await ref.read(shahidServiceProvider).fetchStreamUrl(channel.id)
+        : fromAlkass
+            ? await ref.read(alkassServiceProvider).streamFor(channel.id)
+            : fromAloula
+                ? await ref.read(aloulaServiceProvider).streamFor(channel.id)
+                : null;
+    final fallback = channel.streamUrl;
+    return fresh ?? (fallback == null || fallback.isEmpty ? null : fallback);
   }
 
   /// Sends the channel to the television, the way a match is sent: pairs

@@ -11,6 +11,8 @@ class AlkassChannel {
     required this.streamUrl,
     required this.isPremium,
     required this.sorting,
+    this.page,
+    this.alwaysFree = false,
   });
 
   final int id;
@@ -33,17 +35,26 @@ class AlkassChannel {
 
   final int sorting;
 
-  bool get isFree => !isPremium && streamUrl.isNotEmpty;
+  /// The page the channel is opened at, when it is not one of Alkass's:
+  /// what tells the player where to ask for a fresh address.
+  final String? page;
+
+  /// Free without an address in hand: one whose address is fetched only
+  /// on opening, because the one the platform hands out lasts minutes.
+  final bool alwaysFree;
+
+  bool get isFree => alwaysFree || (!isPremium && streamUrl.isNotEmpty);
 
   /// When the address stops working, as the token in it says; null when
   /// the address carries no token.
   DateTime? get expiresAt => AlkassService.expiryOf(streamUrl);
 
   /// The address the site opens the channel at.
-  String get pageUrl => 'https://shoof.alkass.net/live-tv?ch=$webname';
+  String get pageUrl => page ?? 'https://shoof.alkass.net/live-tv?ch=$webname';
 
-  /// The name shown on a card: «الكأس 1», «شوف 1».
+  /// The name shown on a card: «الكأس 1», «شوف 1», «الرياضية 1».
   String get arabicTitle {
+    if (page != null) return title.replaceFirst(RegExp(r'^قناة\s+'), '').trim();
     final m = RegExp(r'^Alkass\s+(\d+)$', caseSensitive: false).firstMatch(title.trim());
     if (m != null) return 'الكأس ${m.group(1)}';
     final s = RegExp(r'^shoof\s*(\d+)$', caseSensitive: false).firstMatch(title.trim());
