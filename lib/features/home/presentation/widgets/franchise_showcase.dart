@@ -516,6 +516,7 @@ class FranchiseScreen extends ConsumerWidget {
                       ),
                       itemCount: films.length,
                       itemBuilder: (context, i) => FranchiseFilmTile(
+                        key: ValueKey(films[i].id),
                           film: films[i], number: films.length - i),
                     );
                   },
@@ -543,9 +544,12 @@ class _FranchiseFilmTileState extends State<FranchiseFilmTile> {
     final film = widget.film;
     final number = widget.number;
     final dpr = MediaQuery.of(context).devicePixelRatio;
-    // High-resolution image: bestPosterUrl or imgUrl
-    final posterUrl =
-        film.bestPosterUrl.isNotEmpty ? film.bestPosterUrl : film.cardImageUrl;
+    // The poster sized for the tile - the same medium poster the home page
+    // rows use, so it is already on the phone and shows at once. The full
+    // poster (up to 2.4MB apiece) left a page of grey tiles on a slow
+    // line, each picture flashing up only to be replaced when the list
+    // resolved and the tile was handed another film.
+    final posterUrl = film.imageForWidth(175 * dpr);
 
     return MouseRegion(
       onEnter: (_) => setState(() => _isHovered = true),

@@ -447,8 +447,11 @@ class DynamicFranchiseScreen extends ConsumerWidget {
               childAspectRatio: 0.67,
             ),
             itemCount: films.length,
+            // Keyed by the film: when the parts resolve and the list is
+            // re-sorted, each tile keeps its own picture instead of showing
+            // another film's and then a blank while it fetches.
             itemBuilder: (context, i) =>
-                FranchiseFilmTile(film: films[i], number: films.length - i),
+                FranchiseFilmTile(key: ValueKey(films[i].id), film: films[i], number: films.length - i),
           );
         },
       ),
