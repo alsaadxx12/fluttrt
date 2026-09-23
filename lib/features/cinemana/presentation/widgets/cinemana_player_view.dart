@@ -116,6 +116,11 @@ class _CinemanaPlayerViewState extends State<CinemanaPlayerView> {
   static const _barHeight = 46.0;
 
   bool _controlsVisible = true;
+
+  /// Full screen fills the screen: the picture keeps its shape and a
+  /// sliver is cropped at the foot (never the head), instead of black
+  /// bars round it. Off, the whole picture shows, bars and all.
+  bool _cover = true;
   Timer? _hideTimer;
   double? _dragMs; // seek bar position while dragging
   bool _preview = false; // sample subtitle line after a settings change
@@ -244,7 +249,20 @@ class _CinemanaPlayerViewState extends State<CinemanaPlayerView> {
         builder: (context, box) => Stack(
           fit: StackFit.expand,
           children: [
-            if (showView)
+            if (showView && widget.fullscreen && _cover)
+              SizedBox.expand(
+                child: FittedBox(
+                  fit: BoxFit.cover,
+                  alignment: Alignment.topCenter,
+                  clipBehavior: Clip.hardEdge,
+                  child: SizedBox(
+                    width: c.value.size.width > 0 ? c.value.size.width : 1280,
+                    height: c.value.size.height > 0 ? c.value.size.height : 720,
+                    child: VideoPlayer(c),
+                  ),
+                ),
+              )
+            else if (showView)
               Center(
                 child: AspectRatio(
                   aspectRatio: c.value.aspectRatio > 0 ? c.value.aspectRatio : 16 / 9,
@@ -356,8 +374,9 @@ class _CinemanaPlayerViewState extends State<CinemanaPlayerView> {
     // The picture's own box inside the player (letterboxing aside), so the
     // subtitles sit on the video rather than on the black bars.
     final ar = c.value.aspectRatio > 0 ? c.value.aspectRatio : 16 / 9;
-    final videoH = (box.maxWidth / ar).clamp(0.0, box.maxHeight);
-    final barsH = (box.maxHeight - videoH) / 2;
+    final covering = widget.fullscreen && _cover;
+    final videoH = covering ? box.maxHeight : (box.maxWidth / ar).clamp(0.0, box.maxHeight);
+    final barsH = covering ? 0.0 : (box.maxHeight - videoH) / 2;
     final fontSize = (videoH * SubtitleSettings.scales[s.size]).clamp(11.0, 46.0);
     var bottom = barsH + videoH * (0.045 + s.lift);
     // Out of the way of the seek bar while it is showing.
@@ -534,6 +553,13 @@ class _CinemanaPlayerViewState extends State<CinemanaPlayerView> {
                 ],
               ],
               if (widget.streams.length > 1) _qualityMenu(),
+              if (widget.fullscreen)
+                _roundButton(
+                  _cover ? Icons.crop_free_rounded : Icons.fit_screen_rounded,
+                  () => setState(() => _cover = !_cover),
+                  size: 22,
+                  tip: _cover ? 'الأبعاد الأصلية' : 'ملء الشاشة بلا حواف',
+                ),
               _roundButton(
                 widget.fullscreen ? Icons.fullscreen_exit_rounded : Icons.fullscreen_rounded,
                 widget.onToggleFullscreen,
@@ -680,6 +706,13 @@ class _CinemanaPlayerViewState extends State<CinemanaPlayerView> {
                   ),
                   Text(_clock(v.duration), style: timeStyle),
                   const SizedBox(width: 4),
+                  if (widget.fullscreen)
+                    _roundButton(
+                      _cover ? Icons.crop_free_rounded : Icons.fit_screen_rounded,
+                      () => setState(() => _cover = !_cover),
+                      size: 24,
+                      tip: _cover ? 'الأبعاد الأصلية' : 'ملء الشاشة بلا حواف',
+                    ),
                   _roundButton(
                     widget.fullscreen ? Icons.fullscreen_exit_rounded : Icons.fullscreen_rounded,
                     widget.onToggleFullscreen,
