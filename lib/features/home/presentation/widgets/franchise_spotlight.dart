@@ -23,6 +23,8 @@ typedef WideStillKey = ({
   String id,
   String title,
   String altTitle,
+  String hint,
+  bool series,
   String year
 });
 
@@ -36,6 +38,10 @@ WideStillKey wideStillKeyFor(CinemanaItem item) {
     id: item.id,
     title: en.isNotEmpty ? en : ar,
     altTitle: en.isNotEmpty && ar != en ? ar : '',
+    // The original name, when the catalogue left it in the poster's file
+    // name - the way to TMDB for a dub it names in Arabic only.
+    hint: TmdbService.hintFromImageName(item.imgUrl ?? item.imgThumbUrl),
+    series: item.isSeries,
     year: item.year.trim(),
   );
 }
@@ -59,11 +65,10 @@ final spotlightBackdropProvider =
   if (key.title.isEmpty) return null;
   // TMDB by title and year; then by title alone, since a year the source
   // guessed at is a year TMDB will not agree with; then the other name.
-  return await _tmdb.backdropForTitle(key.title, year: key.year) ??
-      (key.year.isEmpty ? null : await _tmdb.backdropForTitle(key.title)) ??
+  return await _tmdb.backdropForTitle(key.title, year: key.year, series: key.series, hint: key.hint) ??
       (key.altTitle.isEmpty
           ? null
-          : await _tmdb.backdropForTitle(key.altTitle, year: key.year)) ??
+          : await _tmdb.backdropForTitle(key.altTitle, year: key.year, series: key.series)) ??
       (key.altTitle.isEmpty || key.year.isEmpty
           ? null
           : await _tmdb.backdropForTitle(key.altTitle));

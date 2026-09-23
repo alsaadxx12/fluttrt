@@ -129,19 +129,68 @@ class TmdbService {
   /// landscape, and TMDB has one for nearly every film people know by
   /// name. Searched by title and year, the first match with a backdrop
   /// wins.
-  Future<String?> backdropForTitle(String title, {String? year}) async {
-    final q = title.trim();
-    if (!TmdbConfig.isConfigured || q.isEmpty) return null;
+  /// A wide still (a 16:9 backdrop) for the title, or null.
+  ///
+  /// The catalogue's names are not TMDB's: «مسلسل طبيعة الحب مدبلج» is a
+  /// listing, not a title. The words a listing adds are taken off first,
+  /// and a series is looked for among series (a film among films) under
+  /// the language the name is in. [hint] is a further name to try - the
+  /// Turkish original that the catalogue leaves in its picture's file
+  /// name («Doganin-Kanunu»), which TMDB knows when the Arabic dub's
+  /// name means nothing to it.
+  Future<String?> backdropForTitle(
+    String title, {
+    String? year,
+    bool? series,
+    String? hint,
+  }) async {
+    if (!TmdbConfig.isConfigured) return null;
+    final q = cleanTitle(title);
+    final arabic = RegExp(r'[؀-ۿ]').hasMatch(q);
+    final lang = arabic ? 'ar-SA' : 'en-US';
+    final tries = <Future<String?> Function()>[
+      if (q.isNotEmpty && series == true)
+        () => _searchBackdrop('/search/tv', q, lang, year: year, yearKey: 'first_air_date_year'),
+      if (q.isNotEmpty && series == true && year != null && year.isNotEmpty)
+        () => _searchBackdrop('/search/tv', q, lang),
+      if (q.isNotEmpty && series == false) () => _searchBackdrop('/search/movie', q, lang, year: year, yearKey: 'year'),
+      if (q.isNotEmpty) () => _searchBackdrop('/search/multi', q, lang, year: year, yearKey: 'year'),
+      if (q.isNotEmpty && year != null && year.isNotEmpty) () => _searchBackdrop('/search/multi', q, lang),
+    ];
+    var h = cleanTitle(hint ?? '');
+    if (h.isEmpty && arabic) {
+      // A listing in two scripts («الأسيرة Esaret») carries the original
+      // name in the Latin half.
+      final latin = q.replaceAll(RegExp(r'[^A-Za-zÇĞİÖŞÜçğıöşü ]+'), ' ').replaceAll(RegExp(r'\s+'), ' ').trim();
+      if (latin.length >= 4) h = latin;
+    }
+    if (h.isNotEmpty && h.toLowerCase() != q.toLowerCase()) {
+      // The original is most often Turkish; TMDB matches an original name
+      // under any language, so English is asked next for everything else.
+      tries.add(() => _searchBackdrop(series == false ? '/search/movie' : '/search/tv', h, 'tr-TR'));
+      tries.add(() => _searchBackdrop('/search/multi', h, 'en-US'));
+    }
+    for (final attempt in tries) {
+      final found = await attempt();
+      if (found != null) return found;
+    }
+    return null;
+  }
+
+  Future<String?> _searchBackdrop(
+    String path,
+    String query,
+    String language, {
+    String? year,
+    String? yearKey,
+  }) async {
     try {
-      // An Arabic title is matched against TMDB's Arabic translations, which
-      // is where a Turkish or Arabic series dubbed for the region is found.
-      final arabic = RegExp(r'[؀-ۿ]').hasMatch(q);
       final res = await _dio.get<Map<String, dynamic>>(
-        '/search/multi',
+        path,
         queryParameters: {
-          'query': q,
-          'language': arabic ? 'ar-SA' : 'en-US',
-          if (year != null && year.isNotEmpty) 'year': year,
+          'query': query,
+          'language': language,
+          if (year != null && year.isNotEmpty && yearKey != null) yearKey: year,
           'include_adult': false,
         },
       );
@@ -153,10 +202,73 @@ class TmdbService {
           return 'https://image.tmdb.org/t/p/w1280$path';
         }
       }
-      return null;
-    } catch (_) {
-      return null;
+    } catch (_) {}
+    return null;
+  }
+
+  /// The title as TMDB would know it: without the words a catalogue
+  /// listing adds («مسلسل», «مدبلج», «Dubbed», a season or an episode,
+  /// «HD»), without brackets, and tidied.
+  static String cleanTitle(String title) {
+    var t = title.trim();
+    if (t.isEmpty) return '';
+    for (final word in const [
+      'مسلسل',
+      'فيلم',
+      'مدبلجة',
+      'مدبلج',
+      'مترجمة',
+      'مترجم',
+      'كاملة',
+      'كامل',
+      'للعربية',
+      'بالعربي',
+      'Dubbed',
+      'dubbed',
+      'Subbed',
+      'subbed',
+      'Mudblij',
+      'mudblij',
+      'Mublij',
+      'mublij',
+    ]) {
+      t = t.replaceAll(word, ' ');
     }
+    t = t
+        .replaceAll(RegExp(r'(الموسم|الجزء|الحلقة|season|Season|episode|Episode)\s*\S*'), ' ')
+        .replaceAll(RegExp(r'\b(HD|4K|1080p|720p)\b'), ' ')
+        .replaceAll(RegExp(r'[\(\)\[\]\{\}|:–]+'), ' ')
+        .replaceAll(RegExp(r'\s+-\s+'), ' ')
+        .replaceAll(RegExp(r'\s+'), ' ')
+        .trim();
+    return t;
+  }
+
+  /// A name hidden in a picture's file name, or an empty string: the
+  /// catalogue names its posters after the original («Doganin-Kanunu-2.jpg»,
+  /// «Muhtemel-Ask-mublij-1.jpg»), which is a name TMDB knows. A file named
+  /// by a code («Q0CCR-1.jpg», «rGUzU.jpg», a GUID) gives nothing.
+  static String hintFromImageName(String? imageUrl) {
+    if (imageUrl == null || imageUrl.isEmpty) return '';
+    var name = Uri.tryParse(imageUrl)?.pathSegments.lastOrNull ?? '';
+    name = Uri.decodeComponent(name);
+    final dot = name.lastIndexOf('.');
+    if (dot > 0) name = name.substring(0, dot);
+    final words = name
+        .split(RegExp(r'[-_ .]+'))
+        .where((w) => w.isNotEmpty)
+        .where((w) => !RegExp(r'^\d+$').hasMatch(w))
+        .where((w) => !RegExp(r'^m[uo]d?bl[a-z]*$', caseSensitive: false).hasMatch(w))
+        .where((w) =>
+            !const {'poster', 'screenshot', 'thumb', 'cover', 'scaled', 'copy', 'dubbed'}.contains(w.toLowerCase()))
+        .toList();
+    if (words.length < 1) return '';
+    final joined = words.join(' ');
+    // Letters only, with a vowel, and no long token of mixed case and digits.
+    if (!RegExp(r'^[A-Za-zÇĞİÖŞÜçğıöşü ]+$').hasMatch(joined)) return '';
+    if (!RegExp(r'[aeiouAEIOUıİöÖüÜ]').hasMatch(joined)) return '';
+    if (words.length == 1 && (words.first.length < 5 || RegExp(r'[a-z][A-Z]').hasMatch(words.first))) return '';
+    return joined;
   }
 
   /// The best trailer key for one film, or null.
