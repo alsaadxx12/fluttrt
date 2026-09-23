@@ -49,7 +49,7 @@ class FranchisesShowcase extends StatelessWidget {
                 _titles[section]!,
                 style: TextStyle(
                     color: p.text,
-                    fontSize: 18,
+                    fontSize: 15,
                     fontWeight: FontWeight.w900,
                     letterSpacing: -0.3),
               ),

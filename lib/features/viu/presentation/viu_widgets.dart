@@ -20,7 +20,7 @@ class ViuPosterCard extends StatelessWidget {
   final ViuShow show;
   final double width;
 
-  const ViuPosterCard({super.key, required this.show, this.width = 130});
+  const ViuPosterCard({super.key, required this.show, this.width = 104});
 
   @override
   Widget build(BuildContext context) {
@@ -66,22 +66,7 @@ class ViuPosterCard extends StatelessWidget {
                     ),
                   ),
                 ),
-                PositionedDirectional(
-                  start: 8,
-                  end: 8,
-                  bottom: 8,
-                  child: Text(
-                    show.displayName,
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontSize: 12,
-                      fontWeight: FontWeight.w800,
-                      height: 1.25,
-                    ),
-                  ),
-                ),
+                // No name on the poster: the poster is the card.
               ],
             ),
           ),
@@ -119,7 +104,7 @@ class ViuHomeSection extends ConsumerWidget {
                   category.title,
                   style: TextStyle(
                     color: isDark ? Colors.white : const Color(0xFF0F172A),
-                    fontSize: 18,
+                    fontSize: 15,
                     fontWeight: FontWeight.w900,
                     letterSpacing: -0.3,
                   ),
@@ -150,7 +135,7 @@ class ViuHomeSection extends ConsumerWidget {
           ),
           const SizedBox(height: 12),
           SizedBox(
-            height: 195,
+            height: 156,
             child: ListView.separated(
               padding: const EdgeInsets.symmetric(horizontal: 16),
               scrollDirection: Axis.horizontal,
@@ -159,7 +144,7 @@ class ViuHomeSection extends ConsumerWidget {
               separatorBuilder: (_, __) => const SizedBox(width: 12),
               itemBuilder: (_, i) => shows.isEmpty
                   ? Container(
-                      width: 130,
+                      width: 104,
                       decoration: BoxDecoration(
                         color: AppPalette.of(context).skeleton,
                         borderRadius: BorderRadius.circular(16),

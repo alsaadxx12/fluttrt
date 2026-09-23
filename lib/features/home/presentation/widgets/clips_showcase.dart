@@ -197,7 +197,7 @@ class _ClipsShowcaseState extends ConsumerState<ClipsShowcase> {
                   'لقطات ومقاطع',
                   style: TextStyle(
                       color: p.text,
-                      fontSize: 18,
+                      fontSize: 15,
                       fontWeight: FontWeight.w900,
                       letterSpacing: -0.3),
                 ),

@@ -465,7 +465,7 @@ class _TrailersShowcaseState extends ConsumerState<TrailersShowcase> with Widget
                   ),
                 ),
                 Text('مقاطع وإعلانات',
-                    style: TextStyle(color: p.text, fontSize: 18, fontWeight: FontWeight.w900, letterSpacing: -0.3)),
+                    style: TextStyle(color: p.text, fontSize: 15, fontWeight: FontWeight.w900, letterSpacing: -0.3)),
                 const SizedBox(width: 8),
                 Icon(Icons.theaters_rounded, size: 17, color: p.textFaint),
               ],

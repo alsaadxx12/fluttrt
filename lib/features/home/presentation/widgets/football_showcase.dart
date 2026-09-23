@@ -503,7 +503,7 @@ class _ShowcaseRow extends StatelessWidget {
                 title,
                 style: TextStyle(
                   color: isDark ? Colors.white : const Color(0xFF0F172A),
-                  fontSize: 18,
+                  fontSize: 15,
                   fontWeight: FontWeight.w900,
                   letterSpacing: -0.3,
                 ),

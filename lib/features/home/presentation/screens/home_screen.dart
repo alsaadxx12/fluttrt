@@ -1360,7 +1360,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
               Text(
                 title,
                 style: TextStyle(color: _p.text,
-                  fontSize: 18,
+                  fontSize: 15,
                   fontWeight: FontWeight.w900,
                   letterSpacing: -0.3,
                 ),
@@ -1738,7 +1738,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                     title,
                     style: TextStyle(
                       color: Theme.of(context).brightness == Brightness.dark ? Colors.white : const Color(0xFF0F172A),
-                      fontSize: 18,
+                      fontSize: 15,
                       fontWeight: FontWeight.w900,
                       letterSpacing: -0.3,
                     ),
@@ -1975,7 +1975,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                 title,
                 style: TextStyle(
                   color: Theme.of(context).brightness == Brightness.dark ? Colors.white : const Color(0xFF0F172A),
-                  fontSize: 18,
+                  fontSize: 15,
                   fontWeight: FontWeight.w900,
                   letterSpacing: -0.3,
                 ),

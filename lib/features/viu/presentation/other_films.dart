@@ -64,7 +64,7 @@ class OtherFilmCard extends StatelessWidget {
   final OtherFilm film;
   final double width;
 
-  const OtherFilmCard({super.key, required this.film, this.width = 130});
+  const OtherFilmCard({super.key, required this.film, this.width = 104});
 
   @override
   Widget build(BuildContext context) {
@@ -144,7 +144,7 @@ class OtherFilmsSection extends ConsumerWidget {
                   ViuCategory.movies.title,
                   style: TextStyle(
                     color: isDark ? Colors.white : const Color(0xFF0F172A),
-                    fontSize: 18,
+                    fontSize: 15,
                     fontWeight: FontWeight.w900,
                     letterSpacing: -0.3,
                   ),
@@ -173,7 +173,7 @@ class OtherFilmsSection extends ConsumerWidget {
           ),
           const SizedBox(height: 12),
           SizedBox(
-            height: 195,
+            height: 156,
             child: ListView.separated(
               padding: const EdgeInsets.symmetric(horizontal: 16),
               scrollDirection: Axis.horizontal,
@@ -182,7 +182,7 @@ class OtherFilmsSection extends ConsumerWidget {
               separatorBuilder: (_, __) => const SizedBox(width: 12),
               itemBuilder: (_, i) => films.isEmpty
                   ? Container(
-                      width: 130,
+                      width: 104,
                       decoration: BoxDecoration(
                         color: AppPalette.of(context).skeleton,
                         borderRadius: BorderRadius.circular(16),
