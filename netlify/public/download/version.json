@@ -1,15 +1,15 @@
 {
   "updateEnabled": true,
-  "versionCode": 2194,
-  "versionName": "1.0.188",
-  "apkUrl": "https://cineball.netlify.app/download/app.apk?v=194",
-  "apkUrlArm64": "https://cineball.netlify.app/download/app-arm64-v8a-release.apk?v=194",
-  "apkUrlArm32": "https://cineball.netlify.app/download/app-armeabi-v7a-release.apk?v=194",
-  "sha256": "de1ee5a02655d2f62b4e2f5bf0917154046555efae47b943050476cd6979b19b",
-  "sha256Arm64": "de1ee5a02655d2f62b4e2f5bf0917154046555efae47b943050476cd6979b19b",
-  "sha256Arm32": "faf8b547f52fe6fc5dfaded593347e7f4a068d0b91d5c593a09a1e710a097710",
-  "sizeBytes": 25531262,
+  "versionCode": 2195,
+  "versionName": "1.0.189",
+  "apkUrl": "https://cineball.netlify.app/download/app.apk?v=195",
+  "apkUrlArm64": "https://cineball.netlify.app/download/app-arm64-v8a-release.apk?v=195",
+  "apkUrlArm32": "https://cineball.netlify.app/download/app-armeabi-v7a-release.apk?v=195",
+  "sha256": "0d3c0821a1515d5e32746e5aae2b7483394433104b14631d2952e9eac478fd19",
+  "sha256Arm64": "0d3c0821a1515d5e32746e5aae2b7483394433104b14631d2952e9eac478fd19",
+  "sha256Arm32": "faf0d427edcd6a520a5d245e71be31059a7583cc9020ec248742d18d074d0c65",
+  "sizeBytes": 25531666,
   "forceUpdate": false,
   "minSupportedVersion": 1,
-  "notes": "بطاقات مباريات زجاجية، مشغّل قنوات بزر إيقاف وأزرار لا تختفي فجأة"
+  "notes": "بطاقات قنوات زجاجية بشعارات كبيرة، ومشغّل لا يتجمد عند الخروج"
 }
