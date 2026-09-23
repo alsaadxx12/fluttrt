@@ -86,9 +86,11 @@ class _FranchiseSpotlightState extends State<FranchiseSpotlight> {
     return LayoutBuilder(
       builder: (context, box) {
         final width = box.maxWidth;
-        final pictureHeight = width * 10 / 16;
+        // Taller than it is wide, the way a collection is staged: the still
+        // is the whole block, and the words and the cards sit on its foot.
+        final pictureHeight = width * 1.08;
         // The row of parts sits this far up over the picture's foot.
-        const overlap = 56.0;
+        const overlap = 64.0;
         const rowHeight = 156.0;
         final height = pictureHeight - overlap + rowHeight + 8;
         return Column(
@@ -149,9 +151,9 @@ class _SpotlightPage extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final p = AppPalette.of(context);
     final films = ref.watch(franchiseFilmsProvider(franchise.id)).valueOrNull ?? const <CinemanaItem>[];
-    // Release order from the catalogue: the last is the newest, and the
-    // newest is the picture and the first card.
-    final newest = films.isEmpty ? null : films.last;
+    // The catalogue hands the parts newest first: the first is the newest,
+    // and the newest is the picture and the first card.
+    final newest = films.isEmpty ? null : films.first;
     final backdrop = newest == null
         ? null
         : ref.watch(spotlightBackdropProvider(newest.id)).valueOrNull;
@@ -265,20 +267,19 @@ class _SpotlightPage extends ConsumerWidget {
                     physics: const ClampingScrollPhysics(),
                     itemCount: films.length,
                     separatorBuilder: (_, __) => const SizedBox(width: 12),
-                    itemBuilder: (context, i) {
-                      final index = films.length - 1 - i;
-                      return CardEntrance(
-                        group: 'spotlight-${franchise.id}',
+                    // Newest first, as handed over; the number on each is
+                    // its place in release order, so the oldest is «الجزء 1».
+                    itemBuilder: (context, i) => CardEntrance(
+                      group: 'spotlight-${franchise.id}',
+                      index: i,
+                      child: CarouselFocus(
+                        controller: controller,
                         index: i,
-                        child: CarouselFocus(
-                          controller: controller,
-                          index: i,
-                          extent: 116,
-                          width: 104,
-                          child: _PartCard(film: films[index], number: index + 1, newest: i == 0),
-                        ),
-                      );
-                    },
+                        extent: 116,
+                        width: 104,
+                        child: _PartCard(film: films[i], number: films.length - i, newest: i == 0),
+                      ),
+                    ),
                   ),
                 ),
         ),
