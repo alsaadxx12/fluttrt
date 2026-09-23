@@ -150,7 +150,9 @@ void main() {
   });
 
   group('CarouselFocus', () {
-    testWidgets('the card nearest the middle is the largest', (tester) async {
+    testWidgets('every card stands level and full size, wherever it is in the row', (tester) async {
+      // Scaling the cards' rasters left a pale hairline under every card
+      // away from the middle, so the focus effect is off: the row is flat.
       final controller = ScrollController();
       addTearDown(controller.dispose);
 
@@ -159,30 +161,13 @@ void main() {
       );
       await tester.pumpAndSettle();
 
-      // The test surface is 800 wide, so with 142 to a card the middle of
-      // the row falls around the third one.
-      expect(paintedWidth(tester, 2), greaterThan(paintedWidth(tester, 0)),
-          reason: 'the middle card should stand larger than the edge one');
-    });
+      expect(paintedWidth(tester, 2), paintedWidth(tester, 0),
+          reason: 'the middle card is no larger than the edge one');
 
-    testWidgets('scrolling moves the emphasis along the row', (tester) async {
-      final controller = ScrollController();
-      addTearDown(controller.dispose);
-
-      await tester.pumpWidget(
-        MaterialApp(home: _row(controller: controller, count: 12, group: 'c')),
-      );
-      await tester.pumpAndSettle();
-
-      // Card 5 is the last one on screen at rest, out at the edge.
-      final before = paintedWidth(tester, 5);
-      // Three cards along brings it under the middle of the row.
       controller.jumpTo(142 * 3.0);
       await tester.pump();
-      final after = paintedWidth(tester, 5);
-
-      expect(after, greaterThan(before),
-          reason: 'card 5 was out at the edge and is now near the middle');
+      expect(paintedWidth(tester, 5), paintedWidth(tester, 3),
+          reason: 'scrolling changes nothing about their size');
     });
 
     testWidgets('an unattached controller leaves the card alone', (tester) async {

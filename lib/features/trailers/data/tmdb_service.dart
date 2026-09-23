@@ -134,7 +134,7 @@ class TmdbService {
     if (!TmdbConfig.isConfigured || q.isEmpty) return null;
     try {
       final res = await _dio.get<Map<String, dynamic>>(
-        '/search/movie',
+        '/search/multi',
         queryParameters: {
           'query': q,
           'language': 'en-US',
@@ -144,6 +144,7 @@ class TmdbService {
       );
       final results = (res.data?['results'] as List?) ?? const [];
       for (final r in results.whereType<Map<String, dynamic>>()) {
+        if (r['media_type'] == 'person') continue;
         final path = r['backdrop_path'];
         if (path is String && path.isNotEmpty) {
           return 'https://image.tmdb.org/t/p/w1280$path';

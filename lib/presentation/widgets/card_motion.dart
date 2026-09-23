@@ -170,10 +170,16 @@ class CarouselFocus extends StatelessWidget {
   /// Scaled from the top edge and never moved down: a card that dropped
   /// ten points sat below the row's clip, and came back with a flat,
   /// cut-off bottom and a hairline of the page showing under it.
-  static const double _minScale = 0.93;
+  static const double _minScale = 1.0;
 
   @override
   Widget build(BuildContext context) {
+    // No transform at all any more. Scaling the card's raster, however
+    // slightly, resampled its bottom edge into a pale hairline under every
+    // card away from the middle - on three different rows, on a phone, in
+    // three screenshots. The cards now stand still and level; the entrance
+    // is the only motion.
+    if (_minScale >= 1) return child;
     return AnimatedBuilder(
       animation: controller,
       child: child,

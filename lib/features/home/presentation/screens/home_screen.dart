@@ -2147,7 +2147,12 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
   Widget _buildWideSeriesCard(CinemanaItem series) {
     const double cardW = 264;
     const double cardH = 148;
-    final image = series.bestBackdropUrl;
+    // The catalogue's own art is a poster, and a poster cropped wide shows
+    // a strip of a face. A landscape still from TMDB is what a wide card
+    // wants; until it arrives, the poster's top - where the faces are.
+    final own = series.backdropUrl ?? '';
+    final ownIsWide =
+        own.isNotEmpty && own != series.imgUrl && own != series.imgThumbUrl;
 
     return RepaintBoundary(
       child: PressScale(
@@ -2159,32 +2164,40 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
           height: cardH,
           child: ClipRRect(
             borderRadius: BorderRadius.circular(6),
-            child: Stack(
-              fit: StackFit.expand,
-              children: [
-                ColoredBox(color: _p.bg),
-                if (image.isNotEmpty)
-                  CachedNetworkImage(
-                    imageUrl: image,
-                    cacheManager: appImageCache,
-                    fit: BoxFit.cover,
-                    filterQuality: FilterQuality.high,
-                    memCacheWidth: _hiResDecodeWidth(cardW),
-                    fadeInDuration: Duration.zero,
-                    fadeOutDuration: Duration.zero,
-                    placeholderFadeInDuration: Duration.zero,
-                    useOldImageOnUrlChange: true,
-                    placeholder: (_, __) => ColoredBox(color: _p.skeleton),
-                    errorWidget: (_, __, ___) => _buildPosterPlaceholder(),
-                  )
-                else
-                  _buildPosterPlaceholder(),
-              ],
-            ),
+            child: Consumer(builder: (context, ref, _) {
+              final fetched = ownIsWide
+                  ? null
+                  : ref.watch(spotlightBackdropProvider(series.id)).valueOrNull;
+              final wide = ownIsWide ? own : fetched;
+              final image = wide ?? series.cardImageUrl;
+              return Stack(
+                fit: StackFit.expand,
+                children: [
+                  ColoredBox(color: _p.bg),
+                  if (image.isNotEmpty)
+                    CachedNetworkImage(
+                      imageUrl: image,
+                      cacheManager: appImageCache,
+                      fit: BoxFit.cover,
+                      alignment:
+                          wide == null ? Alignment.topCenter : Alignment.center,
+                      filterQuality: FilterQuality.high,
+                      memCacheWidth: _hiResDecodeWidth(cardW),
+                      fadeInDuration: Duration.zero,
+                      fadeOutDuration: Duration.zero,
+                      placeholderFadeInDuration: Duration.zero,
+                      useOldImageOnUrlChange: true,
+                      placeholder: (_, __) => ColoredBox(color: _p.skeleton),
+                      errorWidget: (_, __, ___) => _buildPosterPlaceholder(),
+                    )
+                  else
+                    _buildPosterPlaceholder(),
+                ],
+              );
+            }),
           ),
         ),
       ),
     );
   }
-
 }
