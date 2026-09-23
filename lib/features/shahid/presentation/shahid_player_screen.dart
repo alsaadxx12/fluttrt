@@ -13,6 +13,7 @@ import '../../casting/controllers/cast_controller.dart';
 import '../../casting/services/cast_media_source.dart';
 import '../../casting/services/cast_service.dart';
 import '../../casting/widgets/cast_device_sheet.dart';
+import '../../casting/services/local_stream_server.dart';
 import '../../sports/presentation/providers/alkass_provider.dart';
 import '../data/shahid_models.dart';
 import 'shahid_providers.dart';
@@ -54,9 +55,12 @@ class _ShahidPlayerScreenState extends ConsumerState<ShahidPlayerScreen> {
   Timer? _hideControls;
   int _openToken = 0;
 
+  LocalStreamServer? _relay;
+
   @override
   void initState() {
     super.initState();
+    _relay = ref.read(phoneRelayProvider);
     _current = widget.channel;
     if (widget.startFullscreen) {
       _fullscreen = true;
@@ -127,8 +131,23 @@ class _ShahidPlayerScreenState extends ConsumerState<ShahidPlayerScreen> {
     });
     await old?.dispose();
 
-    final url = await _freshUrl(channel);
+    // Whatever the relay was serving for the last channel is dropped.
+    ref.read(phoneRelayProvider).clear();
+    var url = await _freshUrl(channel);
     if (!mounted || token != _openToken) return;
+    if (url != null && channel.pageUrl.contains('aloula.sba.sa')) {
+      // KSA Sports 1 through the phone's own relay: Akamai in front of it
+      // turns the player's requests away (403) while the app's own, made
+      // with a browser's name, go through. So the app fetches the pieces
+      // and the player reads one continuous stream from the phone.
+      final relayed = await ref.read(phoneRelayProvider).publish(
+            url,
+            contentType: 'application/x-mpegURL',
+            loopback: true,
+          );
+      if (!mounted || token != _openToken) return;
+      if (relayed != null) url = relayed;
+    }
     if (url == null) {
       setState(() {
         _loading = false;
@@ -191,7 +210,8 @@ class _ShahidPlayerScreenState extends ConsumerState<ShahidPlayerScreen> {
 
     final controller = VideoPlayerController.networkUrl(
       Uri.parse(url),
-      formatHint: VideoFormat.hls,
+      // A relayed channel is one continuous mpeg-ts stream, not a playlist.
+      formatHint: url.contains('.m3u8') ? VideoFormat.hls : VideoFormat.other,
       httpHeaders: const {
         'User-Agent':
             'Mozilla/5.0 (Linux; Android 14) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Mobile Safari/537.36',
@@ -302,6 +322,7 @@ class _ShahidPlayerScreenState extends ConsumerState<ShahidPlayerScreen> {
 
   @override
   void dispose() {
+    _relay?.clear();
     _hideControls?.cancel();
     _video?.removeListener(_onVideoEvent);
     _video?.dispose();

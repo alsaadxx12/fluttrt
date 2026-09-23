@@ -100,11 +100,14 @@ class LocalStreamServer {
     String? subtitle,
     Future<String?>? subtitleFuture,
     MkvFill fill = MkvFill.keep,
+    bool loopback = false,
   }) async {
     final server = await _ensureStarted();
     if (server == null) return null;
 
-    final host = await _lanAddress();
+    // [loopback]: for the phone's own player, which reads from the phone
+    // itself and needs no network address at all.
+    final host = loopback ? '127.0.0.1' : await _lanAddress();
     if (host == null) {
       debugPrint('[cast] no local address to serve from');
       return null;
@@ -1070,7 +1073,10 @@ class LocalStreamServer {
           // is a second further behind the game.
           final period = ((pieces.isNotEmpty ? pieces.last.duration : list.target) * 1000).round();
           final untilDue = newestAt + period - clock.elapsedMilliseconds;
-          final wait = untilDue > 1500 ? min(untilDue - 1000, 3000) : 350;
+          // A long DVR playlist (hundreds of kilobytes) is not worth
+          // asking for three times a second.
+          final floor = pieces.length > 500 ? 2000 : 350;
+          final wait = untilDue > 1500 ? min(untilDue - 1000, 3000) : floor;
           await Future<void>.delayed(Duration(milliseconds: wait));
         }
       }
