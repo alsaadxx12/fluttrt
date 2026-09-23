@@ -140,75 +140,6 @@ class _SportsScreenState extends ConsumerState<SportsScreen> {
   /// again on every rebuild.
   List<LeagueGroup>? _warmedGroups;
 
-  /// The channels carrying a match, prominently displaying the broadcaster name and logo.
-  Widget _buildBroadcasterMarks(SportMatchItem match, bool isDark) {
-    final channelName = match.displayBroadcaster.isNotEmpty
-        ? match.displayBroadcaster
-        : (match.broadcasters.isNotEmpty
-            ? match.broadcasters.map((b) => b.name).where((n) => n.isNotEmpty).join(' • ')
-            : '');
-
-    if (channelName.isEmpty || channelName == 'غير معروف') {
-      return const SizedBox.shrink();
-    }
-
-    final withLogos = match.broadcasters.where((b) => b.image.isNotEmpty).toList();
-    final logoUrl = withLogos.isNotEmpty ? withLogos.first.image : null;
-
-    final bg = isDark ? const Color(0xFF131824) : Colors.white;
-    final border = isDark ? const Color(0xFF26334D) : const Color(0xFFE2E8F0);
-
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5.5),
-      decoration: BoxDecoration(
-        color: bg,
-        borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: border, width: 0.8),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          if (logoUrl != null && logoUrl.isNotEmpty) ...[
-            ClipRRect(
-              borderRadius: BorderRadius.circular(4),
-              child: CachedNetworkImage(
-                imageUrl: logoUrl,
-                height: 16,
-                width: 24,
-                fit: BoxFit.contain,
-                errorWidget: (_, __, ___) => const Icon(
-                  Icons.live_tv_rounded,
-                  size: 14,
-                  color: Color(0xFFFF1744),
-                ),
-              ),
-            ),
-            const SizedBox(width: 6),
-          ] else ...[
-            const Icon(
-              Icons.live_tv_rounded,
-              size: 14,
-              color: Color(0xFFFF1744),
-            ),
-            const SizedBox(width: 6),
-          ],
-          Flexible(
-            child: Text(
-              channelName,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: TextStyle(
-                fontSize: 11.5,
-                fontWeight: FontWeight.bold,
-                color: isDark ? Colors.white : const Color(0xFF0F172A),
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
   @override
   Widget build(BuildContext context) {
     ref.listen<bool>(isSportsUnlockedProvider, (previous, next) {
@@ -932,8 +863,9 @@ class _SportsScreenState extends ConsumerState<SportsScreen> {
 
     // Flattened into rows so the list stays lazy: a header, then card rows.
     final rows = <Widget Function(BuildContext)>[];
+    // No headers: the cards run on, in play first, then by kick-off, then
+    // over. Each card says for itself where it stands.
     for (final sec in sections) {
-      rows.add((_) => _buildTimeHeader(sec.title, sec.matches.length, sec.live, isDark, accentColor));
       final ms = sec.matches;
       if (columns <= 1) {
         for (final m in ms) {
@@ -968,48 +900,6 @@ class _SportsScreenState extends ConsumerState<SportsScreen> {
   }
 
 
-
-  /// A section header on the matches page: "in play now" with the live dot,
-  /// or a kick-off time — with how many matches belong to it.
-  Widget _buildTimeHeader(String title, int count, bool live, bool isDark, Color accentColor) {
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(2, 14, 2, 8),
-      child: Row(
-        children: [
-          if (live)
-            Container(
-              width: 9,
-              height: 9,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                color: accentColor,
-                boxShadow: [BoxShadow(color: accentColor, blurRadius: 8, spreadRadius: 2)],
-              ),
-            )
-          else
-            Icon(Icons.schedule_rounded, size: 18, color: isDark ? Colors.white54 : Colors.black45),
-          const SizedBox(width: 8),
-          Text(
-            title,
-            style: TextStyle(fontSize: 15, fontWeight: FontWeight.w900, color: isDark ? Colors.white : Colors.black87),
-          ),
-          const SizedBox(width: 8),
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
-            decoration: BoxDecoration(
-              color: isDark ? const Color(0xFF1E2638) : Colors.white,
-              borderRadius: BorderRadius.circular(6),
-              border: isDark ? null : Border.all(color: AppPalette.of(context).border),
-            ),
-            child: Text(
-              '$count',
-              style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: isDark ? Colors.white70 : Colors.black54),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
 
   Widget _buildMatchCard(
     BuildContext context,
@@ -1082,7 +972,7 @@ class _SportsScreenState extends ConsumerState<SportsScreen> {
           },
           borderRadius: BorderRadius.circular(18),
           child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
             child: Column(
               children: [
                 // 1. Top status header (Match Status / Time / League)
@@ -1134,7 +1024,7 @@ class _SportsScreenState extends ConsumerState<SportsScreen> {
                   ],
                 ),
 
-                const SizedBox(height: 12),
+                const SizedBox(height: 8),
 
                 // 2. Main Match Row: Home Club - VS / Score - Away Club
                 Row(
@@ -1147,9 +1037,9 @@ class _SportsScreenState extends ConsumerState<SportsScreen> {
                         mainAxisSize: MainAxisSize.min,
                         children: [
                           _buildLargeClubLogo(match.home.logo, isDark),
-                          const SizedBox(height: 8),
+                          const SizedBox(height: 6),
                           SizedBox(
-                            height: 38,
+                            height: 34,
                             child: Center(
                               child: Text(
                                 match.home.name,
@@ -1182,9 +1072,9 @@ class _SportsScreenState extends ConsumerState<SportsScreen> {
                         mainAxisSize: MainAxisSize.min,
                         children: [
                           _buildLargeClubLogo(match.away.logo, isDark),
-                          const SizedBox(height: 8),
+                          const SizedBox(height: 6),
                           SizedBox(
-                            height: 38,
+                            height: 34,
                             child: Center(
                               child: Text(
                                 match.away.name,
@@ -1206,25 +1096,19 @@ class _SportsScreenState extends ConsumerState<SportsScreen> {
                   ],
                 ),
 
-                // 2.5 Broadcaster Channel Badge (إذا كانت هناك قناة ناقلة معروفة)
-                // The channels carrying this match, as pictures. No names.
-                if (match.broadcasters.isNotEmpty || match.displayBroadcaster.isNotEmpty) ...[
-                  const SizedBox(height: 10),
-                  _buildBroadcasterMarks(match, isDark),
-                ],
-
-                const SizedBox(height: 14),
-
-                // 3. Action Button: Watch Live (if live), Locked (if upcoming), or Match Details (if ended)
+                // Into the match, for one in play: a round red play button and
+                // nothing else. A match still to come, or over, says so in
+                // its status line and needs no bar of words under it.
                 if (isLive) ...[
+                  const SizedBox(height: 8),
                   Container(
-                    width: double.infinity,
-                    padding: const EdgeInsets.symmetric(vertical: 9.5),
+                    width: 44,
+                    height: 44,
                     decoration: BoxDecoration(
                       gradient: const LinearGradient(
                         colors: [Color(0xFFD50000), Color(0xFFFF1744)],
                       ),
-                      borderRadius: BorderRadius.circular(12),
+                      shape: BoxShape.circle,
                       boxShadow: [
                         BoxShadow(
                           color: const Color(0xFFFF1744).withOpacity(0.35),
@@ -1233,91 +1117,7 @@ class _SportsScreenState extends ConsumerState<SportsScreen> {
                         ),
                       ],
                     ),
-                    child: const Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Icon(
-                          Icons.play_circle_fill_rounded,
-                          color: Colors.white,
-                          size: 17,
-                        ),
-                        SizedBox(width: 8),
-                        Text(
-                          'مشاهدة البث المباشر والتفاصيل',
-                          style: TextStyle(
-                            fontSize: 12.5,
-                            fontWeight: FontWeight.bold,
-                            color: Colors.white,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ] else if (isUpcoming) ...[
-                  Container(
-                    width: double.infinity,
-                    padding: const EdgeInsets.symmetric(vertical: 9.5),
-                    decoration: BoxDecoration(
-                      color: isDark ? const Color(0xFF171E2E) : const Color(0xFFF1F5F9),
-                      borderRadius: BorderRadius.circular(12),
-                      border: Border.all(
-                        color: isDark ? const Color(0xFF26324D) : const Color(0xFFE2E8F0),
-                        width: 1.0,
-                      ),
-                    ),
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Icon(
-                          Icons.schedule_rounded,
-                          color: isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B),
-                          size: 16,
-                        ),
-                        const SizedBox(width: 8),
-                        Text(
-                          _formatKickoff(match.kickoffAt).isNotEmpty
-                              ? 'لم تبدأ المباراة بعد • انطلاق البث ${_formatKickoff(match.kickoffAt)}'
-                              : 'لم تبدأ المباراة بعد',
-                          style: TextStyle(
-                            fontSize: 12,
-                            fontWeight: FontWeight.w700,
-                            color: isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ] else ...[
-                  Container(
-                    width: double.infinity,
-                    padding: const EdgeInsets.symmetric(vertical: 9.5),
-                    decoration: BoxDecoration(
-                      color: isDark ? const Color(0xFF171E2E) : Colors.white,
-                      borderRadius: BorderRadius.circular(12),
-                      border: Border.all(
-                        color: isDark ? const Color(0xFF26324D) : AppPalette.of(context).border,
-                        width: 1.0,
-                      ),
-                    ),
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Icon(
-                          Icons.check_circle_outline_rounded,
-                          color: isDark ? Colors.white60 : Colors.black54,
-                          size: 16,
-                        ),
-                        const SizedBox(width: 8),
-                        Text(
-                          'انتهت المباراة • النتيجة والتفاصيل',
-                          style: TextStyle(
-                            fontSize: 12,
-                            fontWeight: FontWeight.w700,
-                            color: isDark ? Colors.white60 : Colors.black54,
-                          ),
-                        ),
-                      ],
-                    ),
+                    child: const Icon(Icons.play_arrow_rounded, color: Colors.white, size: 26),
                   ),
                 ],
               ],
@@ -1331,39 +1131,22 @@ class _SportsScreenState extends ConsumerState<SportsScreen> {
       );
   }
 
+  /// The club's crest, big and on nothing: no disc, no ring.
   Widget _buildLargeClubLogo(String? logoUrl, bool isDark) {
-    return Container(
-      width: 58,
-      height: 58,
-      decoration: BoxDecoration(
-        color: isDark ? const Color(0xFF1D253A) : Colors.white,
-        shape: BoxShape.circle,
-        border: Border.all(
-          color: isDark ? const Color(0xFF2E3B59) : AppPalette.of(context).border,
-          width: 1.5,
-        ),
-      ),
-      child: Center(
-        child: ClipOval(
-          child: logoUrl != null && logoUrl.isNotEmpty
-              ? Image.network(
-                  logoUrl,
-                  width: 44,
-                  height: 44,
-                  fit: BoxFit.contain,
-                  errorBuilder: (_, __, ___) => Icon(
-                    Icons.shield_rounded,
-                    size: 26,
-                    color: isDark ? Colors.white38 : Colors.black38,
-                  ),
-                )
-              : Icon(
-                  Icons.shield_rounded,
-                  size: 26,
-                  color: isDark ? Colors.white38 : Colors.black38,
-                ),
-        ),
-      ),
+    final fallback = Icon(Icons.shield_rounded, size: 40, color: isDark ? Colors.white38 : Colors.black38);
+    return SizedBox(
+      width: 84,
+      height: 84,
+      child: logoUrl != null && logoUrl.isNotEmpty
+          ? Image.network(
+              logoUrl,
+              width: 84,
+              height: 84,
+              fit: BoxFit.contain,
+              filterQuality: FilterQuality.high,
+              errorBuilder: (_, __, ___) => fallback,
+            )
+          : fallback,
     );
   }
 
@@ -1377,14 +1160,6 @@ class _SportsScreenState extends ConsumerState<SportsScreen> {
           // Live Score
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-            decoration: BoxDecoration(
-              color: const Color(0xFFFF334B).withOpacity(0.12),
-              borderRadius: BorderRadius.circular(10),
-              border: Border.all(
-                color: const Color(0xFFFF334B).withOpacity(0.3),
-                width: 1,
-              ),
-            ),
             child: MatchScoreLine(
               homeScore: match.homeScore,
               awayScore: match.awayScore,
@@ -1407,11 +1182,6 @@ class _SportsScreenState extends ConsumerState<SportsScreen> {
           // Final Score
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-            decoration: BoxDecoration(
-              color: isDark ? const Color(0xFF1E263A) : Colors.white,
-              borderRadius: BorderRadius.circular(10),
-              border: isDark ? null : Border.all(color: AppPalette.of(context).border),
-            ),
             child: MatchScoreLine(
               homeScore: match.homeScore,
               awayScore: match.awayScore,
@@ -1434,14 +1204,6 @@ class _SportsScreenState extends ConsumerState<SportsScreen> {
       children: [
         Container(
           padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-          decoration: BoxDecoration(
-            color: isDark ? const Color(0xFF1A2338) : const Color(0xFFF1F5F9),
-            borderRadius: BorderRadius.circular(10),
-            border: Border.all(
-              color: isDark ? const Color(0xFF2B3A5A) : const Color(0xFFCBD5E1),
-              width: 1.2,
-            ),
-          ),
           child: Row(
             mainAxisSize: MainAxisSize.min,
             children: [
@@ -1471,35 +1233,6 @@ class _SportsScreenState extends ConsumerState<SportsScreen> {
         horizontal: isProminent ? 14 : 9,
         vertical: isProminent ? 6 : 3,
       ),
-      decoration: BoxDecoration(
-        gradient: LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: isLive
-              ? [
-                  const Color(0xFFFF334B).withOpacity(0.2),
-                  const Color(0xFFFF5252).withOpacity(0.08),
-                ]
-              : (isDark
-                  ? [
-                      const Color(0xFF26324D),
-                      const Color(0xFF192135),
-                    ]
-                  : [
-                      Colors.white,
-                      Colors.white,
-                    ]),
-        ),
-        borderRadius: BorderRadius.circular(isProminent ? 14 : 8),
-        border: Border.all(
-          color: isLive
-              ? const Color(0xFFFF334B).withOpacity(0.4)
-              : (isProminent
-                  ? (isDark ? const Color(0xFFFF1744).withOpacity(0.6) : const Color(0xFFD50000).withOpacity(0.5))
-                  : (isDark ? Colors.white12 : AppPalette.of(context).border)),
-          width: isProminent ? 1.5 : 1.0,
-        ),
-      ),
       child: Text(
         'VS',
         style: TextStyle(
@@ -1523,14 +1256,6 @@ class _SportsScreenState extends ConsumerState<SportsScreen> {
     if (match.isLive || match.status == 'live') {
       return Container(
         padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-        decoration: BoxDecoration(
-          color: const Color(0xFFFF334B).withOpacity(0.15),
-          borderRadius: BorderRadius.circular(8),
-          border: Border.all(
-            color: const Color(0xFFFF334B).withOpacity(0.4),
-            width: 1,
-          ),
-        ),
         child: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
@@ -1544,7 +1269,7 @@ class _SportsScreenState extends ConsumerState<SportsScreen> {
             ),
             const SizedBox(width: 5),
             Text(
-              match.minute != null ? "مباشر ${match.minute}'" : 'مباشر الآن',
+              match.minute != null ? "مباشر ${match.minute}'" : 'مباشر',
               style: const TextStyle(
                 fontSize: 11,
                 fontWeight: FontWeight.bold,
@@ -1570,11 +1295,6 @@ class _SportsScreenState extends ConsumerState<SportsScreen> {
     if (match.isEnded) {
       return Container(
         padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-        decoration: BoxDecoration(
-          color: isDark ? const Color(0xFF1F273B) : Colors.white,
-          borderRadius: BorderRadius.circular(8),
-          border: isDark ? null : Border.all(color: AppPalette.of(context).border),
-        ),
         child: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
@@ -1604,14 +1324,6 @@ class _SportsScreenState extends ConsumerState<SportsScreen> {
 
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-      decoration: BoxDecoration(
-        color: isDark ? const Color(0xFF182033) : const Color(0xFFF1F5F9),
-        borderRadius: BorderRadius.circular(8),
-        border: Border.all(
-          color: isDark ? Colors.white12 : AppPalette.of(context).border,
-          width: 0.8,
-        ),
-      ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
