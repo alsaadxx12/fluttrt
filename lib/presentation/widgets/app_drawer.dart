@@ -328,15 +328,6 @@ class _AppDrawerState extends ConsumerState<AppDrawer> {
                     },
                   ),
                   _DrawerItem(
-                    icon: Icons.video_library_rounded,
-                    title: 'مسلسلات وأفلام حصرية',
-                    isSelected: currentPath == '/exclusive',
-                    onTap: () {
-                      Navigator.pop(context);
-                      context.push('/exclusive');
-                    },
-                  ),
-                  _DrawerItem(
                     icon: Icons.sports_soccer_rounded,
                     title: 'المباريات',
                     badgeText: null,
