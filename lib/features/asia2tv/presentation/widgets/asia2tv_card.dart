@@ -181,20 +181,7 @@ class Asia2TvCard extends StatelessWidget {
               ),
             ),
 
-            const SizedBox(height: 6),
-
-            // Title
-            Text(
-              item.title,
-              maxLines: 2,
-              overflow: TextOverflow.ellipsis,
-              style: TextStyle(
-                fontSize: 12.5,
-                fontWeight: FontWeight.w800,
-                height: 1.25,
-                color: isDark ? Colors.white : const Color(0xFF111827),
-              ),
-            ),
+            // No title under the poster: the poster is the card.
           ],
         ),
       ),

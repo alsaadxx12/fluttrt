@@ -758,7 +758,7 @@ class _CinemanaCatalogScreenState extends ConsumerState<CinemanaCatalogScreen> {
                           // at a poster's natural size, instead of three giant ones.
                           gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
                             crossAxisCount: (MediaQuery.of(context).size.width / 190).floor().clamp(3, 9),
-                            childAspectRatio: 0.58,
+                            childAspectRatio: 0.66,
                             crossAxisSpacing: 10,
                             mainAxisSpacing: 14,
                           ),

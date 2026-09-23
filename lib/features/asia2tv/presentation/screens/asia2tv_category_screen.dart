@@ -142,7 +142,7 @@ class _Asia2TvCategoryScreenState extends ConsumerState<Asia2TvCategoryScreen>
           padding: const EdgeInsets.all(16),
           gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
             crossAxisCount: 3,
-            childAspectRatio: 0.52,
+            childAspectRatio: 0.66,
             crossAxisSpacing: 12,
             mainAxisSpacing: 16,
           ),
@@ -205,7 +205,7 @@ class _CategoryGridView extends ConsumerWidget {
             padding: const EdgeInsets.all(14),
             gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
               crossAxisCount: 3,
-              childAspectRatio: 0.52,
+              childAspectRatio: 0.66,
               crossAxisSpacing: 12,
               mainAxisSpacing: 16,
             ),

@@ -57,22 +57,13 @@ class _ExclusiveCategoryScreenState extends ConsumerState<ExclusiveCategoryScree
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: const Color(0xFF04060A),
+      // No toolbar: the search field and the tabs are the whole top of the
+      // page, and leaving it is the system back gesture.
       appBar: AppBar(
         backgroundColor: const Color(0xFF04060A),
         elevation: 0,
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back_rounded, color: Colors.white),
-          onPressed: () => Navigator.of(context).pop(),
-        ),
-        title: const Text(
-          'مسلسلات وأفلام حصرية',
-          style: TextStyle(
-            color: Colors.white,
-            fontSize: 18,
-            fontWeight: FontWeight.w900,
-          ),
-        ),
-        centerTitle: false,
+        toolbarHeight: 0,
+        automaticallyImplyLeading: false,
         bottom: PreferredSize(
           preferredSize: const Size.fromHeight(104),
           child: Column(
@@ -204,7 +195,7 @@ class _ExclusiveCategoryScreenState extends ConsumerState<ExclusiveCategoryScree
         crossAxisCount: 3,
         crossAxisSpacing: 10,
         mainAxisSpacing: 14,
-        childAspectRatio: 0.58,
+        childAspectRatio: 0.66,
       ),
       itemCount: items.length,
       itemBuilder: (context, idx) {
@@ -289,30 +280,7 @@ class _ExclusiveCategoryScreenState extends ConsumerState<ExclusiveCategoryScree
                 ),
               ),
 
-              const SizedBox(height: 6),
-
-              // Title
-              Text(
-                item.title,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: const TextStyle(
-                  color: Colors.white,
-                  fontSize: 12.5,
-                  fontWeight: FontWeight.w800,
-                ),
-              ),
-
-              // Year
-              if (item.year != null && item.year!.isNotEmpty)
-                Text(
-                  item.year!,
-                  style: TextStyle(
-                    color: Colors.white.withOpacity(0.5),
-                    fontSize: 11,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
+              // No title or year under the poster: the poster is the card.
             ],
           ),
         );

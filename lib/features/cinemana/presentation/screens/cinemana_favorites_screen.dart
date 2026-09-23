@@ -188,7 +188,7 @@ class _CinemanaFavoritesBodyState extends ConsumerState<CinemanaFavoritesBody> {
                   padding: const EdgeInsets.all(16),
                   gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
                     crossAxisCount: 3,
-                    childAspectRatio: 0.58,
+                    childAspectRatio: 0.66,
                     crossAxisSpacing: 12,
                     mainAxisSpacing: 16,
                   ),

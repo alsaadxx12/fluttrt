@@ -199,33 +199,8 @@ class _CinemanaPosterCardState extends ConsumerState<CinemanaPosterCard>
             ),
           ),
 
-          const SizedBox(height: 6),
-
-          // Title
-          Text(
-            widget.item.displayTitle,
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            style: TextStyle(
-              fontSize: 13,
-              fontWeight: FontWeight.bold,
-              color: isDark ? Colors.white : const Color(0xFF111114),
-            ),
-          ),
-
-          // Year and Genre
-          Text(
-            [
-              if (widget.item.year.isNotEmpty) widget.item.year,
-              if (widget.item.categories.isNotEmpty) widget.item.categories.take(2).join('، '),
-            ].join(' • '),
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            style: TextStyle(
-              fontSize: 11,
-              color: isDark ? AppColors.darkTextSecondary : AppColors.lightTextSecondary,
-            ),
-          ),
+          // No words under the poster: the poster is the card, and the
+          // page that opens says the rest.
         ],
       ),
     );
