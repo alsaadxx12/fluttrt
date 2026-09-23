@@ -550,6 +550,22 @@ class _FranchiseFilmTileState extends State<FranchiseFilmTile> {
     // line, each picture flashing up only to be replaced when the list
     // resolved and the tile was handed another film.
     final posterUrl = film.imageForWidth(175 * dpr);
+    // The small thumb, a few kilobytes, stands in while the poster loads
+    // and stays if the poster never comes: a tile is never grey on a slow
+    // line, and never stays grey after a dropped download.
+    final thumb = film.imgThumbUrl ?? '';
+    Widget standIn() => thumb.isNotEmpty && thumb != posterUrl
+        ? CachedNetworkImage(
+            imageUrl: thumb,
+            cacheManager: appImageCache,
+            fit: BoxFit.cover,
+            fadeInDuration: Duration.zero,
+            fadeOutDuration: Duration.zero,
+            placeholderFadeInDuration: Duration.zero,
+            placeholder: (_, __) => ColoredBox(color: p.skeleton),
+            errorWidget: (_, __, ___) => ColoredBox(color: p.skeleton),
+          )
+        : ColoredBox(color: p.skeleton);
 
     return MouseRegion(
       onEnter: (_) => setState(() => _isHovered = true),
@@ -586,12 +602,8 @@ class _FranchiseFilmTileState extends State<FranchiseFilmTile> {
                 fadeOutDuration: Duration.zero,
                 placeholderFadeInDuration: Duration.zero,
                 useOldImageOnUrlChange: true,
-                placeholder: (_, __) => ColoredBox(color: p.skeleton),
-                errorWidget: (_, __, ___) => ColoredBox(
-                  color: p.skeleton,
-                  child:
-                      Icon(Icons.movie_rounded, color: p.textFaint, size: 36),
-                ),
+                placeholder: (_, __) => standIn(),
+                errorWidget: (_, __, ___) => standIn(),
               ),
 
               // 3. Top Season / Part Badge (بطاقة الموسم النظيفة)
