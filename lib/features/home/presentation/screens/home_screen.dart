@@ -30,6 +30,7 @@ import 'package:youtube_downloader/core/network/http_cache.dart';
 import 'package:youtube_downloader/core/network/image_cache.dart';
 import '../widgets/subscription_plans_showcase.dart';
 import 'package:youtube_downloader/features/home/presentation/widgets/franchise_showcase.dart';
+import 'package:youtube_downloader/features/home/presentation/widgets/franchise_spotlight.dart';
 import '../widgets/dynamic_franchises_showcase.dart';
 import 'package:youtube_downloader/features/cinemana/data/cinemana_franchises.dart';
 import 'package:youtube_downloader/features/sports/presentation/widgets/glowing_crest.dart';
@@ -509,29 +510,10 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
 
     (_) => const SizedBox(height: 24),
 
-    // سلسلة سبايدر مان
-    (_) => _posterRowSection(
-          provider: franchiseFilmsProvider('spider-man'),
-          title: 'سلسلة سبايدر مان',
-          onViewAll: () => _openFranchiseById('spider-man'),
-        ),
+    // One film series staged big: a backdrop the width of the page with
+    // every part of the series under it. The chips swap in another.
+    (_) => const RepaintBoundary(child: FranchiseSpotlight()),
     (_) => const SizedBox(height: 24),
-
-    // سلسلة باتمان
-    (_) => _posterRowSection(
-          provider: franchiseFilmsProvider('batman'),
-          title: 'سلسلة باتمان',
-          onViewAll: () => _openFranchiseById('batman'),
-        ),
-    (_) => const SizedBox(height: 24),
-
-    // سلسلة جيمس بوند
-    (_) => _posterRowSection(
-          provider: franchiseFilmsProvider('james-bond'),
-          title: 'سلسلة جيمس بوند',
-          onViewAll: () => _openFranchiseById('james-bond'),
-        ),
-    (_) => const SizedBox(height: 12),
 
     // 5. Anime.
     (_) => _posterRowSection(
