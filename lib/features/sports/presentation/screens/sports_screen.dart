@@ -179,16 +179,10 @@ class _SportsScreenState extends ConsumerState<SportsScreen> {
       backgroundColor: isDark ? Colors.black : palette.bg,
       body: Column(
         children: [
+          // The page's own colour, like the home page's bar: the field is a
+          // pill cut from the page, not a band across it.
           Container(
-            decoration: BoxDecoration(
-              color: palette.card,
-              border: Border(
-                bottom: BorderSide(
-                  color: palette.border,
-                  width: 1,
-                ),
-              ),
-            ),
+            color: isDark ? Colors.black : palette.bg,
             child: SafeArea(
               bottom: false,
               child: Column(
@@ -389,27 +383,20 @@ class _SportsScreenState extends ConsumerState<SportsScreen> {
       return InkWell(
         onTap: onTap,
         onLongPress: onLongPress,
-        borderRadius: BorderRadius.circular(22),
+        borderRadius: BorderRadius.circular(6),
         child: AnimatedContainer(
           duration: const Duration(milliseconds: 200),
-          height: 38,
+          height: 36,
           padding: const EdgeInsetsDirectional.fromSTEB(8, 0, 14, 0),
+          // Glass chips with the cards' corners; the chosen one a brighter
+          // sheen, none of them red.
           decoration: BoxDecoration(
-            color: isSelected ? const Color(0xFFE50914) : (isDark ? const Color(0xFF192032) : Colors.white),
-            borderRadius: BorderRadius.circular(22),
+            color: Colors.white.withOpacity(isSelected ? 0.22 : 0.08),
+            borderRadius: BorderRadius.circular(6),
             border: Border.all(
-              color: isSelected ? const Color(0xFFE50914) : (isDark ? const Color(0xFF26324D) : const Color(0xFFE2E8F0)),
-              width: 1.2,
+              color: Colors.white.withOpacity(isSelected ? 0.35 : 0.14),
+              width: 0.8,
             ),
-            boxShadow: isSelected
-                ? [
-                    BoxShadow(
-                      color: const Color(0xFFE50914).withOpacity(0.32),
-                      blurRadius: 8,
-                      offset: const Offset(0, 2),
-                    ),
-                  ]
-                : null,
           ),
           child: Row(
             mainAxisSize: MainAxisSize.min,
@@ -444,12 +431,12 @@ class _SportsScreenState extends ConsumerState<SportsScreen> {
               width: 26,
               height: 26,
               decoration: BoxDecoration(
-                color: selectedLeagueId == null ? Colors.white.withOpacity(0.25) : const Color(0xFFE50914).withOpacity(0.12),
+                color: Colors.white.withOpacity(selectedLeagueId == null ? 0.25 : 0.12),
                 shape: BoxShape.circle,
               ),
               child: Icon(
                 Icons.emoji_events_rounded,
-                color: selectedLeagueId == null ? Colors.white : const Color(0xFFE50914),
+                color: Colors.white,
                 size: 16,
               ),
             ),
