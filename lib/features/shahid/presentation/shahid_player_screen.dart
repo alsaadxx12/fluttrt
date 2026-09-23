@@ -10,6 +10,10 @@ import 'package:media_kit_video/media_kit_video.dart';
 import 'package:video_player/video_player.dart';
 import 'package:youtube_downloader/presentation/widgets/app_search_field.dart';
 
+import '../../casting/controllers/cast_controller.dart';
+import '../../casting/services/cast_media_source.dart';
+import '../../casting/services/cast_service.dart';
+import '../../casting/widgets/cast_device_sheet.dart';
 import '../../sports/presentation/providers/alkass_provider.dart';
 import '../data/shahid_models.dart';
 import 'shahid_providers.dart';
@@ -54,6 +58,53 @@ class _ShahidPlayerScreenState extends ConsumerState<ShahidPlayerScreen> {
     _open(_current);
   }
 
+  /// The channel's address right now: fetched afresh each time (playlists
+  /// can rotate, and an Alkass address carries a token that runs out), with
+  /// the one checked when the list loaded as the fallback.
+  Future<String?> _freshUrl(ShahidItem channel) async {
+    final fromShahid = channel.pageUrl.contains('shahid.mbc.net');
+    final fromAlkass = channel.pageUrl.contains('alkass.net');
+    return (fromShahid
+            ? await ref.read(shahidServiceProvider).fetchStreamUrl(channel.id)
+            : fromAlkass
+                ? await ref.read(alkassServiceProvider).streamFor(channel.id)
+                : null) ??
+        channel.streamUrl;
+  }
+
+  /// Sends the channel to the television, the way a match is sent: pairs
+  /// a set first when none is, then hands it a fresh address. The phone's
+  /// own player is paused - on a live channel it would be a second full
+  /// download for nothing.
+  Future<void> _castCurrent() async {
+    final cast = ref.read(castControllerProvider);
+    if (!cast.isConnected) {
+      await showCastDeviceSheet(context);
+      if (!mounted || !ref.read(castControllerProvider).isConnected) return;
+    }
+    final channel = _current;
+    final url = await _freshUrl(channel);
+    if (!mounted) return;
+    if (url == null || url.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('البث غير متاح لهذه القناة الآن')));
+      return;
+    }
+    try {
+      await ref.read(castControllerProvider.notifier).cast(
+            CastMediaSource.forLive(
+              id: 'channel_${channel.id}',
+              title: channel.title,
+              streamUrl: url,
+              posterUrl: channel.logoUrl(480) ?? '',
+            ),
+          );
+      await _video?.pause();
+      await _desktopPlayer?.pause();
+    } on CastException catch (e) {
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.message)));
+    }
+  }
+
   Future<void> _open(ShahidItem channel) async {
     final token = ++_openToken;
     final old = _video;
@@ -65,17 +116,7 @@ class _ShahidPlayerScreenState extends ConsumerState<ShahidPlayerScreen> {
     });
     await old?.dispose();
 
-    // Fresh address each time (playlists can rotate, and an Alkass address
-    // carries a token that runs out); fall back to the one checked when
-    // the list loaded.
-    final fromShahid = channel.pageUrl.contains('shahid.mbc.net');
-    final fromAlkass = channel.pageUrl.contains('alkass.net');
-    final url = (fromShahid
-            ? await ref.read(shahidServiceProvider).fetchStreamUrl(channel.id)
-            : fromAlkass
-                ? await ref.read(alkassServiceProvider).streamFor(channel.id)
-                : null) ??
-        channel.streamUrl;
+    final url = await _freshUrl(channel);
     if (!mounted || token != _openToken) return;
     if (url == null) {
       setState(() {
@@ -476,6 +517,23 @@ class _ShahidPlayerScreenState extends ConsumerState<ShahidPlayerScreen> {
                           alignment: Alignment.centerRight,
                         ),
                       ),
+                    const Spacer(),
+                    // To the television, as a match goes; coloured once a
+                    // set is on.
+                    Consumer(
+                      builder: (context, ref, _) {
+                        final casting = ref.watch(isCastingProvider);
+                        return IconButton(
+                          onPressed: _castCurrent,
+                          tooltip: 'البث على التلفاز',
+                          icon: Icon(
+                            casting ? Icons.cast_connected_rounded : Icons.cast_rounded,
+                            color: casting ? const Color(0xFFE50914) : Colors.black87,
+                            size: 22,
+                          ),
+                        );
+                      },
+                    ),
                   ],
                 ),
               ),
