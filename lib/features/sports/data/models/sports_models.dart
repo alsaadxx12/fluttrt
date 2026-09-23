@@ -159,7 +159,9 @@ class SportMatchItem {
   /// still to come only from a quarter of an hour before kick-off. A match
   /// whose kick-off is not known is not kept out.
   bool get canOpen {
-    if (isLive || isEnded) return true;
+    // The feed's own word that the match is on is taken as it is, even
+    // when its kick-off time says otherwise.
+    if (isLive || isEnded || status.trim().toLowerCase() == 'live') return true;
     final at = opensAt;
     return at == null || !DateTime.now().isBefore(at);
   }
