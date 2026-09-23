@@ -174,7 +174,9 @@ class _SportsScreenState extends ConsumerState<SportsScreen> {
     const accentColor = Color(0xFFFF1744);
 
     return Scaffold(
-      backgroundColor: palette.bg,
+      // Black, exactly, behind the cards; the top bar and the search field
+      // keep their own colours.
+      backgroundColor: isDark ? Colors.black : palette.bg,
       body: Column(
         children: [
           Container(
@@ -911,8 +913,7 @@ class _SportsScreenState extends ConsumerState<SportsScreen> {
     final isUpcoming = match.isScheduled;
 
     // Glass, like the home page's card: the page shows through a deep
-    // blur and a faint white sheen, under a thin light edge - red while
-    // the match is on.
+    // blur and a faint white sheen, under a thin light edge.
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 6),
       child: ClipRRect(
@@ -931,10 +932,8 @@ class _SportsScreenState extends ConsumerState<SportsScreen> {
         ),
         borderRadius: BorderRadius.circular(18),
         border: Border.all(
-          color: isLive
-              ? const Color(0xFFFF334B).withOpacity(0.55)
-              : Colors.white.withOpacity(isDark ? 0.20 : 0.9),
-          width: isLive ? 1.5 : 0.8,
+          color: Colors.white.withOpacity(isDark ? 0.20 : 0.9),
+          width: 0.8,
         ),
       ),
       child: Material(
