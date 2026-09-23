@@ -3,6 +3,7 @@ import 'dart:ui';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 
 import '../../../../core/constants/app_palette.dart';
 import '../../../../core/network/image_cache.dart';
@@ -12,6 +13,7 @@ import '../../../shahid/data/shahid_models.dart';
 import '../../../shahid/presentation/shahid_player_screen.dart';
 import '../../../sports/data/services/alkass_service.dart';
 import '../../../sports/presentation/providers/alkass_provider.dart';
+import '../../../subscription/presentation/providers/subscription_provider.dart';
 
 /// Alkass's free channels on the home page: one glass tile per channel with
 /// its mark across it, and a tap opens the channel full-screen at once.
@@ -27,7 +29,7 @@ class AlkassChannelsRow extends ConsumerWidget {
   /// the rest transparent. Shown whole in a card the mark is a thumbnail;
   /// so the picture is blown up until the mark alone is as wide as the
   /// card, and the transparent margins fall outside the clip.
-  static const double _zoom = 1.85;
+  static const double _zoom = 1.6;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -69,18 +71,6 @@ class AlkassChannelsRow extends ConsumerWidget {
                   fontSize: 15,
                   fontWeight: FontWeight.w900,
                   letterSpacing: -0.3,
-                ),
-              ),
-              const SizedBox(width: 8),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
-                decoration: BoxDecoration(
-                  color: const Color(0xFF22C55E).withOpacity(0.14),
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: const Text(
-                  'مجاني',
-                  style: TextStyle(color: Color(0xFF22C55E), fontSize: 10, fontWeight: FontWeight.w800),
                 ),
               ),
             ],
@@ -130,17 +120,36 @@ class AlkassChannelsRow extends ConsumerWidget {
   }
 }
 
-class _Tile extends StatelessWidget {
+class _Tile extends ConsumerWidget {
   const _Tile({required this.channel, required this.all});
 
   final AlkassChannel channel;
   final List<AlkassChannel> all;
 
+  /// Behind the sports subscription, like a match: a subscriber goes
+  /// straight through, anyone else is taken to the activation page. What
+  /// is remembered may be stale - a code entered a moment ago, a
+  /// subscription that ran out overnight - so the server is asked once
+  /// more before anyone is turned away.
+  Future<void> _play(BuildContext context, WidgetRef ref) async {
+    var unlocked = ref.read(isSportsUnlockedProvider);
+    if (!unlocked) {
+      await ref.read(sportsSubscriptionProvider.notifier).refresh();
+      unlocked = ref.read(isSportsUnlockedProvider);
+    }
+    if (!context.mounted) return;
+    if (!unlocked) {
+      context.push('/sports-activation');
+      return;
+    }
+    openAlkassChannel(context, channel, all);
+  }
+
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     return RepaintBoundary(
       child: PressScale(
-        onTap: () => openAlkassChannel(context, channel, all),
+        onTap: () => _play(context, ref),
         child: SizedBox(
           width: AlkassChannelsRow._tileW,
           height: AlkassChannelsRow._tileH,

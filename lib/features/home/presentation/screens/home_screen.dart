@@ -440,7 +440,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
           ),
         ),
 
-    (_) => const SizedBox(height: 24),
+    (_) => const SizedBox(height: 10),
 
     // Alkass's free channels: the marks in a row, a tap plays the channel.
     (_) => const RepaintBoundary(child: AlkassChannelsRow()),
