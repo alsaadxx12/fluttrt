@@ -1,15 +1,15 @@
 {
   "updateEnabled": true,
-  "versionCode": 2204,
-  "versionName": "1.0.198",
-  "apkUrl": "https://cineball.netlify.app/download/app.apk?v=204",
-  "apkUrlArm64": "https://cineball.netlify.app/download/app-arm64-v8a-release.apk?v=204",
-  "apkUrlArm32": "https://cineball.netlify.app/download/app-armeabi-v7a-release.apk?v=204",
-  "sha256": "21b8af8ace455bf99d27119e3ac7c6862e1d813945fd752b698b7568b1dae994",
-  "sha256Arm64": "21b8af8ace455bf99d27119e3ac7c6862e1d813945fd752b698b7568b1dae994",
-  "sha256Arm32": "db7eb17850234d97d99b22eae46b8e8904891fc16fa65f2ad635f67eceae22a7",
-  "sizeBytes": 25523767,
+  "versionCode": 2205,
+  "versionName": "1.0.199",
+  "apkUrl": "https://cineball.netlify.app/download/app.apk?v=205",
+  "apkUrlArm64": "https://cineball.netlify.app/download/app-arm64-v8a-release.apk?v=205",
+  "apkUrlArm32": "https://cineball.netlify.app/download/app-armeabi-v7a-release.apk?v=205",
+  "sha256": "5b6b2428ba5b97979b047b30084c50b26650b3a0f40ffca0cd5e6596c48b4722",
+  "sha256Arm64": "5b6b2428ba5b97979b047b30084c50b26650b3a0f40ffca0cd5e6596c48b4722",
+  "sha256Arm32": "334bef89314adf53e275b488aa870ce1055af2ed55ee5b9cc9d8af887aa2b636",
+  "sizeBytes": 25523839,
   "forceUpdate": false,
   "minSupportedVersion": 1,
-  "notes": "صفحات السلاسل تعرض صورها فوراً وبثبات"
+  "notes": "المباراة القادمة تُفتح قبل انطلاقها بربع ساعة"
 }
