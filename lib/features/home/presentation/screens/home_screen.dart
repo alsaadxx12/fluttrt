@@ -1507,14 +1507,14 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
       // Frosted glass, the way iOS draws a card over a picture: the page
       // shows through a blur, with a thin light edge.
       child: ClipRRect(
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(6),
         child: BackdropFilter(
           filter: ImageFilter.blur(sigmaX: 18, sigmaY: 18),
           child: Container(
             width: 250,
             decoration: BoxDecoration(
               color: Colors.white.withOpacity(_p.isDark ? 0.07 : 0.55),
-              borderRadius: BorderRadius.circular(12),
+              borderRadius: BorderRadius.circular(6),
               border: Border.all(
                 color: Colors.white.withOpacity(0.14),
                 width: 0.8,
@@ -1850,7 +1850,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
               itemCount: 4,
               separatorBuilder: (_, __) => const SizedBox(width: 12),
               itemBuilder: (_, __) => ClipRRect(
-                borderRadius: BorderRadius.circular(10),
+                borderRadius: BorderRadius.circular(6),
                 child: Shimmer(
                   base: _p.skeleton,
                   highlight: _p.isDark
@@ -1922,7 +1922,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
         child: SizedBox(
           width: 104,
           child: ClipRRect(
-            borderRadius: BorderRadius.circular(10),
+            borderRadius: BorderRadius.circular(6),
             child: Stack(
               fit: StackFit.expand,
               children: [
@@ -2116,7 +2116,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                 width: 264,
                 decoration: BoxDecoration(
                   color: _p.skeleton,
-                  borderRadius: BorderRadius.circular(10),
+                  borderRadius: BorderRadius.circular(6),
                 ),
               ),
             ),
@@ -2158,7 +2158,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
           width: cardW,
           height: cardH,
           child: ClipRRect(
-            borderRadius: BorderRadius.circular(10),
+            borderRadius: BorderRadius.circular(6),
             child: Stack(
               fit: StackFit.expand,
               children: [

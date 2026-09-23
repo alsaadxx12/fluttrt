@@ -212,7 +212,7 @@ class _ExclusiveCategoryScreenState extends ConsumerState<ExclusiveCategoryScree
               // Poster Card
               Expanded(
                 child: ClipRRect(
-                  borderRadius: BorderRadius.circular(12),
+                  borderRadius: BorderRadius.circular(6),
                   child: Stack(
                     fit: StackFit.expand,
                     children: [

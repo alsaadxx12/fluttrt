@@ -253,7 +253,7 @@ class _SpotlightPage extends ConsumerWidget {
                   separatorBuilder: (_, __) => const SizedBox(width: 12),
                   itemBuilder: (_, __) => Container(
                     width: 104,
-                    decoration: BoxDecoration(color: p.skeleton, borderRadius: BorderRadius.circular(10)),
+                    decoration: BoxDecoration(color: p.skeleton, borderRadius: BorderRadius.circular(6)),
                   ),
                 )
               : WheelScroll(
@@ -312,7 +312,7 @@ class _PartCard extends StatelessWidget {
       child: SizedBox(
         width: 104,
         child: ClipRRect(
-          borderRadius: BorderRadius.circular(10),
+          borderRadius: BorderRadius.circular(6),
           child: Stack(
             fit: StackFit.expand,
             children: [

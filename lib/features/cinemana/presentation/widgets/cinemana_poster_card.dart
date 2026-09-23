@@ -40,7 +40,7 @@ class _CinemanaPosterCardState extends ConsumerState<CinemanaPosterCard>
 
     return InkWell(
       onTap: widget.onTap,
-      borderRadius: BorderRadius.circular(12),
+      borderRadius: BorderRadius.circular(6),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -50,13 +50,13 @@ class _CinemanaPosterCardState extends ConsumerState<CinemanaPosterCard>
               fit: StackFit.expand,
               children: [
                 ClipRRect(
-                  borderRadius: BorderRadius.circular(12),
+                  borderRadius: BorderRadius.circular(6),
                   child: Container(
                     decoration: BoxDecoration(
                       // Loading placeholder behind the poster: the palette's
                       // skeleton tone, so it still shows on the white page.
                       color: isDark ? const Color(0xFF22222B) : palette.skeleton,
-                      borderRadius: BorderRadius.circular(12),
+                      borderRadius: BorderRadius.circular(6),
                       border: Border.all(
                         color: isDark ? const Color(0xFF33333F) : palette.border,
                         width: 1,

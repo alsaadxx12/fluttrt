@@ -46,7 +46,7 @@ class Asia2TvCard extends StatelessWidget {
               );
             }
           },
-      borderRadius: BorderRadius.circular(12),
+      borderRadius: BorderRadius.circular(6),
       child: SizedBox(
         width: width,
         child: Column(
@@ -55,7 +55,7 @@ class Asia2TvCard extends StatelessWidget {
           children: [
             // Poster
             ClipRRect(
-              borderRadius: BorderRadius.circular(10),
+              borderRadius: BorderRadius.circular(6),
               child: Stack(
                 children: [
                   Container(

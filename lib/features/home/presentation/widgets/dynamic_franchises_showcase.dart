@@ -84,7 +84,7 @@ class _LoadingDeck extends StatelessWidget {
         width: _DynCard.width,
         decoration: BoxDecoration(
           color: p.bg,
-          borderRadius: BorderRadius.circular(12),
+          borderRadius: BorderRadius.circular(6),
         ),
         child:
             const Column(children: [Expanded(child: PosterFanPlaceholder())]),
@@ -263,7 +263,7 @@ class _DynCarouselState extends ConsumerState<_DynCarousel> {
                             child: DecoratedBox(
                               decoration: BoxDecoration(
                                 color: Colors.black.withOpacity(0.26 * (1 - t)),
-                                borderRadius: BorderRadius.circular(12),
+                                borderRadius: BorderRadius.circular(6),
                               ),
                             ),
                           ),
@@ -291,7 +291,7 @@ class _LoaderCard extends StatelessWidget {
     return Container(
       decoration: BoxDecoration(
         color: p.bg,
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(6),
       ),
       child: const Center(
         child: CircularProgressIndicator(
@@ -367,7 +367,7 @@ class _DynCardState extends ConsumerState<_DynCard> {
         // middle, and its neighbours are shrunk and shaded.
         decoration: BoxDecoration(
           color: p.bg,
-          borderRadius: BorderRadius.circular(12),
+          borderRadius: BorderRadius.circular(6),
         ),
         clipBehavior: Clip.antiAlias,
         child: Stack(
