@@ -17,8 +17,8 @@ import '../../../sports/presentation/providers/alkass_provider.dart';
 class AlkassChannelsRow extends ConsumerWidget {
   const AlkassChannelsRow({super.key});
 
-  static const double _tileW = 176;
-  static const double _tileH = 112;
+  static const double _tileW = 236;
+  static const double _tileH = 140;
   static const double _gap = 12;
 
   @override
@@ -55,7 +55,7 @@ class AlkassChannelsRow extends ConsumerWidget {
                 ),
               ),
               Text(
-                'قنوات الكأس',
+                'قنوات',
                 style: TextStyle(
                   color: Theme.of(context).brightness == Brightness.dark ? Colors.white : const Color(0xFF0F172A),
                   fontSize: 15,
@@ -144,7 +144,7 @@ class _Tile extends StatelessWidget {
             child: ColoredBox(
               color: AppPalette.of(context).bg,
               child: Padding(
-                padding: const EdgeInsets.all(6),
+                padding: const EdgeInsets.all(4),
                 child: channel.logo.isEmpty
                     ? const Icon(Icons.live_tv_rounded, color: Colors.white54, size: 40)
                     : CachedNetworkImage(
@@ -157,8 +157,7 @@ class _Tile extends StatelessWidget {
                         fadeOutDuration: Duration.zero,
                         placeholderFadeInDuration: Duration.zero,
                         placeholder: (_, __) => const SizedBox.shrink(),
-                        errorWidget: (_, __, ___) =>
-                            const Icon(Icons.live_tv_rounded, color: Colors.white54, size: 40),
+                        errorWidget: (_, __, ___) => const Icon(Icons.live_tv_rounded, color: Colors.white54, size: 40),
                       ),
               ),
             ),

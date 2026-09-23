@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:ui' show ImageFilter;
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -1019,28 +1020,31 @@ class _SportsScreenState extends ConsumerState<SportsScreen> {
     final isLive = match.isLive;
     final isUpcoming = match.isScheduled;
 
-    return Container(
-      margin: const EdgeInsets.symmetric(vertical: 6),
+    // Glass, like the home page's card: the page shows through a deep
+    // blur and a faint white sheen, under a thin light edge - red while
+    // the match is on.
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 6),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(18),
+        clipBehavior: Clip.antiAliasWithSaveLayer,
+        child: BackdropFilter(
+          filter: ImageFilter.blur(sigmaX: 24, sigmaY: 24),
+          child: Container(
       decoration: BoxDecoration(
         gradient: LinearGradient(
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
           colors: isDark
-              ? [
-                  AppPalette.of(context).card,
-                  const Color(0xFF101422),
-                ]
-              : [
-                  Colors.white,
-                  Colors.white,
-                ],
+              ? [Colors.white.withOpacity(0.14), Colors.white.withOpacity(0.05)]
+              : [Colors.white.withOpacity(0.85), Colors.white.withOpacity(0.65)],
         ),
         borderRadius: BorderRadius.circular(18),
         border: Border.all(
           color: isLive
               ? const Color(0xFFFF334B).withOpacity(0.55)
-              : (isDark ? AppPalette.of(context).border : const Color(0xFFE4E9F2)),
-          width: isLive ? 1.5 : 1.0,
+              : Colors.white.withOpacity(isDark ? 0.20 : 0.9),
+          width: isLive ? 1.5 : 0.8,
         ),
       ),
       child: Material(
@@ -1321,7 +1325,10 @@ class _SportsScreenState extends ConsumerState<SportsScreen> {
           ),
         ),
       ),
-    );
+    ),
+          ),
+        ),
+      );
   }
 
   Widget _buildLargeClubLogo(String? logoUrl, bool isDark) {

@@ -228,14 +228,40 @@ class _ShahidPlayerScreenState extends ConsumerState<ShahidPlayerScreen> {
 
   void _scheduleHide() {
     _hideControls?.cancel();
-    _hideControls = Timer(const Duration(seconds: 3), () {
+    _hideControls = Timer(const Duration(seconds: 4), () {
       if (mounted) setState(() => _controlsVisible = false);
     });
   }
 
+  /// A finger on the picture brings the controls up and holds them there;
+  /// they go away on their own, four seconds after it lifts. They used to
+  /// toggle on the tap itself, and a tap while they were up put them away
+  /// the moment the finger lifted.
+  void _holdControls() {
+    _hideControls?.cancel();
+    if (!_controlsVisible) setState(() => _controlsVisible = true);
+  }
+
+  bool get _playing {
+    if (Platform.isWindows || Platform.isLinux || Platform.isMacOS) return _desktopPlayer?.state.playing ?? false;
+    return _video?.value.isPlaying ?? false;
+  }
+
+  Future<void> _togglePlay() async {
+    if (_playing) {
+      await _video?.pause();
+      await _desktopPlayer?.pause();
+    } else {
+      await _video?.play();
+      await _desktopPlayer?.play();
+    }
+    if (mounted) setState(() {});
+    _scheduleHide();
+  }
+
   void _toggleControls() {
-    setState(() => _controlsVisible = !_controlsVisible);
-    if (_controlsVisible) _scheduleHide();
+    _holdControls();
+    _scheduleHide();
   }
 
   void _setFullscreen(bool on) {
@@ -301,7 +327,9 @@ class _ShahidPlayerScreenState extends ConsumerState<ShahidPlayerScreen> {
         _scheduleHide();
       },
       child: GestureDetector(
+        onTapDown: (_) => _holdControls(),
         onTap: _toggleControls,
+        onTapCancel: _scheduleHide,
         child: ColoredBox(
           color: Colors.black,
           child: Stack(
@@ -359,6 +387,29 @@ class _ShahidPlayerScreenState extends ConsumerState<ShahidPlayerScreen> {
                     ),
                   ],
                 ),
+              // Pause and resume, in the middle of the picture: the one
+              // control a live channel needs.
+              if (_controlsVisible &&
+                  (_video != null || _desktopVideoController != null) &&
+                  _error == null &&
+                  !_loading)
+                GestureDetector(
+                  onTap: _togglePlay,
+                  child: Container(
+                    width: 66,
+                    height: 66,
+                    decoration: BoxDecoration(
+                      color: Colors.black.withOpacity(0.45),
+                      shape: BoxShape.circle,
+                      border: Border.all(color: Colors.white30, width: 0.8),
+                    ),
+                    child: Icon(
+                      _playing ? Icons.pause_rounded : Icons.play_arrow_rounded,
+                      color: Colors.white,
+                      size: 42,
+                    ),
+                  ),
+                ),
               if (_controlsVisible && (_video != null || _desktopVideoController != null) && _error == null) ...[
                 // Back button on fullscreen
                 if (_fullscreen)
@@ -389,15 +440,6 @@ class _ShahidPlayerScreenState extends ConsumerState<ShahidPlayerScreen> {
                     ),
                   ),
                 ),
-                // The other channels, a tap away over the picture - the way
-                // the broadcaster's own site does it.
-                if (_fullscreen && widget.channels.length > 1)
-                  Positioned(
-                    left: 0,
-                    right: 0,
-                    bottom: 56,
-                    child: _channelStrip(),
-                  ),
                 // To the television, from the picture itself.
                 if (_fullscreen)
                   PositionedDirectional(
@@ -436,53 +478,6 @@ class _ShahidPlayerScreenState extends ConsumerState<ShahidPlayerScreen> {
             ],
           ),
         ),
-      ),
-    );
-  }
-
-  /// The other channels as a strip of marks over the full-screen picture,
-  /// the one playing outlined; a tap switches.
-  Widget _channelStrip() {
-    return SizedBox(
-      height: 58,
-      child: ListView.separated(
-        scrollDirection: Axis.horizontal,
-        padding: const EdgeInsets.symmetric(horizontal: 16),
-        itemCount: widget.channels.length,
-        separatorBuilder: (_, __) => const SizedBox(width: 8),
-        itemBuilder: (context, i) {
-          final c = widget.channels[i];
-          final on = c.id == _current.id;
-          final l = c.logoUrl(240);
-          return GestureDetector(
-            onTap: () => _open(c),
-            child: Container(
-              width: 96,
-              decoration: BoxDecoration(
-                color: on ? const Color(0xFFE50914).withOpacity(0.85) : Colors.black.withOpacity(0.55),
-                borderRadius: BorderRadius.circular(6),
-                border: Border.all(color: on ? const Color(0xFFE50914) : Colors.white24, width: 0.8),
-              ),
-              padding: const EdgeInsets.fromLTRB(10, 6, 10, 4),
-              child: Column(
-                children: [
-                  Expanded(
-                    child: l == null
-                        ? const Icon(Icons.live_tv_rounded, color: Colors.white70, size: 18)
-                        : CachedNetworkImage(imageUrl: l, fit: BoxFit.contain, memCacheWidth: 240),
-                  ),
-                  const SizedBox(height: 2),
-                  Text(
-                    c.title,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.w800),
-                  ),
-                ],
-              ),
-            ),
-          );
-        },
       ),
     );
   }

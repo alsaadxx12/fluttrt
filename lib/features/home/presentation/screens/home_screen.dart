@@ -1488,21 +1488,30 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
           ),
         );
       },
-      // Black, exactly, like the page: the card is its edge and what is
-      // written on it.
+      // Glass: the page shows through a deep blur and a faint white sheen
+      // that brightens towards the top-left, under a thin light edge.
       child: ClipRRect(
         borderRadius: BorderRadius.circular(6),
         // One layer, then the clip: the picture and its shading are
         // composited before the rounded edge is applied, so the
         // half-pixel bottom row is shaded like every other row.
         clipBehavior: Clip.antiAliasWithSaveLayer,
-        child: Container(
+        child: BackdropFilter(
+          filter: ImageFilter.blur(sigmaX: 24, sigmaY: 24),
+          child: Container(
           width: 250,
           decoration: BoxDecoration(
-            color: Colors.black,
+            gradient: LinearGradient(
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+              colors: [
+                Colors.white.withOpacity(_p.isDark ? 0.16 : 0.80),
+                Colors.white.withOpacity(_p.isDark ? 0.05 : 0.55),
+              ],
+            ),
             borderRadius: BorderRadius.circular(6),
             border: Border.all(
-              color: Colors.white.withOpacity(0.14),
+              color: Colors.white.withOpacity(_p.isDark ? 0.22 : 0.9),
               width: 0.8,
             ),
           ),
@@ -1646,6 +1655,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
             ],
           ),
         ),
+        ),
       ),
     );
   }
@@ -1702,9 +1712,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
       return Container(
         padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
         decoration: BoxDecoration(
-          color: Colors.black,
+          color: Colors.white.withOpacity(0.12),
           borderRadius: BorderRadius.circular(8),
-          border: Border.all(color: Colors.white.withOpacity(0.14), width: 0.8),
         ),
         child: Text(
           cleanTime.isNotEmpty && cleanTime != 'VS' ? cleanTime : 'قادمة',
