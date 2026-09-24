@@ -467,10 +467,10 @@ class _CinemanaCatalogScreenState extends ConsumerState<CinemanaCatalogScreen> {
                         decoration: BoxDecoration(
                           // Glass: a sheen of white on the page, brighter
                           // (and red-edged) once a filter is set.
-                          color: Colors.white.withOpacity(filterActive ? 0.22 : 0.10),
+                          color: palette.glassFill(selected: filterActive),
                           borderRadius: BorderRadius.circular(AppSearchField.defaultHeight / 2),
                           border: Border.all(
-                            color: filterActive ? _accentColor : Colors.white.withOpacity(0.22),
+                            color: filterActive ? _accentColor : palette.glassFillEdge(),
                             width: 0.8,
                           ),
                         ),
@@ -479,7 +479,7 @@ class _CinemanaCatalogScreenState extends ConsumerState<CinemanaCatalogScreen> {
                           children: [
                             Icon(
                               Icons.tune_rounded,
-                              color: filterActive ? _accentColor : Colors.white,
+                              color: filterActive ? _accentColor : palette.text,
                               size: 20,
                             ),
                             if (filterActive)
@@ -529,9 +529,9 @@ class _CinemanaCatalogScreenState extends ConsumerState<CinemanaCatalogScreen> {
                                 padding: const EdgeInsets.all(3),
                                 decoration: BoxDecoration(
                                   // Glass, with the corners of the cards below.
-                                  color: Colors.white.withOpacity(0.08),
+                                  color: palette.glassFill(),
                                   borderRadius: BorderRadius.circular(6),
-                                  border: Border.all(color: Colors.white.withOpacity(0.16), width: 0.8),
+                                  border: Border.all(color: palette.glassFillEdge(), width: 0.8),
                                 ),
                                 child: Row(
                                   children: [
@@ -543,7 +543,7 @@ class _CinemanaCatalogScreenState extends ConsumerState<CinemanaCatalogScreen> {
                                           alignment: Alignment.center,
                                           decoration: BoxDecoration(
                                             color: sectionState.animeSubKind == 2
-                                                ? Colors.white.withOpacity(0.22)
+                                                ? palette.glassFill(selected: true)
                                                 : Colors.transparent,
                                             borderRadius: BorderRadius.circular(4),
                                           ),
@@ -553,8 +553,8 @@ class _CinemanaCatalogScreenState extends ConsumerState<CinemanaCatalogScreen> {
                                               fontSize: 12.5,
                                               fontWeight: FontWeight.bold,
                                               color: sectionState.animeSubKind == 2
-                                                  ? Colors.white
-                                                  : (isDark ? Colors.white70 : Colors.black87),
+                                                  ? palette.text
+                                                  : palette.onGlassMuted,
                                             ),
                                           ),
                                         ),
@@ -568,7 +568,7 @@ class _CinemanaCatalogScreenState extends ConsumerState<CinemanaCatalogScreen> {
                                           alignment: Alignment.center,
                                           decoration: BoxDecoration(
                                             color: sectionState.animeSubKind == 1
-                                                ? Colors.white.withOpacity(0.22)
+                                                ? palette.glassFill(selected: true)
                                                 : Colors.transparent,
                                             borderRadius: BorderRadius.circular(4),
                                           ),
@@ -578,8 +578,8 @@ class _CinemanaCatalogScreenState extends ConsumerState<CinemanaCatalogScreen> {
                                               fontSize: 12.5,
                                               fontWeight: FontWeight.bold,
                                               color: sectionState.animeSubKind == 1
-                                                  ? Colors.white
-                                                  : (isDark ? Colors.white70 : Colors.black87),
+                                                  ? palette.text
+                                                  : palette.onGlassMuted,
                                             ),
                                           ),
                                         ),
@@ -656,10 +656,10 @@ class _CinemanaCatalogScreenState extends ConsumerState<CinemanaCatalogScreen> {
                                         alignment: Alignment.center,
                                         // Glass chips with the cards' corners; the chosen one brighter.
                                         decoration: BoxDecoration(
-                                          color: Colors.white.withOpacity(isSelected ? 0.22 : 0.08),
+                                          color: palette.glassFill(selected: isSelected),
                                           borderRadius: BorderRadius.circular(6),
                                           border: Border.all(
-                                            color: Colors.white.withOpacity(isSelected ? 0.35 : 0.14),
+                                            color: palette.glassFillEdge(selected: isSelected),
                                             width: 0.8,
                                           ),
                                         ),
@@ -668,9 +668,7 @@ class _CinemanaCatalogScreenState extends ConsumerState<CinemanaCatalogScreen> {
                                           style: TextStyle(
                                             fontSize: 12,
                                             fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
-                                            color: isSelected
-                                                ? Colors.white
-                                                : (isDark ? Colors.white70 : Colors.black87),
+                                            color: isSelected ? palette.text : palette.onGlassMuted,
                                           ),
                                         ),
                                       ),

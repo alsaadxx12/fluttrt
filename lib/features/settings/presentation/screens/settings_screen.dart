@@ -248,6 +248,45 @@ class SettingsScreen extends ConsumerWidget {
                 ),
                 const SizedBox(height: 16),
 
+                // Appearance: day, night, or whatever the phone says.
+                _buildSectionCard(
+                  context,
+                  title: strings.appearanceSection,
+                  icon: Icons.brightness_6_rounded,
+                  isDark: isDark,
+                  children: [
+                    Text(
+                      strings.themeMode,
+                      style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13),
+                    ),
+                    const SizedBox(height: 8),
+                    SegmentedButton<ThemeMode>(
+                      segments: [
+                        ButtonSegment(
+                          value: ThemeMode.light,
+                          icon: const Icon(Icons.light_mode_rounded, size: 16),
+                          label: Text(strings.themeLight),
+                        ),
+                        ButtonSegment(
+                          value: ThemeMode.dark,
+                          icon: const Icon(Icons.dark_mode_rounded, size: 16),
+                          label: Text(strings.themeDark),
+                        ),
+                        ButtonSegment(
+                          value: ThemeMode.system,
+                          icon: const Icon(Icons.phone_android_rounded, size: 16),
+                          label: Text(strings.themeSystem),
+                        ),
+                      ],
+                      selected: {settings.themeMode},
+                      showSelectedIcon: false,
+                      onSelectionChanged: (set) =>
+                          ref.read(settingsProvider.notifier).setThemeMode(set.first),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 16),
+
                 // Section 2: Language
                 _buildSectionCard(
                   context,

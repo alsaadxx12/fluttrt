@@ -12,7 +12,6 @@ import 'package:youtube_downloader/features/subscription/presentation/providers/
 import 'package:youtube_downloader/features/auth/presentation/providers/auth_provider.dart';
 
 /// Subtle neutral wash behind the active row — replaces red active tint.
-const Color _kActiveFill = Color(0x1FFFFFFF);
 
 class AppDrawer extends ConsumerStatefulWidget {
   const AppDrawer({super.key});
@@ -45,12 +44,12 @@ class _AppDrawerState extends ConsumerState<AppDrawer> {
           filter: ImageFilter.blur(sigmaX: 28, sigmaY: 28),
           child: Container(
             decoration: BoxDecoration(
-              gradient: const LinearGradient(
+              gradient: LinearGradient(
                 begin: Alignment.topCenter,
                 end: Alignment.bottomCenter,
-                colors: [Color(0xCC0A0D14), Color(0xE0040609)],
+                colors: palette.glassSheet,
               ),
-              border: BorderDirectional(end: BorderSide(color: Colors.white.withOpacity(0.12), width: 0.8)),
+              border: BorderDirectional(end: BorderSide(color: palette.glassSheetEdge, width: 0.8)),
             ),
             child: SafeArea(
         top: false,
@@ -81,6 +80,32 @@ class _AppDrawerState extends ConsumerState<AppDrawer> {
                       fontWeight: FontWeight.w900,
                       letterSpacing: -0.2,
                       color: isDark ? Colors.white : const Color(0xFF111827),
+                    ),
+                  ),
+                  // Day or night, one tap.
+                  Align(
+                    alignment: AlignmentDirectional.centerStart,
+                    child: Material(
+                      color: Colors.transparent,
+                      child: InkWell(
+                        onTap: () => ref
+                            .read(settingsProvider.notifier)
+                            .setThemeMode(isDark ? ThemeMode.light : ThemeMode.dark),
+                        borderRadius: BorderRadius.circular(20),
+                        child: Container(
+                          padding: const EdgeInsets.all(6),
+                          decoration: BoxDecoration(
+                            color: palette.glassFill(),
+                            shape: BoxShape.circle,
+                            border: Border.all(color: palette.glassFillEdge(), width: 0.8),
+                          ),
+                          child: Icon(
+                            isDark ? Icons.light_mode_rounded : Icons.dark_mode_rounded,
+                            size: 18,
+                            color: palette.text,
+                          ),
+                        ),
+                      ),
                     ),
                   ),
                   Align(
@@ -124,10 +149,10 @@ class _AppDrawerState extends ConsumerState<AppDrawer> {
                 gradient: LinearGradient(
                   begin: Alignment.topLeft,
                   end: Alignment.bottomRight,
-                  colors: [Colors.white.withOpacity(0.12), Colors.white.withOpacity(0.04)],
+                  colors: palette.panel,
                 ),
                 borderRadius: BorderRadius.circular(10),
-                border: Border.all(color: Colors.white.withOpacity(0.16), width: 0.8),
+                border: Border.all(color: palette.panelEdge, width: 0.8),
               ),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -140,12 +165,12 @@ class _AppDrawerState extends ConsumerState<AppDrawer> {
                         height: 38,
                         decoration: BoxDecoration(
                           shape: BoxShape.circle,
-                          color: Colors.white.withOpacity(0.08),
+                          color: palette.glassFill(),
                         ),
-                        child: const Center(
+                        child: Center(
                           child: Icon(
                             Icons.person_rounded,
-                            color: Colors.white,
+                            color: palette.text,
                             size: 22,
                           ),
                         ),
@@ -400,7 +425,7 @@ class _AppDrawerState extends ConsumerState<AppDrawer> {
               decoration: BoxDecoration(
                 color: Colors.transparent,
                 border: Border(
-                  top: BorderSide(color: Colors.white.withOpacity(0.10), width: 0.8),
+                  top: BorderSide(color: palette.glassSheetEdge, width: 0.8),
                 ),
               ),
               child: Row(
@@ -412,13 +437,13 @@ class _AppDrawerState extends ConsumerState<AppDrawer> {
                       width: 28,
                       height: 28,
                       fit: BoxFit.cover,
-                      errorBuilder: (_, __, ___) => const SizedBox(
+                      errorBuilder: (_, __, ___) => SizedBox(
                         width: 28,
                         height: 28,
                         child: Icon(
                           Icons.play_circle_fill_rounded,
                           size: 24,
-                          color: Colors.white,
+                          color: palette.text,
                         ),
                       ),
                     ),
@@ -508,10 +533,9 @@ class _DrawerItem extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    const iconColor = Colors.white;
-    final labelColor = isSelected
-        ? Colors.white
-        : Colors.white70;
+    final p = AppPalette.of(context);
+    final iconColor = p.text;
+    final labelColor = isSelected ? p.text : p.onGlassMuted;
 
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 1),
@@ -523,9 +547,9 @@ class _DrawerItem extends StatelessWidget {
           child: Ink(
             height: 46,
             decoration: BoxDecoration(
-              color: isSelected ? _kActiveFill : Colors.transparent,
+              color: isSelected ? p.glassFill(selected: true) : Colors.transparent,
               borderRadius: BorderRadius.circular(8),
-              border: isSelected ? Border.all(color: Colors.white.withOpacity(0.18), width: 0.8) : null,
+              border: isSelected ? Border.all(color: p.glassFillEdge(selected: true), width: 0.8) : null,
             ),
             child: Stack(
               // Centred: the row used to sit along the top of its band.
@@ -542,7 +566,7 @@ class _DrawerItem extends StatelessWidget {
                         width: 3,
                         height: 22,
                         decoration: BoxDecoration(
-                          color: Colors.white,
+                          color: p.text,
                           borderRadius: BorderRadius.circular(2),
                         ),
                       ),
@@ -599,17 +623,18 @@ class _Pill extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final p = AppPalette.of(context);
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2.5),
       decoration: BoxDecoration(
-        color: Colors.white.withOpacity(0.12),
+        color: p.glassFill(selected: true),
         borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: Colors.white24, width: 0.8),
+        border: Border.all(color: p.glassFillEdge(selected: true), width: 0.8),
       ),
       child: Text(
         text,
-        style: const TextStyle(
-          color: Colors.white,
+        style: TextStyle(
+          color: p.text,
           fontSize: 10.5,
           fontWeight: FontWeight.w800,
           height: 1.2,

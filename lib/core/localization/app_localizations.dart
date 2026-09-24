@@ -84,9 +84,9 @@ class AppStrings {
   // Settings Screen
   String get appearanceSection => isArabic ? 'المظهر' : 'Appearance';
   String get themeMode => isArabic ? 'الوضع' : 'Theme Mode';
-  String get themeLight => isArabic ? 'فاتح (Light)' : 'Light';
-  String get themeDark => isArabic ? 'داكن (Dark)' : 'Dark';
-  String get themeSystem => isArabic ? 'تلقائي حسب النظام' : 'System Default';
+  String get themeLight => isArabic ? 'نهاري' : 'Light';
+  String get themeDark => isArabic ? 'ليلي' : 'Dark';
+  String get themeSystem => isArabic ? 'تلقائي' : 'System';
 
   String get languageSection => isArabic ? 'اللغة' : 'Language';
   String get selectLanguage => isArabic ? 'لغة الواجهة' : 'Interface Language';

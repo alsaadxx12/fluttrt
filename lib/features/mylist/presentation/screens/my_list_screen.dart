@@ -25,9 +25,9 @@ class _MyListScreenState extends ConsumerState<MyListScreen> {
     final p = AppPalette.of(context);
 
     return Scaffold(
-      // Black, not the page grey: the lists sit on the same ground as the
-      // player, and the posters carry the colour.
-      backgroundColor: Colors.black,
+      // By night black, not the page grey: the lists sit on the same ground
+      // as the player, and the posters carry the colour.
+      backgroundColor: p.isDark ? Colors.black : p.bg,
       body: SafeArea(
         bottom: false,
         child: Column(

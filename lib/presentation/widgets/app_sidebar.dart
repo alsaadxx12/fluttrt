@@ -111,12 +111,12 @@ class _AppSidebarState extends ConsumerState<AppSidebar> {
                         height: 34,
                         decoration: BoxDecoration(
                           shape: BoxShape.circle,
-                          color: Colors.white.withOpacity(0.08),
+                          color: palette.glassFill(),
                         ),
-                        child: const Center(
+                        child: Center(
                           child: Icon(
                             Icons.person_rounded,
-                            color: Colors.white,
+                            color: palette.text,
                             size: 20,
                           ),
                         ),
@@ -472,14 +472,14 @@ class _AppSidebarState extends ConsumerState<AppSidebar> {
                       child: Container(
                         padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2.5),
                         decoration: BoxDecoration(
-                          color: Colors.white.withOpacity(0.15),
+                          color: palette.glassFill(selected: true),
                           borderRadius: BorderRadius.circular(8),
-                          border: Border.all(color: Colors.white30, width: 0.8),
+                          border: Border.all(color: palette.glassFillEdge(selected: true), width: 0.8),
                         ),
-                        child: const Text(
+                        child: Text(
                           'تحديث متاح',
                           style: TextStyle(
-                            color: Colors.white,
+                            color: palette.text,
                             fontSize: 10.5,
                             fontWeight: FontWeight.w800,
                             height: 1.2,
@@ -538,11 +538,12 @@ class _AppSidebarState extends ConsumerState<AppSidebar> {
     String? badgeText,
     required VoidCallback onTap,
   }) {
+    final ink = isDark ? Colors.white : const Color(0xFF0F172A);
     final textColor = isSelected
-        ? Colors.white
+        ? ink
         : (isDark ? const Color(0xFFCBD5E1) : const Color(0xFF334155));
 
-    const iconColor = Colors.white;
+    final iconColor = ink;
 
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 2.0),
@@ -551,7 +552,7 @@ class _AppSidebarState extends ConsumerState<AppSidebar> {
         child: InkWell(
           onTap: onTap,
           borderRadius: BorderRadius.circular(10),
-          hoverColor: Colors.white.withOpacity(0.04),
+          hoverColor: ink.withOpacity(0.04),
           child: Container(
             decoration: BoxDecoration(
               color: isSelected
@@ -596,14 +597,14 @@ class _AppSidebarState extends ConsumerState<AppSidebar> {
                     Container(
                       padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
                       decoration: BoxDecoration(
-                        color: Colors.white.withOpacity(0.12),
+                        color: ink.withOpacity(isDark ? 0.12 : 0.06),
                         borderRadius: BorderRadius.circular(6),
-                        border: Border.all(color: Colors.white24, width: 0.8),
+                        border: Border.all(color: ink.withOpacity(isDark ? 0.24 : 0.12), width: 0.8),
                       ),
                       child: Text(
                         badgeText,
-                        style: const TextStyle(
-                          color: Colors.white,
+                        style: TextStyle(
+                          color: ink,
                           fontSize: 9,
                           fontWeight: FontWeight.w800,
                         ),
@@ -613,14 +614,14 @@ class _AppSidebarState extends ConsumerState<AppSidebar> {
                     Container(
                       padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
                       decoration: BoxDecoration(
-                        color: Colors.white.withOpacity(0.12),
+                        color: ink.withOpacity(isDark ? 0.12 : 0.06),
                         borderRadius: BorderRadius.circular(6),
-                        border: Border.all(color: Colors.white24, width: 0.8),
+                        border: Border.all(color: ink.withOpacity(isDark ? 0.24 : 0.12), width: 0.8),
                       ),
                       child: Text(
                         '$badgeCount',
-                        style: const TextStyle(
-                          color: Colors.white,
+                        style: TextStyle(
+                          color: ink,
                           fontSize: 9,
                           fontWeight: FontWeight.bold,
                         ),

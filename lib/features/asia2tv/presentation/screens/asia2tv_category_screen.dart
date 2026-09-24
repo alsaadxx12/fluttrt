@@ -19,8 +19,7 @@ class Asia2TvCategoryScreen extends ConsumerStatefulWidget {
   ConsumerState<Asia2TvCategoryScreen> createState() => _Asia2TvCategoryScreenState();
 }
 
-class _Asia2TvCategoryScreenState extends ConsumerState<Asia2TvCategoryScreen>
-    with SingleTickerProviderStateMixin {
+class _Asia2TvCategoryScreenState extends ConsumerState<Asia2TvCategoryScreen> with SingleTickerProviderStateMixin {
   late TabController _tabController;
   final TextEditingController _searchController = TextEditingController();
   String _searchQuery = '';
@@ -99,18 +98,17 @@ class _Asia2TvCategoryScreenState extends ConsumerState<Asia2TvCategoryScreen>
                   indicatorPadding: const EdgeInsets.symmetric(vertical: 6),
                   labelPadding: const EdgeInsets.symmetric(horizontal: 14),
                   indicator: BoxDecoration(
-                    color: Colors.white.withOpacity(0.18),
+                    color: palette.glassFill(selected: true),
                     borderRadius: BorderRadius.circular(6),
-                    border: Border.all(color: Colors.white.withOpacity(0.30), width: 0.8),
+                    border: Border.all(color: palette.glassFillEdge(selected: true), width: 0.8),
                   ),
-                  labelColor: Colors.white,
-                  unselectedLabelColor: Colors.white54,
+                  labelColor: palette.text,
+                  unselectedLabelColor: palette.onGlassMuted,
                   labelStyle: const TextStyle(fontSize: 13, fontWeight: FontWeight.w900),
                   unselectedLabelStyle: const TextStyle(fontSize: 13, fontWeight: FontWeight.normal),
                   tabAlignment: TabAlignment.start,
                   tabs: [
-                    for (final cat in _categories)
-                      Tab(text: cat.label),
+                    for (final cat in _categories) Tab(text: cat.label),
                   ],
                 ),
             ],
@@ -122,8 +120,7 @@ class _Asia2TvCategoryScreenState extends ConsumerState<Asia2TvCategoryScreen>
           : TabBarView(
               controller: _tabController,
               children: [
-                for (final cat in _categories)
-                  _CategoryGridView(category: cat),
+                for (final cat in _categories) _CategoryGridView(category: cat),
               ],
             ),
     );
@@ -131,18 +128,19 @@ class _Asia2TvCategoryScreenState extends ConsumerState<Asia2TvCategoryScreen>
 
   Widget _buildSearchResults(String query) {
     final searchAsync = ref.watch(asia2tvSearchProvider(query));
+    final p = AppPalette.of(context);
 
     return searchAsync.when(
       loading: () => const Center(
         child: CircularProgressIndicator(color: AppColors.primary),
       ),
       error: (err, _) => Center(
-        child: Text('خطأ أثناء البحث: $err', style: const TextStyle(color: Colors.white54)),
+        child: Text('خطأ أثناء البحث: $err', style: TextStyle(color: p.textMuted)),
       ),
       data: (items) {
         if (items.isEmpty) {
-          return const Center(
-            child: Text('لا توجد نتائج مطابقة لبحثك', style: TextStyle(color: Colors.white54, fontSize: 14)),
+          return Center(
+            child: Text('لا توجد نتائج مطابقة لبحثك', style: TextStyle(color: p.textMuted, fontSize: 14)),
           );
         }
 
@@ -176,6 +174,7 @@ class _CategoryGridView extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final p = AppPalette.of(context);
     final asyncList = ref.watch(asia2tvCategoryProvider(category));
 
     return asyncList.when(
@@ -186,9 +185,9 @@ class _CategoryGridView extends ConsumerWidget {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            const Icon(Icons.wifi_off_rounded, color: Colors.white38, size: 40),
+            Icon(Icons.wifi_off_rounded, color: p.textFaint, size: 40),
             const SizedBox(height: 10),
-            Text('تعذّر جلب ${category.label}', style: const TextStyle(color: Colors.white70)),
+            Text('تعذّر جلب ${category.label}', style: TextStyle(color: p.textMuted)),
             const SizedBox(height: 12),
             ElevatedButton(
               onPressed: () => ref.refresh(asia2tvCategoryProvider(category)),
@@ -200,8 +199,8 @@ class _CategoryGridView extends ConsumerWidget {
       ),
       data: (items) {
         if (items.isEmpty) {
-          return const Center(
-            child: Text('لا تتوفر عناصر في هذا القسم حالياً', style: TextStyle(color: Colors.white54)),
+          return Center(
+            child: Text('لا تتوفر عناصر في هذا القسم حالياً', style: TextStyle(color: p.textMuted)),
           );
         }
 

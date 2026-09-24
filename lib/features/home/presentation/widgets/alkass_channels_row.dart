@@ -161,6 +161,9 @@ class _Tile extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    // The tile stays a dark screen by day too: the marks are drawn for a
+    // dark ground and would vanish on milky glass.
+    final dark = Theme.of(context).brightness == Brightness.dark;
     return RepaintBoundary(
       child: PressScale(
         onTap: () => _play(context, ref),
@@ -179,10 +182,12 @@ class _Tile extends ConsumerWidget {
                   gradient: LinearGradient(
                     begin: Alignment.topLeft,
                     end: Alignment.bottomRight,
-                    colors: [Colors.white.withOpacity(0.16), Colors.white.withOpacity(0.05)],
+                    colors: dark
+                        ? [Colors.white.withOpacity(0.16), Colors.white.withOpacity(0.05)]
+                        : const [Color(0xE6101623), Color(0xF2070B14)],
                   ),
                   borderRadius: BorderRadius.circular(6),
-                  border: Border.all(color: Colors.white.withOpacity(0.22), width: 0.8),
+                  border: Border.all(color: Colors.white.withOpacity(dark ? 0.22 : 0.30), width: 0.8),
                 ),
                 child: channel.logo.isEmpty
                     ? const Icon(Icons.live_tv_rounded, color: Colors.white54, size: 40)

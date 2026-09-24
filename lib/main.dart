@@ -162,9 +162,9 @@ class YouTubeDownloaderApp extends ConsumerWidget {
       title: strings.appName,
       debugShowCheckedModeBanner: false,
       routerConfig: appRouter,
-      // Cinematic Pitch Black Theme everywhere
-      themeMode: ThemeMode.dark,
-      theme: AppTheme.darkTheme(settings.language),
+      // Night unless the settings say day (or leave it to the phone).
+      themeMode: settings.themeMode,
+      theme: AppTheme.lightTheme(settings.language),
       darkTheme: AppTheme.darkTheme(settings.language),
       locale: locale,
       supportedLocales: const [

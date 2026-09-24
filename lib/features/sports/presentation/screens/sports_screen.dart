@@ -372,6 +372,7 @@ class _SportsScreenState extends ConsumerState<SportsScreen> {
       if (seen.add(l.id)) today.add(l);
     }
     final dpr = MediaQuery.of(context).devicePixelRatio;
+    final glass = AppPalette.of(context);
 
     Widget pill({
       required Widget leading,
@@ -391,10 +392,10 @@ class _SportsScreenState extends ConsumerState<SportsScreen> {
           // Glass chips with the cards' corners; the chosen one a brighter
           // sheen, none of them red.
           decoration: BoxDecoration(
-            color: Colors.white.withOpacity(isSelected ? 0.22 : 0.08),
+            color: glass.glassFill(selected: isSelected),
             borderRadius: BorderRadius.circular(6),
             border: Border.all(
-              color: Colors.white.withOpacity(isSelected ? 0.35 : 0.14),
+              color: glass.glassFillEdge(selected: isSelected),
               width: 0.8,
             ),
           ),
@@ -406,7 +407,7 @@ class _SportsScreenState extends ConsumerState<SportsScreen> {
               Text(
                 text,
                 style: TextStyle(
-                  color: isSelected ? Colors.white : (isDark ? Colors.white : const Color(0xFF0F172A)),
+                  color: glass.text,
                   fontSize: 12.5,
                   fontWeight: isSelected ? FontWeight.bold : FontWeight.w600,
                 ),
@@ -431,12 +432,12 @@ class _SportsScreenState extends ConsumerState<SportsScreen> {
               width: 26,
               height: 26,
               decoration: BoxDecoration(
-                color: Colors.white.withOpacity(selectedLeagueId == null ? 0.25 : 0.12),
+                color: glass.glassFill(selected: selectedLeagueId == null),
                 shape: BoxShape.circle,
               ),
               child: Icon(
                 Icons.emoji_events_rounded,
-                color: Colors.white,
+                color: glass.text,
                 size: 16,
               ),
             ),
@@ -898,6 +899,7 @@ class _SportsScreenState extends ConsumerState<SportsScreen> {
   ) {
     final isLive = match.isLive;
     final isUpcoming = match.isScheduled;
+    final glass = AppPalette.of(context);
 
     // Glass, like the home page's card: the page shows through a deep
     // blur and a faint white sheen, under a thin light edge.
@@ -913,13 +915,11 @@ class _SportsScreenState extends ConsumerState<SportsScreen> {
         gradient: LinearGradient(
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
-          colors: isDark
-              ? [Colors.white.withOpacity(0.14), Colors.white.withOpacity(0.05)]
-              : [Colors.white.withOpacity(0.85), Colors.white.withOpacity(0.65)],
+          colors: [glass.glassTop, glass.glassBottom],
         ),
         borderRadius: BorderRadius.circular(18),
         border: Border.all(
-          color: Colors.white.withOpacity(isDark ? 0.20 : 0.9),
+          color: glass.glassEdge,
           width: 0.8,
         ),
       ),

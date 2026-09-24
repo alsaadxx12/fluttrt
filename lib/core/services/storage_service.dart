@@ -50,8 +50,9 @@ class StorageService {
   ThemeMode getThemeMode() {
     final val = _prefs.getString(_keyThemeMode);
     if (val == 'light') return ThemeMode.light;
-    if (val == 'dark') return ThemeMode.dark;
-    return ThemeMode.system;
+    if (val == 'system') return ThemeMode.system;
+    // Night until the user says otherwise: the app has always opened dark.
+    return ThemeMode.dark;
   }
 
   Future<void> setThemeMode(ThemeMode mode) async {

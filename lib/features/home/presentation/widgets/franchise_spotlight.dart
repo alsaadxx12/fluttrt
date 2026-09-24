@@ -207,7 +207,6 @@ class FranchiseSpotlight extends StatefulWidget {
 
 class _FranchiseSpotlightState extends State<FranchiseSpotlight> {
   final PageController _pages = PageController();
-  int _page = 0;
 
   @override
   void dispose() {
@@ -243,7 +242,6 @@ class _FranchiseSpotlightState extends State<FranchiseSpotlight> {
                 // The other way round from the page's own direction: the
                 // way the user's thumb expects the next series to come.
                 reverse: true,
-                onPageChanged: (i) => setState(() => _page = i),
                 itemCount: franchises.length,
                 itemBuilder: (context, i) => _SpotlightPage(
                   franchise: franchises[i],
@@ -252,25 +250,6 @@ class _FranchiseSpotlightState extends State<FranchiseSpotlight> {
                   rowHeight: rowHeight,
                 ),
               ),
-            ),
-            const SizedBox(height: 8),
-            // Which series is on show, and how many more a swipe reaches.
-            Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                for (var i = 0; i < franchises.length; i++)
-                  AnimatedContainer(
-                    duration: const Duration(milliseconds: 200),
-                    margin: const EdgeInsets.symmetric(horizontal: 3),
-                    width: i == _page ? 18 : 6,
-                    height: 6,
-                    decoration: BoxDecoration(
-                      color:
-                          i == _page ? const Color(0xFFE50914) : Colors.white24,
-                      borderRadius: BorderRadius.circular(3),
-                    ),
-                  ),
-              ],
             ),
           ],
         );

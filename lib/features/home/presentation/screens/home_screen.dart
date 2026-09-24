@@ -686,7 +686,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                         border: scrolled
                             ? Border(
                                 bottom: BorderSide(
-                                    color: Colors.white.withOpacity(0.08),
+                                    color: _p.border,
                                     width: 0.6))
                             : null,
                       ),
@@ -1096,13 +1096,13 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
           height: 40,
           decoration: BoxDecoration(
             shape: BoxShape.circle,
-            color: const Color(0xFF141926),
+            color: _p.glassFill(),
             border: Border.all(
-                color: ring ?? Colors.white.withOpacity(0.12), width: 1),
+                color: ring ?? _p.glassFillEdge(), width: 1),
           ),
           child: Icon(
             icon,
-            color: color ?? Colors.white,
+            color: color ?? _p.icon,
             size: 20,
           ),
         ),
@@ -1359,8 +1359,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                 ),
                 const SizedBox(width: 8),
               ] else ...[
-                const Icon(Icons.sports_soccer_rounded,
-                    color: Colors.white, size: 19),
+                Icon(Icons.sports_soccer_rounded,
+                    color: _p.icon, size: 19),
                 const SizedBox(width: 8),
               ],
 
@@ -1522,14 +1522,11 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
             gradient: LinearGradient(
               begin: Alignment.topLeft,
               end: Alignment.bottomRight,
-              colors: [
-                Colors.white.withOpacity(_p.isDark ? 0.16 : 0.80),
-                Colors.white.withOpacity(_p.isDark ? 0.05 : 0.55),
-              ],
+              colors: [_p.glassTop, _p.glassBottom],
             ),
             borderRadius: BorderRadius.circular(6),
             border: Border.all(
-              color: Colors.white.withOpacity(_p.isDark ? 0.22 : 0.9),
+              color: _p.glassEdge,
               width: 0.8,
             ),
           ),
@@ -1730,7 +1727,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
       return Container(
         padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
         decoration: BoxDecoration(
-          color: Colors.white.withOpacity(0.12),
+          color: _p.glassFill(selected: true),
           borderRadius: BorderRadius.circular(8),
         ),
         child: Text(
@@ -1800,10 +1797,10 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                       color: const Color(0xFFE50914).withOpacity(0.10),
                       borderRadius: BorderRadius.circular(20),
                     ),
-                    child: const Row(
+                    child: Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        Text(
+                        const Text(
                           'عرض الكل',
                           style: TextStyle(
                             color: Color(0xFFE50914),
@@ -1811,9 +1808,9 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                             fontWeight: FontWeight.w900,
                           ),
                         ),
-                        SizedBox(width: 2),
+                        const SizedBox(width: 2),
                         Icon(Icons.chevron_left_rounded,
-                            size: 17, color: Colors.white),
+                            size: 17, color: AppPalette.of(context).icon),
                       ],
                     ),
                   ),
@@ -2051,12 +2048,12 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                 InkWell(
                   onTap: onViewAll,
                   borderRadius: BorderRadius.circular(8),
-                  child: const Padding(
-                    padding: EdgeInsets.symmetric(horizontal: 6, vertical: 4),
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
                     child: Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        Text(
+                        const Text(
                           'عرض الكل',
                           style: TextStyle(
                             color: Color(0xFFE50914),
@@ -2064,9 +2061,9 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                             fontWeight: FontWeight.bold,
                           ),
                         ),
-                        SizedBox(width: 2),
+                        const SizedBox(width: 2),
                         Icon(Icons.chevron_left_rounded,
-                            size: 18, color: Colors.white),
+                            size: 18, color: AppPalette.of(context).icon),
                       ],
                     ),
                   ),

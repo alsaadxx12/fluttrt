@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:youtube_downloader/core/constants/app_palette.dart';
 import 'package:youtube_downloader/presentation/widgets/app_bottom_bar.dart';
 
 Widget _wrap({required String location, bool dark = true}) => MaterialApp(
@@ -76,7 +77,8 @@ void main() {
     expect(find.byIcon(Icons.bookmark_border_rounded), findsOneWidget);
     expect(find.byIcon(Icons.bookmark_rounded), findsNothing);
 
-    expect(_iconColor(tester, Icons.home_rounded), Colors.white);
+    // The page's ink: white by night, navy by day (the test app is light).
+    expect(_iconColor(tester, Icons.home_rounded), const AppPalette.light().text);
     expect(_marked(tester, Icons.home_rounded), isTrue);
     expect(_marked(tester, Icons.bookmark_border_rounded), isFalse);
   });

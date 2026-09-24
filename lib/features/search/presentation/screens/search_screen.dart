@@ -274,10 +274,10 @@ class _ResultTile extends StatelessWidget {
               gradient: LinearGradient(
                 begin: Alignment.topLeft,
                 end: Alignment.bottomRight,
-                colors: [Colors.white.withOpacity(0.14), Colors.white.withOpacity(0.05)],
+                colors: [p.glassTop, p.glassBottom],
               ),
               borderRadius: BorderRadius.circular(6),
-              border: Border.all(color: Colors.white.withOpacity(0.20), width: 0.8),
+              border: Border.all(color: p.glassEdge, width: 0.8),
             ),
             child: Row(
               children: [

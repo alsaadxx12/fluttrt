@@ -111,13 +111,13 @@ class _AppSearchFieldState extends State<AppSearchField> {
     final isDark = p.isDark;
     // The page's own colour: the field is a pill cut out of the page.
     final fill = p.bg;
-    final border = Border.all(color: Colors.white.withOpacity(0.08), width: 0.8);
+    final border = Border.all(color: p.border, width: 0.8);
     final tall = widget.height >= 46;
     final glyph = tall ? 22.0 : 20.0;
     final textSize = tall ? 14.5 : 14.0;
-    const textColor = Colors.white;
+    final textColor = p.text;
     final hintColor = isDark ? Colors.white38 : const Color(0xFF94A3B8);
-    const closeColor = Colors.white;
+    final closeColor = p.text;
     const accent = Color(0xFFE50914);
     final controller = _controller;
 
@@ -132,7 +132,7 @@ class _AppSearchFieldState extends State<AppSearchField> {
       padding: EdgeInsetsDirectional.only(start: tall ? 14 : 12, end: 4),
       child: Row(
         children: [
-          Icon(Icons.search_rounded, color: Colors.white, size: glyph),
+          Icon(Icons.search_rounded, color: p.text, size: glyph),
           SizedBox(width: tall ? 10 : 8),
           Expanded(
             child: Stack(
@@ -255,7 +255,8 @@ class _CyclingHintState extends State<_CyclingHint> {
       style: TextStyle(color: widget.color, fontSize: widget.size),
     );
     if (reduceMotion || widget.hints.length < 2) {
-      return IgnorePointer(child: Text(widget.hints.first, maxLines: 1, style: TextStyle(color: widget.color, fontSize: widget.size)));
+      return IgnorePointer(
+          child: Text(widget.hints.first, maxLines: 1, style: TextStyle(color: widget.color, fontSize: widget.size)));
     }
     return IgnorePointer(
       child: ClipRect(

@@ -35,7 +35,7 @@ class AppBottomBar extends StatelessWidget {
     final palette = AppPalette.of(context);
     final bottomInset = MediaQuery.paddingOf(context).bottom;
     final Color bg = palette.bg;
-    final Color line = Colors.white.withOpacity(0.08);
+    final Color line = palette.border;
     const Color inactive = Color(0xFF94A3B8);
 
     final homeActive = location == '/';
@@ -361,7 +361,7 @@ class _BarItemState extends State<_BarItem>
               final settle = _settle.value.clamp(0.0, 1.2);
               final tint = _tint.value.clamp(0.0, 1.0);
               final color =
-                  Color.lerp(widget.inactiveColor, Colors.white, tint)!;
+                  Color.lerp(widget.inactiveColor, AppPalette.of(context).text, tint)!;
 
               return Column(
                 mainAxisAlignment: MainAxisAlignment.center,

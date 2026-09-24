@@ -18,14 +18,15 @@ class AppColors {
   static const Color darkBorder = Color(0x1FFFFFFF);
   static const Color darkHover = Color(0x14FFFFFF);
 
-  // Fallback Palette (Also dark pitch black to prevent any white flashes)
-  static const Color lightBg = Color(0xFF04060A);
-  static const Color lightSecondaryBg = Color(0xFF080C14);
-  static const Color lightCard = Color(0xFF0D121D);
-  static const Color lightTextPrimary = Color(0xFFF8FAFC);
-  static const Color lightTextSecondary = Color(0xFF94A3B8);
-  static const Color lightBorder = Color(0x1FFFFFFF);
-  static const Color lightHover = Color(0x14FFFFFF);
+  // Day Mode Palette - a pale cool page, white cards, deep navy text
+  // (the same values as AppPalette's light set)
+  static const Color lightBg = Color(0xFFEEF1F6);
+  static const Color lightSecondaryBg = Color(0xFFF4F6FA);
+  static const Color lightCard = Color(0xFFFFFFFF);
+  static const Color lightTextPrimary = Color(0xFF0F172A);
+  static const Color lightTextSecondary = Color(0xFF64748B);
+  static const Color lightBorder = Color(0x14000000);
+  static const Color lightHover = Color(0x0A000000);
 
   // Status & Utility Colors
   static const Color liveRed = Color(0xFFFF2A4A);

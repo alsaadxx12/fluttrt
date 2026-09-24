@@ -1,11 +1,13 @@
 import 'package:flutter/material.dart';
 
-/// Surface, text and shadow colours for the current theme, so cards and
-/// sections follow light and dark mode instead of hard-coding dark colours.
+/// Surface, text, glass and shadow colours for the current theme, so cards
+/// and sections follow day and night mode instead of hard-coding one.
 ///
-/// Light mode is the app's look: a pure white page everywhere — top bar,
-/// drawer, every screen — with white containers set apart by soft shadows
-/// rather than by gray fills, deep navy text and the brand red for accents.
+/// Night is pitch black with panels of frosted glass: a faint white sheen
+/// over a deep blur, under a thin light edge. Day is the same glass on a
+/// pale page: panels are milky white, their edge brighter still, and text
+/// and icons a deep navy. Every widget asks this class rather than picking
+/// a colour, so the two modes stay one design.
 class AppPalette {
   final bool isDark;
 
@@ -13,37 +15,92 @@ class AppPalette {
 
   factory AppPalette.of(BuildContext context) => AppPalette._(Theme.of(context).brightness == Brightness.dark);
 
-  /// Page background — deep pitch black everywhere.
-  Color get bg => const Color(0xFF04060A);
+  const AppPalette.dark() : isDark = true;
+  const AppPalette.light() : isDark = false;
 
-  /// Cards, tiles, sheets — sleek cinematic dark surface.
-  Color get card => const Color(0xFF0D121D);
+  /// Page background: deep pitch black, or a pale cool grey by day.
+  Color get bg => isDark ? const Color(0xFF04060A) : const Color(0xFFEEF1F6);
+
+  /// Cards, tiles, sheets.
+  Color get card => isDark ? const Color(0xFF0D121D) : Colors.white;
 
   /// A quieter surface (inputs, chips, secondary panels).
-  Color get cardAlt => const Color(0xFF131926);
+  Color get cardAlt => isDark ? const Color(0xFF131926) : const Color(0xFFF4F6FA);
 
   /// Loading placeholders.
-  Color get skeleton => const Color(0xFF1A2232);
+  Color get skeleton => isDark ? const Color(0xFF1A2232) : const Color(0xFFE2E6EE);
 
   /// The edge of a surface. Subtle hairline border.
-  Color get border => Colors.white.withOpacity(0.08);
+  Color get border => isDark ? Colors.white.withOpacity(0.08) : Colors.black.withOpacity(0.08);
 
   /// A real separator.
-  Color get divider => Colors.white.withOpacity(0.08);
+  Color get divider => border;
 
-  Color get text => Colors.white;
-  Color get textMuted => const Color(0xFF94A3B8);
-  Color get textFaint => Colors.white38;
+  Color get text => isDark ? Colors.white : const Color(0xFF0F172A);
+  Color get textMuted => isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B);
+  Color get textFaint => isDark ? Colors.white38 : Colors.black38;
 
   /// Icons on cards and bars.
-  Color get icon => Colors.white;
+  Color get icon => text;
 
   /// The corner every surface should use, so nothing looks hand-rolled.
   double get radius => 18;
 
-  /// Card elevation: soft deep shadow.
-  List<BoxShadow> get cardShadow => [
-        BoxShadow(color: Colors.black.withOpacity(0.40), blurRadius: 24, offset: const Offset(0, 8)),
-        BoxShadow(color: Colors.black.withOpacity(0.20), blurRadius: 6, offset: const Offset(0, 2)),
-      ];
+  /// Card elevation: soft deep shadow by night, a whisper of one by day.
+  List<BoxShadow> get cardShadow => isDark
+      ? [
+          BoxShadow(color: Colors.black.withOpacity(0.40), blurRadius: 24, offset: const Offset(0, 8)),
+          BoxShadow(color: Colors.black.withOpacity(0.20), blurRadius: 6, offset: const Offset(0, 2)),
+        ]
+      : [
+          BoxShadow(color: Colors.black.withOpacity(0.08), blurRadius: 24, offset: const Offset(0, 8)),
+          BoxShadow(color: Colors.black.withOpacity(0.04), blurRadius: 6, offset: const Offset(0, 2)),
+        ];
+
+  // ---------------------------------------------------------------- glass
+
+  /// The sheen of a glass panel where it is brightest (top-left).
+  Color get glassTop => Colors.white.withOpacity(isDark ? 0.14 : 0.78);
+
+  /// The sheen of a glass panel where it fades (bottom-right).
+  Color get glassBottom => Colors.white.withOpacity(isDark ? 0.05 : 0.52);
+
+  /// The thin light edge around a glass panel.
+  Color get glassEdge => Colors.white.withOpacity(isDark ? 0.20 : 0.92);
+
+  /// The panel's sheen as a gradient, ready for a [BoxDecoration].
+  LinearGradient get glass => LinearGradient(
+        begin: Alignment.topLeft,
+        end: Alignment.bottomRight,
+        colors: [glassTop, glassBottom],
+      );
+
+  /// A control on the page or on glass - a chip, a tab, a round button;
+  /// [selected] is the brighter one by night and the deeper one by day.
+  Color glassFill({bool selected = false}) => isDark
+      ? Colors.white.withOpacity(selected ? 0.22 : 0.08)
+      : (selected ? Colors.black.withOpacity(0.10) : Colors.white.withOpacity(0.62));
+
+  /// The edge of a [glassFill] control.
+  Color glassFillEdge({bool selected = false}) =>
+      isDark ? Colors.white.withOpacity(selected ? 0.35 : 0.14) : Colors.black.withOpacity(selected ? 0.16 : 0.07);
+
+  /// Secondary words on glass: the unselected tab, a caption.
+  Color get onGlassMuted => isDark ? Colors.white70 : const Color(0xFF475569);
+
+  /// A whole sheet of glass (the drawer, the sidebar), top to bottom.
+  List<Color> get glassSheet =>
+      isDark ? const [Color(0xCC0A0D14), Color(0xE0040609)] : const [Color(0xE6FFFFFF), Color(0xF0F1F4F9)];
+
+  /// The edge of a [glassSheet].
+  Color get glassSheetEdge => isDark ? Colors.white.withOpacity(0.12) : Colors.black.withOpacity(0.08);
+
+  /// A panel lying on a [glassSheet]: a lighter sheen by night, a
+  /// slightly deeper one by day.
+  List<Color> get panel => isDark
+      ? [Colors.white.withOpacity(0.12), Colors.white.withOpacity(0.04)]
+      : [Colors.black.withOpacity(0.05), Colors.black.withOpacity(0.02)];
+
+  /// The edge of a [panel].
+  Color get panelEdge => isDark ? Colors.white.withOpacity(0.16) : Colors.black.withOpacity(0.08);
 }
