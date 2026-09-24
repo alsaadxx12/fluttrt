@@ -12,6 +12,7 @@ import '../controllers/cast_quality.dart';
 import '../models/cast_models.dart';
 import '../services/cast_prefs.dart';
 import '../services/cast_service.dart';
+import '../services/google_cast_service.dart';
 import '../services/local_network.dart';
 import 'cast_diagnostics_page.dart';
 import 'cast_scan_page.dart';
@@ -413,13 +414,20 @@ class _EmptyStateState extends ConsumerState<_EmptyState> {
   static const Duration _patience = Duration(seconds: 15);
 
   bool _longEnough = false;
+  bool _permissionBlocked = false;
   Timer? _timer;
 
   @override
   void initState() {
     super.initState();
-    _timer = Timer(_patience, () {
-      if (mounted) setState(() => _longEnough = true);
+    _timer = Timer(_patience, () async {
+      final blocked = await GoogleCastService.searchBlockedByPermission();
+      if (mounted) {
+        setState(() {
+          _longEnough = true;
+          _permissionBlocked = blocked;
+        });
+      }
     });
   }
 
@@ -455,14 +463,51 @@ class _EmptyStateState extends ConsumerState<_EmptyState> {
               ),
             ],
           ),
-          if (_longEnough && onWifi && !connecting)
-            const Padding(
-              padding: EdgeInsets.only(top: 10),
-              child: Text(
-                LocalNetwork.isolationAdvice,
+          // Nothing in the list after a while. «Not in the list» is its own
+          // trouble, apart from «in the list but will not play», and has
+          // its own causes, named here in the order they are likely.
+          if (_longEnough && !connecting) ...[
+            const SizedBox(height: 10),
+            if (_permissionBlocked) ...[
+              const Text(
+                'التطبيق ممنوع من إذن «الأجهزة القريبة»، ومن دونه لا يستطيع أندرويد إيجاد أي تلفاز Chromecast أو Google TV.',
                 style: TextStyle(color: Color(0xFFFFB020), fontSize: 12, height: 1.4),
               ),
-            ),
+              Align(
+                alignment: AlignmentDirectional.centerStart,
+                child: TextButton.icon(
+                  onPressed: GoogleCastService.openSettings,
+                  icon: const Icon(Icons.settings_rounded, size: 16),
+                  label: const Text('افتح الإعدادات وامنح الإذن'),
+                  style: TextButton.styleFrom(foregroundColor: const Color(0xFFE50914)),
+                ),
+              ),
+            ] else if (!GoogleCastService.frameworkReady) ...[
+              const Text(
+                'خدمات Google Play غير متاحة على هذا الهاتف، فلا يمكن إيجاد أجهزة Chromecast. يبقى الربط عبر المتصفح أو تلفاز DLNA.',
+                style: TextStyle(color: Color(0xFFFFB020), fontSize: 12, height: 1.4),
+              ),
+            ] else if (onWifi) ...[
+              Text(
+                'لم يظهر أي تلفاز بعد. تأكد من:',
+                style: TextStyle(color: p.text, fontSize: 12.5, fontWeight: FontWeight.w800),
+              ),
+              const SizedBox(height: 4),
+              for (final line in const [
+                'التلفاز يعمل، وخاصية Chromecast built-in مفعّلة في إعداداته',
+                'الهاتف والتلفاز على شبكة الواي فاي نفسها، لا شبكة الضيوف',
+                'الراوتر لا يعزل الأجهزة عن بعضها (AP / Client Isolation)',
+              ])
+                Padding(
+                  padding: const EdgeInsets.only(top: 3),
+                  child: Text('• $line', style: TextStyle(color: p.textMuted, fontSize: 12, height: 1.4)),
+                ),
+            ] else
+              const Text(
+                'الهاتف ليس على شبكة واي فاي. التلفاز يُكتشف عبر الواي فاي المنزلي فقط.',
+                style: TextStyle(color: Color(0xFFFFB020), fontSize: 12, height: 1.4),
+              ),
+          ],
         ],
       ),
     );

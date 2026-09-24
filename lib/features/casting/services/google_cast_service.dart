@@ -52,8 +52,7 @@ class GoogleCastService implements CastService {
   /// keeps the check out of every call site.
   static Future<void> ensureStarted() async {
     if (_contextReady) return;
-    if (defaultTargetPlatform != TargetPlatform.android &&
-        defaultTargetPlatform != TargetPlatform.iOS) {
+    if (defaultTargetPlatform != TargetPlatform.android && defaultTargetPlatform != TargetPlatform.iOS) {
       return;
     }
     try {
@@ -79,8 +78,7 @@ class GoogleCastService implements CastService {
     }
   }
 
-  final StreamController<CastPlaybackEvent> _events =
-      StreamController<CastPlaybackEvent>.broadcast();
+  final StreamController<CastPlaybackEvent> _events = StreamController<CastPlaybackEvent>.broadcast();
 
   late final StreamSubscription<GoggleCastMediaStatus?> _media;
   late final StreamSubscription<Duration> _ticks;
@@ -104,8 +102,7 @@ class GoogleCastService implements CastService {
   /// The sheet watches this rather than polling: a Chromecast can take a few
   /// seconds to answer, and a list that fills in as they reply reads far
   /// better than one that is empty until it is not.
-  Stream<List<CastDevice>> get deviceStream =>
-      GoogleCastDiscoveryManager.instance.devicesStream.map(_remember);
+  Stream<List<CastDevice>> get deviceStream => GoogleCastDiscoveryManager.instance.devicesStream.map(_remember);
 
   Future<void> startDiscovery() async {
     await ensureStarted();
@@ -143,6 +140,31 @@ class GoogleCastService implements CastService {
     }
   }
 
+  /// Whether the Cast framework is up at all: false on a handset without
+  /// Play Services, where no Chromecast can ever be listed.
+  static bool get frameworkReady => _contextReady;
+
+  /// True when the viewer has refused, for good, the permission a Cast
+  /// search needs (Android 13 and later): the search then finds nothing
+  /// and says nothing, so this is the one thing to tell them.
+  static Future<bool> searchBlockedByPermission() async {
+    if (defaultTargetPlatform != TargetPlatform.android) return false;
+    try {
+      final status = await Permission.nearbyWifiDevices.status;
+      return status.isPermanentlyDenied || status.isDenied;
+    } catch (_) {
+      return false;
+    }
+  }
+
+  /// Opens the app's page in the system settings, where a refused
+  /// permission can be given.
+  static Future<void> openSettings() async {
+    try {
+      await openAppSettings();
+    } catch (_) {}
+  }
+
   Future<void> stopDiscovery() async {
     if (!_contextReady) return;
     try {
@@ -167,9 +189,7 @@ class GoogleCastService implements CastService {
   CastDevice _asCastDevice(GoogleCastDevice d) => CastDevice(
         id: d.deviceID,
         name: d.friendlyName,
-        subtitle: d.modelName?.trim().isNotEmpty ?? false
-            ? d.modelName!.trim()
-            : 'Google Cast',
+        subtitle: d.modelName?.trim().isNotEmpty ?? false ? d.modelName!.trim() : 'Google Cast',
         transport: CastTransport.googleCast,
       );
 
@@ -215,11 +235,8 @@ class GoogleCastService implements CastService {
         contentUrl: Uri.parse(media.streamUrl),
         // A live channel has no end to seek towards, and telling the receiver
         // so is what turns its scrubber into a LIVE badge.
-        streamType: media.isLive
-            ? CastMediaStreamType.LIVE
-            : CastMediaStreamType.BUFFERED,
-        contentType: media.contentType ??
-            (media.isHls ? 'application/x-mpegURL' : 'video/mp4'),
+        streamType: media.isLive ? CastMediaStreamType.LIVE : CastMediaStreamType.BUFFERED,
+        contentType: media.contentType ?? (media.isHls ? 'application/x-mpegURL' : 'video/mp4'),
         duration: media.duration,
         metadata: GoogleCastMovieMediaMetadataAndroid(
           title: media.title,
@@ -239,8 +256,7 @@ class GoogleCastService implements CastService {
   Future<void> pause() => GoogleCastRemoteMediaClient.instance.pause();
 
   @override
-  Future<void> seek(Duration position) =>
-      GoogleCastRemoteMediaClient.instance.seek(
+  Future<void> seek(Duration position) => GoogleCastRemoteMediaClient.instance.seek(
         GoogleCastMediaSeekOption(position: position),
       );
 
@@ -257,8 +273,7 @@ class GoogleCastService implements CastService {
   /// on the way down is kept: unmuting to some assumed default would be a
   /// surprise on a television somebody had set quietly on purpose.
   @override
-  Future<void> setMuted(bool muted) =>
-      setVolume(muted ? 0 : _volumeBeforeMute);
+  Future<void> setMuted(bool muted) => setVolume(muted ? 0 : _volumeBeforeMute);
 
   @override
   Future<void> stop() => GoogleCastRemoteMediaClient.instance.stop();
@@ -273,13 +288,11 @@ class GoogleCastService implements CastService {
 
     // Idle after something played means it ran out; idle before anything did
     // is just a receiver waiting, and must not be reported as an ending.
-    final ended = state == CastMediaPlayerState.idle &&
-        status.idleReason == GoogleCastMediaIdleReason.finished;
+    final ended = state == CastMediaPlayerState.idle && status.idleReason == GoogleCastMediaIdleReason.finished;
 
     _emit(CastPlaybackEvent(
       duration: status.mediaInformation?.duration,
-      isPlaying: state == CastMediaPlayerState.playing ||
-          state == CastMediaPlayerState.buffering,
+      isPlaying: state == CastMediaPlayerState.playing || state == CastMediaPlayerState.buffering,
       isMuted: status.isMuted || status.volume == 0,
       volume: status.volume.toDouble(),
       ended: ended,
@@ -287,9 +300,7 @@ class GoogleCastService implements CastService {
   }
 
   void _onSession(GoogleCastSession? session) {
-    final connected = session != null &&
-        session.connectionState ==
-            GoogleCastConnectState.ConnectionStateConnected;
+    final connected = session != null && session.connectionState == GoogleCastConnectState.ConnectionStateConnected;
     if (connected) {
       _emit(CastPlaybackEvent(
         isMuted: session.currentDeviceMuted,

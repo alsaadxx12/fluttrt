@@ -283,7 +283,13 @@ class CastController extends StateNotifier<CastState> {
         debugPrint('[cast] load ($attempt/$_loadAttempts): ${e.message}');
       } catch (e) {
         if (attempt >= _loadAttempts) {
-          throw const CastException('تعذّر إرسال المحتوى إلى الجهاز');
+          // Two different troubles, told apart: the set was found and
+          // answered - so the network is fine - and then would not play
+          // what it was sent. On Cast the set fetches the film itself,
+          // so it is the address that it could not use.
+          throw CastException(service is GoogleCastService
+              ? 'التلفاز متصل لكنه لم يشغّل الفيديو: رفض المصدر أو لم يصل إليه. جرّب جودة أخرى أو مصدرًا آخر'
+              : 'تعذّر إرسال المحتوى إلى الجهاز');
         }
         debugPrint('[cast] load ($attempt/$_loadAttempts): $e');
       }
