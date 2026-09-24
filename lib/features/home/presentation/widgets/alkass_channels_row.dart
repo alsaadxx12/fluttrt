@@ -6,7 +6,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../../core/constants/app_palette.dart';
-import 'package:youtube_downloader/presentation/widgets/glass.dart';
 import '../../../../core/network/image_cache.dart';
 import '../../../../presentation/widgets/card_motion.dart';
 import '../../../../presentation/widgets/reveal.dart';
@@ -173,52 +172,50 @@ class _Tile extends ConsumerWidget {
         child: SizedBox(
           width: AlkassChannelsRow._tileW,
           height: AlkassChannelsRow._tileH,
-          child: GlassGlow(
-              radius: 6,
-              child: ClipRRect(
+          child: ClipRRect(
+            borderRadius: BorderRadius.circular(6),
+            clipBehavior: Clip.antiAlias,
+            // Glass, like the match card: a white sheen and a thin light
+            // edge, with the mark across it.
+            child: Container(
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                  colors: dark
+                      ? [Colors.white.withOpacity(0.16), Colors.white.withOpacity(0.05)]
+                      : const [Color(0xE6101623), Color(0xF2070B14)],
+                ),
                 borderRadius: BorderRadius.circular(6),
-                clipBehavior: Clip.antiAlias,
-                // Glass, like the match card: a white sheen and a thin light
-                // edge, with the mark across it.
-                child: Container(
-                  decoration: BoxDecoration(
-                    gradient: LinearGradient(
-                      begin: Alignment.topLeft,
-                      end: Alignment.bottomRight,
-                      colors: dark
-                          ? [Colors.white.withOpacity(0.16), Colors.white.withOpacity(0.05)]
-                          : const [Color(0xE6101623), Color(0xF2070B14)],
-                    ),
-                    borderRadius: BorderRadius.circular(6),
-                    border: Border.all(color: Colors.white.withOpacity(dark ? 0.22 : 0.30), width: 0.8),
-                  ),
-                  child: channel.logo.isEmpty
-                      ? const Icon(Icons.live_tv_rounded, color: Colors.white54, size: 40)
-                      : ClipRect(
-                          child: OverflowBox(
-                            maxWidth: double.infinity,
-                            maxHeight: double.infinity,
-                            child: SizedBox(
-                              width: AlkassChannelsRow._tileW * AlkassChannelsRow.zoomFor(channel.webname),
-                              height: AlkassChannelsRow._tileW * AlkassChannelsRow.zoomFor(channel.webname),
-                              child: CachedNetworkImage(
-                                imageUrl: channel.logo,
-                                cacheManager: appImageCache,
-                                fit: BoxFit.contain,
-                                filterQuality: FilterQuality.high,
-                                memCacheWidth: 800,
-                                fadeInDuration: Duration.zero,
-                                fadeOutDuration: Duration.zero,
-                                placeholderFadeInDuration: Duration.zero,
-                                placeholder: (_, __) => const SizedBox.shrink(),
-                                errorWidget: (_, __, ___) =>
-                                    const Icon(Icons.live_tv_rounded, color: Colors.white54, size: 40),
-                              ),
-                            ),
+                border: Border.all(color: Colors.white.withOpacity(dark ? 0.22 : 0.30), width: 0.8),
+              ),
+              child: channel.logo.isEmpty
+                  ? const Icon(Icons.live_tv_rounded, color: Colors.white54, size: 40)
+                  : ClipRect(
+                      child: OverflowBox(
+                        maxWidth: double.infinity,
+                        maxHeight: double.infinity,
+                        child: SizedBox(
+                          width: AlkassChannelsRow._tileW * AlkassChannelsRow.zoomFor(channel.webname),
+                          height: AlkassChannelsRow._tileW * AlkassChannelsRow.zoomFor(channel.webname),
+                          child: CachedNetworkImage(
+                            imageUrl: channel.logo,
+                            cacheManager: appImageCache,
+                            fit: BoxFit.contain,
+                            filterQuality: FilterQuality.high,
+                            memCacheWidth: 800,
+                            fadeInDuration: Duration.zero,
+                            fadeOutDuration: Duration.zero,
+                            placeholderFadeInDuration: Duration.zero,
+                            placeholder: (_, __) => const SizedBox.shrink(),
+                            errorWidget: (_, __, ___) =>
+                                const Icon(Icons.live_tv_rounded, color: Colors.white54, size: 40),
                           ),
                         ),
-                ),
-              )),
+                      ),
+                    ),
+            ),
+          ),
         ),
       ),
     );

@@ -4,7 +4,6 @@ import 'dart:io';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/foundation.dart' show listEquals;
 import 'package:flutter/material.dart';
-import 'package:youtube_downloader/presentation/widgets/glass.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -1487,10 +1486,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
       // Glass, still: the sheen, the edge and the light are the pane;
       // the blur behind it went, because on a page this dark there was
       // nothing to blur and each card cost a layer and a readback.
-      child: GlassGlow(
-        radius: 6,
-        strong: match.isLive,
-        child: ClipRRect(
+      child: ClipRRect(
         borderRadius: BorderRadius.circular(6),
         clipBehavior: Clip.antiAlias,
         child: Container(
@@ -1647,7 +1643,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
             ],
           ),
         ),
-      )),
+      ),
     );
   }
 

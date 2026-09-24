@@ -1,7 +1,6 @@
 import 'dart:async';
 import 'dart:io';
 import 'package:flutter/material.dart';
-import 'package:youtube_downloader/presentation/widgets/glass.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -905,10 +904,7 @@ class _SportsScreenState extends ConsumerState<SportsScreen> {
     // blur and a faint white sheen, under a thin light edge.
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 6),
-      child: GlassGlow(
-        radius: 18,
-        strong: isLive,
-        child: ClipRRect(
+      child: ClipRRect(
         borderRadius: BorderRadius.circular(18),
         clipBehavior: Clip.antiAlias,
         child: Container(
@@ -1115,7 +1111,7 @@ class _SportsScreenState extends ConsumerState<SportsScreen> {
         ),
       ),
     ),
-        )),
+        ),
       );
   }
 
