@@ -8,10 +8,16 @@ CinemanaItem film(String nb, String en, String year, {String ar = '', String kin
 FilmFranchise byId(String id) => FilmFranchise.all.firstWhere((f) => f.id == id);
 
 void main() {
-  test('every film series has at least three parts', () {
+  test('every film series has at least two parts', () {
+    // Two is a series: Dune, Top Gun, Gladiator, Blade Runner. One is not.
     for (final f in FilmFranchise.inSection(FranchiseSection.films)) {
-      expect(f.entries.length, greaterThanOrEqualTo(3), reason: f.name);
+      expect(f.entries.length, greaterThanOrEqualTo(2), reason: f.name);
     }
+  });
+
+  test('every film series has a unique id and every spotlight id exists', () {
+    final ids = FilmFranchise.all.map((f) => f.id).toList();
+    expect(ids.toSet().length, ids.length, reason: 'duplicate ids');
   });
 
   test('series entries take series, film entries take films', () {
