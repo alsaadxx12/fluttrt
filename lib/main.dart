@@ -2,6 +2,7 @@ import 'dart:io';
 import 'package:flutter/foundation.dart' show LicenseEntryWithLineBreaks, LicenseRegistry;
 import 'dart:async';
 
+import 'package:flutter/gestures.dart' show GestureBinding;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
@@ -26,6 +27,13 @@ import 'package:video_player_media_kit/video_player_media_kit.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  // Touch events arrive on the screen's own clock, not the frame's: a
+  // finger dragging a list delivers a sample a little before or after each
+  // frame, and the list moves by uneven steps - the jitter that reads as
+  // stutter on a 120 Hz screen. Resampling interpolates the touch to the
+  // frame time, so every frame moves the list by exactly what the finger
+  // did.
+  GestureBinding.instance.resamplingEnabled = true;
   // Every `[cast]` line is kept for the diagnostics page from here on.
   CastLog.install();
   _registerFontLicense();

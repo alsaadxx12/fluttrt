@@ -657,7 +657,12 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                     // first frame is the hero and the matches, nothing more.
                     SliverList(
                       delegate: SliverChildBuilderDelegate(
-                        (context, index) => _sections[index](context),
+                        // Built once it comes near, and kept: scrolling back
+                        // up used to rebuild every section from scratch and
+                        // decode its pictures again, which is where the
+                        // frames went.
+                        (context, index) =>
+                            _KeptSection(child: _sections[index](context)),
                         childCount: _sections.length,
                       ),
                     ),
@@ -2220,5 +2225,28 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
         ),
       ),
     );
+  }
+}
+
+/// A section of the home page that stays built after it has scrolled
+/// away, so coming back to it costs nothing.
+class _KeptSection extends StatefulWidget {
+  const _KeptSection({required this.child});
+
+  final Widget child;
+
+  @override
+  State<_KeptSection> createState() => _KeptSectionState();
+}
+
+class _KeptSectionState extends State<_KeptSection>
+    with AutomaticKeepAliveClientMixin {
+  @override
+  bool get wantKeepAlive => true;
+
+  @override
+  Widget build(BuildContext context) {
+    super.build(context);
+    return widget.child;
   }
 }

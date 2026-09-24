@@ -72,6 +72,12 @@
         </provider>
         <!-- Don't delete the meta-data below.
              This is used by the Flutter tool to generate GeneratedPluginRegistrant.java -->
+        <!-- Impeller, Flutter's newer renderer: it compiles no shaders at
+             draw time, so no frame stalls the first time an effect appears,
+             and it drives the GPU through Vulkan. Opt-in on this Flutter. -->
+        <meta-data
+            android:name="io.flutter.embedding.android.EnableImpeller"
+            android:value="true" />
         <meta-data
             android:name="flutterEmbedding"
             android:value="2" />
