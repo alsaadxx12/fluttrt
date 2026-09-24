@@ -107,3 +107,61 @@ class GlassSheet extends StatelessWidget {
     );
   }
 }
+
+/// The app's red, caught in the glass: a soft bloom in the top corner of
+/// a pane and a faint halo round it. [strong] for what is live now.
+///
+/// Wraps the pane's own clip, so the pane stays what it was; the bloom is
+/// laid over it and lets every touch through.
+class GlassGlow extends StatelessWidget {
+  const GlassGlow({super.key, required this.child, required this.radius, this.strong = false});
+
+  final Widget child;
+  final double radius;
+  final bool strong;
+
+  static const Color _red = Color(0xFFE50914);
+
+  @override
+  Widget build(BuildContext context) {
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(radius),
+        boxShadow: [
+          BoxShadow(
+            color: _red.withOpacity(strong ? 0.38 : 0.16),
+            blurRadius: strong ? 22 : 16,
+            spreadRadius: -2,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Stack(
+        children: [
+          child,
+          Positioned.fill(
+            child: IgnorePointer(
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(radius),
+                child: DecoratedBox(
+                  decoration: BoxDecoration(
+                    gradient: RadialGradient(
+                      center: const AlignmentDirectional(1.0, -1.0),
+                      radius: strong ? 1.15 : 0.95,
+                      colors: [
+                        _red.withOpacity(strong ? 0.42 : 0.24),
+                        _red.withOpacity(strong ? 0.12 : 0.06),
+                        _red.withOpacity(0.0),
+                      ],
+                      stops: const [0.0, 0.45, 1.0],
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}

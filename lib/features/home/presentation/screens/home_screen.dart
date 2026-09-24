@@ -4,6 +4,7 @@ import 'dart:io';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/foundation.dart' show listEquals;
 import 'package:flutter/material.dart';
+import 'package:youtube_downloader/presentation/widgets/glass.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -816,19 +817,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
               ),
             ),
 
-            // Only the dots sit below the picture; everything else is on it.
-            SizedBox(
-              height: 18,
-              child: movies.length > 1
-                  ? Center(
-                      child: ValueListenableBuilder<int>(
-                        valueListenable: _heroPage,
-                        builder: (_, page, __) =>
-                            _buildHeroDots(movies.length, page),
-                      ),
-                    )
-                  : null,
-            ),
+            // A breath of space below the picture; everything else is on it.
+            const SizedBox(height: 8),
           ],
         ),
 
@@ -1273,31 +1263,6 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     );
   }
 
-  Widget _buildHeroDots(int totalSlides, int currentPage) {
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.center,
-      mainAxisSize: MainAxisSize.min,
-      children: List.generate(
-        totalSlides,
-        (dotIndex) {
-          final isCurrent = dotIndex == currentPage;
-          return AnimatedContainer(
-            duration: const Duration(milliseconds: 250),
-            margin: const EdgeInsets.symmetric(horizontal: 2.5),
-            width: isCurrent ? 18 : 6,
-            height: 5.5,
-            decoration: BoxDecoration(
-              color: isCurrent
-                  ? const Color(0xFFE50914)
-                  : (_p.isDark ? Colors.white24 : const Color(0x330F172A)),
-              borderRadius: BorderRadius.circular(3),
-            ),
-          );
-        },
-      ),
-    );
-  }
-
   /// Device pixels needed to draw something [logicalWidth] wide. Passed to
   /// Image.network as cacheWidth so a 1280x1920 poster is decoded at card size
   /// instead of full size - the difference is ~9.8MB vs ~0.2MB per card, and
@@ -1522,7 +1487,10 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
       // Glass, still: the sheen, the edge and the light are the pane;
       // the blur behind it went, because on a page this dark there was
       // nothing to blur and each card cost a layer and a readback.
-      child: ClipRRect(
+      child: GlassGlow(
+        radius: 6,
+        strong: match.isLive,
+        child: ClipRRect(
         borderRadius: BorderRadius.circular(6),
         clipBehavior: Clip.antiAlias,
         child: Container(
@@ -1679,7 +1647,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
             ],
           ),
         ),
-      ),
+      )),
     );
   }
 
