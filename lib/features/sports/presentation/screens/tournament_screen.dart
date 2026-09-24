@@ -1,5 +1,6 @@
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:youtube_downloader/core/constants/app_colors.dart';
 import 'package:youtube_downloader/core/constants/app_palette.dart';
@@ -98,18 +99,21 @@ class _TournamentScreenState extends ConsumerState<TournamentScreen> {
     final standings = ref.watch(tournamentStandingsProvider(t.id));
     final stage = standings.valueOrNull?.stage ?? '';
 
-    return Scaffold(
-      backgroundColor: p.bg,
-      body: RefreshIndicator(
-        color: AppColors.primary,
-        backgroundColor: p.card,
-        onRefresh: _refresh,
-        child: CustomScrollView(
-          physics: const AlwaysScrollableScrollPhysics(),
-          slivers: [
-            SliverToBoxAdapter(
-              child: SafeArea(
-                bottom: false,
+    // The banner runs up under the status bar, whose icons stay light
+    // over the competition's colours.
+    return AnnotatedRegion<SystemUiOverlayStyle>(
+      value: SystemUiOverlayStyle.light.copyWith(statusBarColor: Colors.transparent),
+      child: Scaffold(
+        backgroundColor: p.bg,
+        body: RefreshIndicator(
+          color: AppColors.primary,
+          backgroundColor: p.card,
+          edgeOffset: MediaQuery.of(context).padding.top,
+          onRefresh: _refresh,
+          child: CustomScrollView(
+            physics: const AlwaysScrollableScrollPhysics(),
+            slivers: [
+              SliverToBoxAdapter(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
@@ -128,12 +132,12 @@ class _TournamentScreenState extends ConsumerState<TournamentScreen> {
                   ],
                 ),
               ),
-            ),
-            if (_tab == 0) _StandingsSliver(tournament: t, standings: standings),
-            if (_tab == 1) _FixturesSliver(tournament: t, streamable: _streamable()),
-            if (_tab == 2) _ScorersSliver(tournament: t),
-            const SliverToBoxAdapter(child: SizedBox(height: 32)),
-          ],
+              if (_tab == 0) _StandingsSliver(tournament: t, standings: standings),
+              if (_tab == 1) _FixturesSliver(tournament: t, streamable: _streamable()),
+              if (_tab == 2) _ScorersSliver(tournament: t),
+              const SliverToBoxAdapter(child: SizedBox(height: 32)),
+            ],
+          ),
         ),
       ),
     );
@@ -166,8 +170,10 @@ class _TournamentPickerState extends State<_TournamentPicker> {
 
   @override
   Widget build(BuildContext context) {
+    // The banner's own height, plus the status bar it runs under.
+    final inset = MediaQuery.of(context).padding.top;
     return SizedBox(
-      height: 168,
+      height: 232 + inset,
       child: PageView.builder(
         controller: _pages,
         itemCount: widget.tournaments.length,
@@ -193,6 +199,7 @@ class _TournamentBanner extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final p = AppPalette.of(context);
+    final inset = MediaQuery.of(context).padding.top;
     final light = Color(tournament.accent);
     final dark = Color(tournament.accent2 ?? tournament.accent).withOpacity(1);
     return Container(
@@ -208,11 +215,11 @@ class _TournamentBanner extends StatelessWidget {
         children: [
           // A wash of the brand's light behind the emblem.
           PositionedDirectional(
-            start: -40,
-            top: -60,
+            start: -50,
+            top: inset - 70,
             child: Container(
-              width: 260,
-              height: 260,
+              width: 320,
+              height: 320,
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
                 gradient: RadialGradient(colors: [light.withOpacity(0.55), light.withOpacity(0.0)]),
@@ -230,22 +237,22 @@ class _TournamentBanner extends StatelessWidget {
             ),
           ),
           Padding(
-            padding: const EdgeInsetsDirectional.fromSTEB(20, 16, 20, 16),
+            padding: EdgeInsetsDirectional.fromSTEB(22, inset + 18, 22, 26),
             child: Row(
               children: [
                 // The emblem, large, on nothing.
                 SizedBox(
-                  width: 116,
-                  height: 116,
+                  width: 156,
+                  height: 156,
                   child: CachedNetworkImage(
                     imageUrl: tournament.logoUrl,
                     cacheManager: appImageCache,
-                    memCacheWidth: 360,
+                    memCacheWidth: 480,
                     fit: BoxFit.contain,
-                    errorWidget: (_, __, ___) => const Icon(Icons.emoji_events_rounded, color: Colors.white, size: 64),
+                    errorWidget: (_, __, ___) => const Icon(Icons.emoji_events_rounded, color: Colors.white, size: 84),
                   ),
                 ),
-                const SizedBox(width: 18),
+                const SizedBox(width: 20),
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
@@ -257,7 +264,7 @@ class _TournamentBanner extends StatelessWidget {
                         overflow: TextOverflow.ellipsis,
                         style: const TextStyle(
                           color: Colors.white,
-                          fontSize: 21,
+                          fontSize: 23,
                           fontWeight: FontWeight.w900,
                           height: 1.2,
                           shadows: [Shadow(color: Colors.black38, blurRadius: 6)],
@@ -286,7 +293,7 @@ class _TournamentBanner extends StatelessWidget {
             left: 0,
             right: 0,
             bottom: 0,
-            height: 28,
+            height: 40,
             child: DecoratedBox(
               decoration: BoxDecoration(
                 gradient: LinearGradient(
@@ -763,7 +770,7 @@ class _ScorersSliver extends ConsumerWidget {
           padding: const EdgeInsets.symmetric(horizontal: 16),
           sliver: SliverList.list(children: [
             // The race to the top scorer's cup, then the list.
-            _ScorerRace(scorers: scorers.take(9).toList()),
+            _ScorerRace(scorers: scorers.take(8).toList()),
             const SizedBox(height: 16),
             for (var i = 0; i < scorers.length; i++)
               Padding(
@@ -873,27 +880,32 @@ class _ScorerCard extends StatelessWidget {
   }
 }
 
-/// The scorers racing to the cup: three lanes running from the start
-/// edge to the cup at the far end, each scorer's face placed along the
-/// track by his goals - the leader nearest the cup.
+/// The scorers racing to the cup: lanes running from the start edge to
+/// the cup at the far end, each scorer's face placed along the track by
+/// his goals - the leader nearest the cup. Nobody stands on anybody:
+/// a scorer goes to a lane with room at his spot, and when every lane
+/// is taken there he steps back behind the nearest runner.
 class _ScorerRace extends StatelessWidget {
   const _ScorerRace({required this.scorers});
 
   final List<TopScorer> scorers;
 
-  static const int _lanes = 3;
-  static const double _laneHeight = 74;
-  static const double _face = 46;
+  static const double _laneHeight = 84;
+  static const double _face = 48;
+  static const double _runner = 78;
+  static const double _gap = 10;
+
+  int get _lanes => scorers.length < 3 ? scorers.length : (scorers.length > 6 ? 4 : 3);
 
   @override
   Widget build(BuildContext context) {
     final p = AppPalette.of(context);
     final most = scorers.fold<int>(1, (m, s) => s.goals > m ? s.goals : m);
-    final lanes = scorers.length < _lanes ? scorers.length : _lanes;
-    final height = lanes * _laneHeight + 10;
+    final lanes = _lanes;
+    final height = lanes * _laneHeight + 6;
     return GlassPanel(
       radius: 16,
-      padding: const EdgeInsets.fromLTRB(14, 12, 14, 8),
+      padding: const EdgeInsets.fromLTRB(14, 12, 14, 10),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -905,20 +917,23 @@ class _ScorerRace extends StatelessWidget {
                   style: TextStyle(color: p.text, fontSize: 13.5, fontWeight: FontWeight.w900)),
             ],
           ),
-          const SizedBox(height: 8),
+          const SizedBox(height: 12),
           SizedBox(
             height: height,
             child: LayoutBuilder(
               builder: (context, box) {
                 // The cup takes the far end; the track is what is left.
-                const cup = 52.0;
-                final track = box.maxWidth - cup - _face;
+                const cup = 56.0;
+                final track = box.maxWidth - cup - _runner;
+                final spots = placeRunners([for (final s in scorers) s.goals],
+                    lanes: lanes, track: track, runner: _runner, gap: _gap);
                 return Stack(
+                  clipBehavior: Clip.none,
                   children: [
                     for (var lane = 0; lane < lanes; lane++)
                       PositionedDirectional(
-                        start: _face / 2,
-                        end: cup,
+                        start: _runner / 2,
+                        end: cup - 4,
                         top: lane * _laneHeight + _face / 2 + 2,
                         child:
                             CustomPaint(size: const Size(double.infinity, 2), painter: _DashPainter(color: p.border)),
@@ -934,14 +949,17 @@ class _ScorerRace extends StatelessWidget {
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: [
                             Container(
-                              width: 44,
-                              height: 44,
+                              width: 48,
+                              height: 48,
                               decoration: BoxDecoration(
                                 shape: BoxShape.circle,
                                 color: const Color(0xFFFFB800).withOpacity(0.18),
                                 border: Border.all(color: const Color(0xFFFFB800).withOpacity(0.6), width: 1),
+                                boxShadow: [
+                                  BoxShadow(color: const Color(0xFFFFB800).withOpacity(0.25), blurRadius: 14)
+                                ],
                               ),
-                              child: const Icon(Icons.emoji_events_rounded, color: Color(0xFFFFB800), size: 26),
+                              child: const Icon(Icons.emoji_events_rounded, color: Color(0xFFFFB800), size: 28),
                             ),
                             const SizedBox(height: 4),
                             Text('$most',
@@ -951,13 +969,12 @@ class _ScorerRace extends StatelessWidget {
                       ),
                     ),
                     for (var i = 0; i < scorers.length; i++)
-                      PositionedDirectional(
-                        // The leader stands nearest the cup; a scorer with a
-                        // third of his goals stands a third of the way.
-                        start: (track * scorers[i].goals / most).clamp(0.0, track),
-                        top: (i % lanes) * _laneHeight,
-                        child: _Runner(scorer: scorers[i], leader: i == 0),
-                      ),
+                      if (spots[i] != null)
+                        PositionedDirectional(
+                          start: spots[i]!.$2,
+                          top: spots[i]!.$1 * _laneHeight,
+                          child: _Runner(scorer: scorers[i], leader: i == 0),
+                        ),
                   ],
                 );
               },
@@ -967,6 +984,59 @@ class _ScorerRace extends StatelessWidget {
       ),
     );
   }
+}
+
+/// Where each runner of the race stands, by [goals] in order of rank:
+/// (lane, start offset along a [track] this long) - or null when the
+/// track has no room left for him. A runner [runner] wide goes to a lane
+/// with room at his spot, [gap] clear of the runner before; when every
+/// lane is taken there he steps back behind the nearest one. Visible for
+/// testing.
+List<(int, double)?> placeRunners(
+  List<int> goals, {
+  required int lanes,
+  required double track,
+  required double runner,
+  required double gap,
+}) {
+  final most = goals.fold<int>(1, (m, g) => g > m ? g : m);
+  // The start edge of the last runner placed in each lane; runners come
+  // in order, so each one stands at or behind the one before him.
+  final edge = List<double>.filled(lanes, double.infinity);
+  var next = 0;
+  final out = <(int, double)?>[];
+  for (final g in goals) {
+    final ideal = (track * g / most).clamp(0.0, track);
+    // A lane with room at his spot, in turn so the lanes fill evenly.
+    int? free;
+    for (var k = 0; k < lanes; k++) {
+      final lane = (next + k) % lanes;
+      if (ideal + runner + gap <= edge[lane]) {
+        free = lane;
+        break;
+      }
+    }
+    if (free != null) {
+      next = (free + 1) % lanes;
+      edge[free] = ideal;
+      out.add((free, ideal));
+      continue;
+    }
+    // No room: step back behind the runner nearest the cup among the lanes.
+    var lane = 0;
+    for (var k = 1; k < lanes; k++) {
+      if (edge[k] > edge[lane]) lane = k;
+    }
+    final x = edge[lane] - runner - gap;
+    if (x < 0) {
+      out.add(null);
+      continue;
+    }
+    next = (lane + 1) % lanes;
+    edge[lane] = x;
+    out.add((lane, x));
+  }
+  return out;
 }
 
 class _Runner extends StatelessWidget {
@@ -980,7 +1050,7 @@ class _Runner extends StatelessWidget {
     final p = AppPalette.of(context);
     const size = _ScorerRace._face;
     return SizedBox(
-      width: 88,
+      width: _ScorerRace._runner,
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
