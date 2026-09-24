@@ -385,7 +385,6 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
   Widget _wideSeriesRowSection({
     required ProviderListenable<AsyncValue<List<CinemanaItem>>> provider,
     required String title,
-    required String badge,
     VoidCallback? onViewAll,
   }) {
     return RepaintBoundary(
@@ -393,7 +392,6 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
         builder: (context, ref, _) => ref.watch(provider).when(
               data: (items) => _buildWideSeriesSection(
                 title: title,
-                badge: badge,
                 items: items,
                 isLoading: false,
                 onViewAll: onViewAll,
@@ -476,7 +474,6 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     (_) => _wideSeriesRowSection(
           provider: homeLatestMoviesProvider,
           title: 'أحدث الأفلام',
-          badge: 'جديد',
           onViewAll: () => _openCatalog(kind: 'movies', order: 'release'),
         ),
 
@@ -486,7 +483,6 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     (_) => _wideSeriesRowSection(
           provider: homeLatestSeriesProvider,
           title: 'أحدث المسلسلات',
-          badge: 'جديد',
           onViewAll: () => _openCatalog(kind: 'series', order: 'release'),
         ),
 
@@ -502,7 +498,6 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     (_) => _wideSeriesRowSection(
           provider: asianSeriesMergedProvider,
           title: 'أحدث المسلسلات الآسيوية',
-          badge: 'آسيوي',
         ),
 
     (_) => const SizedBox(height: 24),
@@ -530,7 +525,6 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     (_) => _wideSeriesRowSection(
           provider: homeMostViewedProvider,
           title: 'الأكثر مشاهدة',
-          badge: 'الأكثر',
           onViewAll: () => _openCatalog(kind: 'movies', order: 'views'),
         ),
 
@@ -549,7 +543,6 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     (_) => _wideSeriesRowSection(
           provider: homeArabicSeriesProvider,
           title: 'المسلسلات العربية',
-          badge: 'عربي',
           onViewAll: () => _openCatalog(kind: 'series', categoryId: 130),
         ),
 
@@ -1978,7 +1971,6 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
   // ==========================================
   Widget _buildWideSeriesSection({
     String title = 'المسلسلات',
-    String badge = 'أحدث المواسم',
     required List<CinemanaItem> items,
     required bool isLoading,
     VoidCallback? onViewAll,
@@ -2000,26 +1992,6 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                   fontSize: 15,
                   fontWeight: FontWeight.w900,
                   letterSpacing: -0.3,
-                ),
-              ),
-              const SizedBox(width: 8),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                decoration: BoxDecoration(
-                  color: const Color(0xFFE50914).withOpacity(0.18),
-                  borderRadius: BorderRadius.circular(6),
-                  border: Border.all(
-                    color: const Color(0xFFE50914).withOpacity(0.4),
-                    width: 0.8,
-                  ),
-                ),
-                child: Text(
-                  badge,
-                  style: const TextStyle(
-                    color: Color(0xFFFF5252),
-                    fontSize: 10,
-                    fontWeight: FontWeight.w700,
-                  ),
                 ),
               ),
               const Spacer(),
