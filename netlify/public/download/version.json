@@ -1,15 +1,15 @@
 {
   "updateEnabled": true,
-  "versionCode": 2213,
-  "versionName": "1.0.207",
-  "apkUrl": "https://cineball.netlify.app/download/app.apk?v=213",
-  "apkUrlArm64": "https://cineball.netlify.app/download/app-arm64-v8a-release.apk?v=213",
-  "apkUrlArm32": "https://cineball.netlify.app/download/app-armeabi-v7a-release.apk?v=213",
-  "sha256": "9f347caea5f95a07a7c3b2a0a6a53cb29cd4a4e73ad012840b185fd5ba6636dc",
-  "sha256Arm64": "9f347caea5f95a07a7c3b2a0a6a53cb29cd4a4e73ad012840b185fd5ba6636dc",
-  "sha256Arm32": "882ce90ea3ab27f0910cb0985d2421a4963f35e26a737632f9aef35c204ee6dd",
-  "sizeBytes": 25548086,
+  "versionCode": 2214,
+  "versionName": "1.0.208",
+  "apkUrl": "https://cineball.netlify.app/download/app.apk?v=214",
+  "apkUrlArm64": "https://cineball.netlify.app/download/app-arm64-v8a-release.apk?v=214",
+  "apkUrlArm32": "https://cineball.netlify.app/download/app-armeabi-v7a-release.apk?v=214",
+  "sha256": "1b5f33e9e36944076798731894c82d706e91804c9f141d3964131ba0376e59a3",
+  "sha256Arm64": "1b5f33e9e36944076798731894c82d706e91804c9f141d3964131ba0376e59a3",
+  "sha256Arm32": "b9dd4218e0c14932fd10c75ea1bf893888aa371c1bd6fbc173642b3a3eb53da1",
+  "sizeBytes": 25563016,
   "forceUpdate": false,
   "minSupportedVersion": 1,
-  "notes": "سلاسل الأفلام والمسلسلات تعرض صورها فوراً"
+  "notes": "عالم مارفل و60 سلسلة جديدة، وبحث أوسع عن أجهزة التلفاز"
 }

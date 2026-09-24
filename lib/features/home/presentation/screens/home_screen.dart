@@ -472,9 +472,11 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     (_) => const SizedBox(height: 24),
 
     // 3. Latest movies.
-    (_) => _posterRowSection(
+    // Wide stills, like the series rows: the newest films staged big.
+    (_) => _wideSeriesRowSection(
           provider: homeLatestMoviesProvider,
           title: 'أحدث الأفلام',
+          badge: 'جديد',
           onViewAll: () => _openCatalog(kind: 'movies', order: 'release'),
         ),
 
@@ -525,9 +527,10 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     (_) => const SizedBox(height: 12),
 
     // 6. Most viewed.
-    (_) => _posterRowSection(
+    (_) => _wideSeriesRowSection(
           provider: homeMostViewedProvider,
           title: 'الأكثر مشاهدة',
+          badge: 'الأكثر',
           onViewAll: () => _openCatalog(kind: 'movies', order: 'views'),
         ),
 
