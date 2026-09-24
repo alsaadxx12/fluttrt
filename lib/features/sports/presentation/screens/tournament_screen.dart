@@ -1224,8 +1224,9 @@ class _Runner extends StatelessWidget {
           ),
           const SizedBox(height: 3),
           Text(
-            // The whole name when it fits two words, else what he is called.
-            scorer.name.split(' ').length <= 2 || scorer.shortName.isEmpty
+            // The whole name when it is short enough for the runner's width,
+            // else what he is called - «خيمينيز», not «نيكولاس خيم…».
+            scorer.name.length <= 12 || scorer.shortName.isEmpty
                 ? scorer.name.split(' ').take(2).join(' ')
                 : scorer.shortName,
             maxLines: 1,
