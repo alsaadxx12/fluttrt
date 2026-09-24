@@ -780,6 +780,58 @@ class CinemanaService {
   }
 
   /// 6. الأكثر مشاهدة (Most Viewed: by real views count)
+  /// The films Cinemana lists for [year], newest additions first, from
+  /// its year search - a dozen a page, so [pages] pages are asked for at
+  /// once.
+  Future<List<CinemanaItem>> fetchFilmsOfYear(int year, {int pages = 8}) async {
+    final results = await Future.wait([
+      for (var p = 0; p < pages; p++)
+        _dio
+            .get('AdvancedSearch', queryParameters: {'level': 0, 'type': 'movies', 'year': year, 'page': p})
+            .then<List<CinemanaItem>>((r) {
+          final data = r.data;
+          final list = data is Map ? data['info'] : data;
+          if (list is! List) return const [];
+          return list.whereType<Map>().map((it) => CinemanaItem.fromJson(Map<String, dynamic>.from(it))).toList();
+        }).catchError((_) => <CinemanaItem>[]),
+    ]);
+    final seen = <String>{};
+    return [
+      for (final page in results)
+        for (final it in page)
+          if (seen.add(it.id)) it,
+    ];
+  }
+
+  /// [films] in the order of [popularTitles] (English titles, most
+  /// watched first); the ones the list does not name follow, best score
+  /// first. Cinemana ranks by views only across its whole catalogue and
+  /// that ranking stops after ninety old titles, so what the audience is
+  /// watching among the new films comes from TMDB's popularity instead.
+  static List<CinemanaItem> rankByPopularity(List<CinemanaItem> films, List<String> popularTitles) {
+    final rank = <String, int>{};
+    for (var i = 0; i < popularTitles.length; i++) {
+      rank.putIfAbsent(_titleKey(popularTitles[i]), () => i);
+    }
+    double score(CinemanaItem it) => double.tryParse(it.stars) ?? 0;
+    final named = <CinemanaItem>[];
+    final rest = <CinemanaItem>[];
+    for (final f in films) {
+      (rank.containsKey(_titleKey(f.enTitle)) ? named : rest).add(f);
+    }
+    named.sort((a, b) => rank[_titleKey(a.enTitle)]!.compareTo(rank[_titleKey(b.enTitle)]!));
+    rest.sort((a, b) {
+      final byScore = score(b).compareTo(score(a));
+      return byScore != 0 ? byScore : (b.mDate ?? '').compareTo(a.mDate ?? '');
+    });
+    return [...named, ...rest];
+  }
+
+  /// A title as a key: case, punctuation and spacing set aside, and an
+  /// ampersand read as the word it stands for.
+  static String _titleKey(String title) =>
+      title.toLowerCase().replaceAll('&', ' and ').replaceAll(RegExp(r'[^a-z0-9]+'), ' ').trim();
+
   Future<List<CinemanaItem>> fetchMostViewed({int page = 0, int itemsPerPage = 24, int videoKind = 0}) async {
     try {
       final response = await _dio.get(

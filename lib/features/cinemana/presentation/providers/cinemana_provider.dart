@@ -1,6 +1,7 @@
 import '../../data/cinemana_franchises.dart';
 import 'package:dio/dio.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:youtube_downloader/features/trailers/data/tmdb_service.dart';
 import 'package:youtube_downloader/core/network/http_cache.dart';
 import '../../data/models/cinemana_models.dart';
 import '../../data/services/cinemana_service.dart';
@@ -466,10 +467,21 @@ final homeLatestEpisodesProvider = FutureProvider<List<CinemanaItem>>((ref) asyn
   return service.fetchLatestEpisodes(page: 0, itemsPerPage: 24);
 });
 
-/// 6. الأكثر مشاهدة (Most Viewed)
+/// 6. الأكثر مشاهدة: this year's and last year's films, the ones the
+/// world is watching most first (see [CinemanaService.rankByPopularity]).
 final homeMostViewedProvider = FutureProvider<List<CinemanaItem>>((ref) async {
   final service = ref.watch(cinemanaServiceProvider);
-  return service.fetchMostViewed(page: 0, itemsPerPage: 24);
+  final tmdb = TmdbService();
+  final year = DateTime.now().year;
+  final results = await Future.wait([
+    service.fetchFilmsOfYear(year, pages: 12),
+    service.fetchFilmsOfYear(year - 1, pages: 6),
+    tmdb.popularFilmTitles(year: year, pages: 4).catchError((_) => <String>[]),
+    tmdb.popularFilmTitles(year: year - 1, pages: 2).catchError((_) => <String>[]),
+  ]);
+  final films = [...results[0] as List<CinemanaItem>, ...results[1] as List<CinemanaItem>];
+  final popular = [...results[2] as List<String>, ...results[3] as List<String>];
+  return CinemanaService.rankByPopularity(films, popular).take(24).toList();
 });
 
 /// 7. الرائج هذا الأسبوع (Trending)

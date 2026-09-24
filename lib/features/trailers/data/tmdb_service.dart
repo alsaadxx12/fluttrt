@@ -300,6 +300,36 @@ class TmdbService {
     return null;
   }
 
+  /// The films of [year] the world is watching most, by English title,
+  /// most popular first: TMDB's popularity, which counts what people look
+  /// at and rate every day. Empty when TMDB is not configured.
+  Future<List<String>> popularFilmTitles({required int year, int pages = 3}) async {
+    if (!TmdbConfig.isConfigured) return const [];
+    final out = <String>[];
+    for (var page = 1; page <= pages; page++) {
+      try {
+        final res = await _dio.get<Map<String, dynamic>>(
+          '/discover/movie',
+          queryParameters: {
+            'primary_release_year': year,
+            'sort_by': 'popularity.desc',
+            'language': 'en-US',
+            'include_adult': false,
+            'page': page,
+          },
+        );
+        final results = (res.data?['results'] as List?) ?? const [];
+        for (final r in results.whereType<Map<String, dynamic>>()) {
+          final title = r['title'];
+          if (title is String && title.isNotEmpty) out.add(title);
+        }
+      } catch (_) {
+        break;
+      }
+    }
+    return out;
+  }
+
   /// Arabic names of series the region watches, by the original names
   /// TMDB lists them under. Only the ones TMDB's Arabic translations do
   /// not cover; the rest are found by the Arabic name itself.
