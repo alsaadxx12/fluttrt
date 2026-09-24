@@ -1,3 +1,5 @@
+import 'dart:ui' show ImageFilter;
+
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:youtube_downloader/core/constants/app_colors.dart';
@@ -136,76 +138,122 @@ class _Card extends StatelessWidget {
   Widget build(BuildContext context) {
     final p = palette;
     final image = (tile.image != null && tile.image!.isNotEmpty) ? tile.image! : fallbackImage;
+    // Glass: the picture fills the card, and the number sits on a frosted
+    // strip across its foot - the picture blurred through it, under a
+    // bright line where the light catches the edge. The one playing is
+    // ringed in red and throws a red glow.
     return Semantics(
       button: true,
       selected: current,
       label: tile.label,
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(12),
-        child: Container(
-          width: EpisodeRow.cardWidth,
-          decoration: BoxDecoration(
-            color: p.isDark ? const Color(0xFF1B1B22) : p.card,
-            borderRadius: BorderRadius.circular(12),
-            border: Border.all(
-              color: current ? AppColors.primary : (p.isDark ? const Color(0xFF2C2C38) : p.border),
-              width: current ? 2 : 1,
-            ),
-          ),
-          clipBehavior: Clip.antiAlias,
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
+      child: Container(
+        width: EpisodeRow.cardWidth,
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(12),
+          boxShadow: current
+              ? [
+                  BoxShadow(color: AppColors.primary.withOpacity(0.45), blurRadius: 16, spreadRadius: 1),
+                  ...p.glassShadow,
+                ]
+              : p.glassShadow,
+        ),
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(12),
+          clipBehavior: Clip.antiAliasWithSaveLayer,
+          child: Stack(
+            fit: StackFit.expand,
             children: [
-              Expanded(
-                child: Stack(
-                  fit: StackFit.expand,
-                  children: [
-                    if (image.isNotEmpty)
-                      CachedNetworkImage(
-                        imageUrl: image,
-                        cacheManager: appImageCache,
-                        fit: BoxFit.cover,
-                        memCacheWidth: (EpisodeRow.cardWidth * dpr).round(),
-                        fadeInDuration: Duration.zero,
-                        placeholder: (_, __) => ColoredBox(color: p.isDark ? Colors.black26 : p.skeleton),
-                        errorWidget: (_, __, ___) => ColoredBox(color: p.isDark ? Colors.black26 : p.skeleton),
-                      )
-                    else
-                      ColoredBox(color: p.isDark ? Colors.black26 : p.skeleton),
-                    if (current) ColoredBox(color: AppColors.primary.withOpacity(0.35)),
-                    const Center(
-                      child: Icon(
-                        Icons.play_circle_fill_rounded,
-                        color: Colors.white,
-                        size: 34,
-                        shadows: [Shadow(color: Colors.black54, blurRadius: 8)],
-                      ),
-                    ),
-                  ],
+              if (image.isNotEmpty)
+                CachedNetworkImage(
+                  imageUrl: image,
+                  cacheManager: appImageCache,
+                  fit: BoxFit.cover,
+                  memCacheWidth: (EpisodeRow.cardWidth * dpr).round(),
+                  fadeInDuration: Duration.zero,
+                  placeholder: (_, __) => ColoredBox(color: p.isDark ? const Color(0xFF1B1B22) : p.skeleton),
+                  errorWidget: (_, __, ___) => ColoredBox(color: p.isDark ? const Color(0xFF1B1B22) : p.skeleton),
+                )
+              else
+                ColoredBox(color: p.isDark ? const Color(0xFF1B1B22) : p.skeleton),
+              if (current) ColoredBox(color: AppColors.primary.withOpacity(0.30)),
+              // The play mark, a little above the strip.
+              Positioned(
+                left: 0,
+                right: 0,
+                top: 0,
+                bottom: 30,
+                child: Center(
+                  child: Icon(
+                    current ? Icons.play_circle_fill_rounded : Icons.play_circle_outline_rounded,
+                    color: Colors.white,
+                    size: 36,
+                    shadows: const [Shadow(color: Colors.black54, blurRadius: 10)],
+                  ),
                 ),
               ),
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Flexible(
-                      child: Text(
-                        tile.label,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: TextStyle(
-                          fontSize: 12.5,
-                          fontWeight: FontWeight.bold,
-                          color: current ? AppColors.primary : p.text,
+              // The frosted strip.
+              Positioned(
+                left: 0,
+                right: 0,
+                bottom: 0,
+                child: ClipRect(
+                  child: BackdropFilter(
+                    filter: ImageFilter.blur(sigmaX: 18, sigmaY: 18),
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 6),
+                      decoration: BoxDecoration(
+                        gradient: LinearGradient(
+                          begin: Alignment.topCenter,
+                          end: Alignment.bottomCenter,
+                          colors: [
+                            Colors.white.withOpacity(p.isDark ? 0.22 : 0.70),
+                            Colors.white.withOpacity(p.isDark ? 0.10 : 0.55),
+                          ],
                         ),
+                        border: Border(top: BorderSide(color: p.glassHighlight, width: 0.8)),
+                      ),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Flexible(
+                            child: Text(
+                              tile.label,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: TextStyle(
+                                fontSize: 12.5,
+                                fontWeight: FontWeight.w800,
+                                color: p.isDark ? Colors.white : p.text,
+                                shadows: p.isDark ? const [Shadow(color: Colors.black45, blurRadius: 4)] : null,
+                              ),
+                            ),
+                          ),
+                          if (tile.note != null && tile.note!.isNotEmpty)
+                            Text(
+                              tile.note!,
+                              style: TextStyle(fontSize: 10, color: p.isDark ? Colors.white70 : p.textMuted),
+                            ),
+                        ],
                       ),
                     ),
-                    if (tile.note != null && tile.note!.isNotEmpty)
-                      Text(tile.note!, style: TextStyle(fontSize: 10, color: p.textMuted)),
-                  ],
+                  ),
                 ),
+              ),
+              // The edge of the pane, drawn last so it sits over everything.
+              IgnorePointer(
+                child: DecoratedBox(
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(
+                      color: current ? AppColors.primary : p.glassEdge,
+                      width: current ? 2 : 0.8,
+                    ),
+                  ),
+                ),
+              ),
+              Material(
+                color: Colors.transparent,
+                child: InkWell(onTap: onTap, borderRadius: BorderRadius.circular(12)),
               ),
             ],
           ),

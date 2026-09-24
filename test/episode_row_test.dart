@@ -47,9 +47,19 @@ void main() {
     expect(find.text('الحلقة 1'), findsNothing);
     expect(find.text('الحلقة 10'), findsOneWidget);
 
-    final card =
-        tester.widget<Container>(find.ancestor(of: find.text('الحلقة 10'), matching: find.byType(Container)).first);
-    final border = (card.decoration as BoxDecoration).border as Border;
-    expect(border.top.color, AppColors.primary);
+    // Somewhere in the card's tree is the red ring and the red glow.
+    final card = find.ancestor(of: find.text('الحلقة 10'), matching: find.byType(Semantics)).first;
+    final boxes = tester.widgetList<DecoratedBox>(find.descendant(of: card, matching: find.byType(DecoratedBox)));
+    final ringed = boxes.any((b) {
+      final d = b.decoration;
+      return d is BoxDecoration && d.border is Border && (d.border as Border).top.color == AppColors.primary;
+    });
+    expect(ringed, isTrue);
+    final glow = AppColors.primary.withOpacity(0.45).value;
+    final glowing = tester.widgetList<Container>(find.descendant(of: card, matching: find.byType(Container))).any((c) {
+      final d = c.decoration;
+      return d is BoxDecoration && (d.boxShadow ?? const []).any((sh) => sh.color.value == glow);
+    });
+    expect(glowing, isTrue);
   });
 }

@@ -60,13 +60,25 @@ class AppPalette {
   // ---------------------------------------------------------------- glass
 
   /// The sheen of a glass panel where it is brightest (top-left).
-  Color get glassTop => Colors.white.withOpacity(isDark ? 0.14 : 0.78);
+  Color get glassTop => Colors.white.withOpacity(isDark ? 0.20 : 0.88);
 
   /// The sheen of a glass panel where it fades (bottom-right).
-  Color get glassBottom => Colors.white.withOpacity(isDark ? 0.05 : 0.52);
+  Color get glassBottom => Colors.white.withOpacity(isDark ? 0.06 : 0.60);
 
   /// The thin light edge around a glass panel.
-  Color get glassEdge => Colors.white.withOpacity(isDark ? 0.20 : 0.92);
+  Color get glassEdge => Colors.white.withOpacity(isDark ? 0.30 : 1.0);
+
+  /// The bright line along the top of a pane, where light catches the edge.
+  Color get glassHighlight => Colors.white.withOpacity(isDark ? 0.45 : 1.0);
+
+  /// The soft shadow a pane of glass throws on the page.
+  List<BoxShadow> get glassShadow => [
+        BoxShadow(
+          color: Colors.black.withOpacity(isDark ? 0.45 : 0.10),
+          blurRadius: 18,
+          offset: const Offset(0, 6),
+        ),
+      ];
 
   /// The panel's sheen as a gradient, ready for a [BoxDecoration].
   LinearGradient get glass => LinearGradient(
