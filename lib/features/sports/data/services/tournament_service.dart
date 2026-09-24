@@ -10,6 +10,7 @@ class Tournament {
     required this.name,
     required this.logoUrl,
     required this.accent,
+    this.accent2,
     this.darkBadge = false,
   });
 
@@ -18,8 +19,10 @@ class Tournament {
   final String name;
   final String logoUrl;
 
-  /// The competition's own colour, for its card.
+  /// The competition's own colours: its banner runs from the second,
+  /// dark one to the first.
   final int accent;
+  final int? accent2;
 
   /// A logo drawn in white sits on a dark badge, not a white one.
   final bool darkBadge;
@@ -31,6 +34,7 @@ class Tournament {
     logoUrl:
         'https://imagecache.365scores.com/image/upload/f_png,w_300,h_300,c_limit,q_auto:best,dpr_2/Competitions/light/5452',
     accent: 0xFF00B1E8,
+    accent2: 0xFF06304A,
   );
 }
 

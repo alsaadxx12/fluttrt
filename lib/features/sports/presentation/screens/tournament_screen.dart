@@ -32,7 +32,8 @@ final List<Tournament> kTournaments = () {
         id: l.id,
         name: l.name,
         logoUrl: l.logoUrl,
-        accent: l.colors.first.value,
+        accent: l.colors.last.value,
+        accent2: l.colors.first.value,
         darkBadge: l.darkBadge,
       );
   final out = <Tournament>[Tournament.gulfCup];
@@ -112,7 +113,6 @@ class _TournamentScreenState extends ConsumerState<TournamentScreen> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const SizedBox(height: 12),
                     _TournamentPicker(
                       tournaments: kTournaments,
                       index: _index,
@@ -142,8 +142,8 @@ class _TournamentScreenState extends ConsumerState<TournamentScreen> {
 
 // ---------------------------------------------------------------- the row of competitions
 
-/// The competitions on a row of glass cards, swiped through; the one in
-/// the middle is the page's.
+/// The competitions as full-width banners, swiped through; the one on
+/// screen is the page's. No frame: the banner runs edge to edge.
 class _TournamentPicker extends StatefulWidget {
   const _TournamentPicker({required this.tournaments, required this.index, required this.onChanged});
 
@@ -156,7 +156,7 @@ class _TournamentPicker extends StatefulWidget {
 }
 
 class _TournamentPickerState extends State<_TournamentPicker> {
-  late final PageController _pages = PageController(viewportFraction: 0.58, initialPage: widget.index);
+  late final PageController _pages = PageController(initialPage: widget.index);
 
   @override
   void dispose() {
@@ -167,91 +167,137 @@ class _TournamentPickerState extends State<_TournamentPicker> {
   @override
   Widget build(BuildContext context) {
     return SizedBox(
-      height: 128,
+      height: 168,
       child: PageView.builder(
         controller: _pages,
         itemCount: widget.tournaments.length,
         onPageChanged: widget.onChanged,
-        itemBuilder: (context, i) => AnimatedBuilder(
-          animation: _pages,
-          builder: (context, child) {
-            // The card in the middle stands full size; the neighbours a
-            // step back and dimmer.
-            var page = widget.index.toDouble();
-            if (_pages.hasClients && _pages.position.haveDimensions) page = _pages.page ?? page;
-            final away = (page - i).abs().clamp(0.0, 1.0);
-            return Transform.scale(
-              scale: 1 - away * 0.08,
-              child: Opacity(opacity: 1 - away * 0.35, child: child),
-            );
-          },
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 6),
-            child: _TournamentCard(
-              tournament: widget.tournaments[i],
-              selected: i == widget.index,
-              onTap: () => _pages.animateToPage(i, duration: const Duration(milliseconds: 260), curve: Curves.easeOut),
-            ),
-          ),
+        itemBuilder: (context, i) => _TournamentBanner(
+          tournament: widget.tournaments[i],
+          position: '${i + 1} / ${widget.tournaments.length}',
         ),
       ),
     );
   }
 }
 
-class _TournamentCard extends StatelessWidget {
-  const _TournamentCard({required this.tournament, required this.selected, required this.onTap});
+/// A wide banner of the competition's own colours, its emblem large on
+/// the start side and its name on the other, with a wash of light behind
+/// the emblem.
+class _TournamentBanner extends StatelessWidget {
+  const _TournamentBanner({required this.tournament, required this.position});
 
   final Tournament tournament;
-  final bool selected;
-  final VoidCallback onTap;
+  final String position;
 
   @override
   Widget build(BuildContext context) {
     final p = AppPalette.of(context);
-    final accent = Color(tournament.accent);
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        decoration: BoxDecoration(
-          gradient: p.glass,
-          borderRadius: BorderRadius.circular(18),
-          border: Border.all(color: selected ? AppColors.primary : p.glassEdge, width: selected ? 1.4 : 0.8),
-          boxShadow: p.glassShadow,
+    final light = Color(tournament.accent);
+    final dark = Color(tournament.accent2 ?? tournament.accent).withOpacity(1);
+    return Container(
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          begin: AlignmentDirectional.centerStart,
+          end: AlignmentDirectional.centerEnd,
+          colors: [dark, Color.lerp(dark, light, 0.55)!],
         ),
-        padding: const EdgeInsets.fromLTRB(12, 12, 12, 10),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Container(
-              width: 58,
-              height: 58,
-              padding: const EdgeInsets.all(8),
+      ),
+      child: Stack(
+        fit: StackFit.expand,
+        children: [
+          // A wash of the brand's light behind the emblem.
+          PositionedDirectional(
+            start: -40,
+            top: -60,
+            child: Container(
+              width: 260,
+              height: 260,
               decoration: BoxDecoration(
-                color: tournament.darkBadge ? const Color(0xFF0C1410) : Colors.white,
-                borderRadius: BorderRadius.circular(16),
-                boxShadow: [
-                  BoxShadow(color: accent.withOpacity(selected ? 0.40 : 0.18), blurRadius: 16, spreadRadius: 1)
-                ],
-              ),
-              child: CachedNetworkImage(
-                imageUrl: tournament.logoUrl,
-                cacheManager: appImageCache,
-                memCacheWidth: 180,
-                fit: BoxFit.contain,
-                errorWidget: (_, __, ___) => Icon(Icons.emoji_events_rounded, color: accent, size: 28),
+                shape: BoxShape.circle,
+                gradient: RadialGradient(colors: [light.withOpacity(0.55), light.withOpacity(0.0)]),
               ),
             ),
-            const SizedBox(height: 8),
-            Text(
-              tournament.name,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              textAlign: TextAlign.center,
-              style: TextStyle(color: p.text, fontSize: 12.5, fontWeight: FontWeight.w900),
+          ),
+          // The sheen of the app's glass over the colours.
+          DecoratedBox(
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                begin: Alignment.topCenter,
+                end: Alignment.bottomCenter,
+                colors: [Colors.white.withOpacity(0.10), Colors.black.withOpacity(0.18)],
+              ),
             ),
-          ],
-        ),
+          ),
+          Padding(
+            padding: const EdgeInsetsDirectional.fromSTEB(20, 16, 20, 16),
+            child: Row(
+              children: [
+                // The emblem, large, on nothing.
+                SizedBox(
+                  width: 116,
+                  height: 116,
+                  child: CachedNetworkImage(
+                    imageUrl: tournament.logoUrl,
+                    cacheManager: appImageCache,
+                    memCacheWidth: 360,
+                    fit: BoxFit.contain,
+                    errorWidget: (_, __, ___) => const Icon(Icons.emoji_events_rounded, color: Colors.white, size: 64),
+                  ),
+                ),
+                const SizedBox(width: 18),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Text(
+                        tournament.name,
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 21,
+                          fontWeight: FontWeight.w900,
+                          height: 1.2,
+                          shadows: [Shadow(color: Colors.black38, blurRadius: 6)],
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      Row(
+                        children: [
+                          Icon(Icons.swipe_rounded, color: Colors.white.withOpacity(0.7), size: 14),
+                          const SizedBox(width: 5),
+                          Text(
+                            position,
+                            style: TextStyle(
+                                color: Colors.white.withOpacity(0.8), fontSize: 11.5, fontWeight: FontWeight.w700),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+          // The banner's foot fades into the page.
+          Positioned(
+            left: 0,
+            right: 0,
+            bottom: 0,
+            height: 28,
+            child: DecoratedBox(
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.topCenter,
+                  end: Alignment.bottomCenter,
+                  colors: [p.bg.withOpacity(0), p.bg],
+                ),
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -715,13 +761,16 @@ class _ScorersSliver extends ConsumerWidget {
         if (scorers.isEmpty) return SliverToBoxAdapter(child: _Message('لا أهداف بعد', p));
         return SliverPadding(
           padding: const EdgeInsets.symmetric(horizontal: 16),
-          sliver: SliverList.builder(
-            itemCount: scorers.length,
-            itemBuilder: (context, i) => Padding(
-              padding: const EdgeInsets.only(bottom: 10),
-              child: _ScorerCard(rank: i + 1, scorer: scorers[i]),
-            ),
-          ),
+          sliver: SliverList.list(children: [
+            // The race to the top scorer's cup, then the list.
+            _ScorerRace(scorers: scorers.take(9).toList()),
+            const SizedBox(height: 16),
+            for (var i = 0; i < scorers.length; i++)
+              Padding(
+                padding: const EdgeInsets.only(bottom: 10),
+                child: _ScorerCard(rank: i + 1, scorer: scorers[i]),
+              ),
+          ]),
         );
       },
     );
@@ -822,6 +871,192 @@ class _ScorerCard extends StatelessWidget {
       ),
     );
   }
+}
+
+/// The scorers racing to the cup: three lanes running from the start
+/// edge to the cup at the far end, each scorer's face placed along the
+/// track by his goals - the leader nearest the cup.
+class _ScorerRace extends StatelessWidget {
+  const _ScorerRace({required this.scorers});
+
+  final List<TopScorer> scorers;
+
+  static const int _lanes = 3;
+  static const double _laneHeight = 74;
+  static const double _face = 46;
+
+  @override
+  Widget build(BuildContext context) {
+    final p = AppPalette.of(context);
+    final most = scorers.fold<int>(1, (m, s) => s.goals > m ? s.goals : m);
+    final lanes = scorers.length < _lanes ? scorers.length : _lanes;
+    final height = lanes * _laneHeight + 10;
+    return GlassPanel(
+      radius: 16,
+      padding: const EdgeInsets.fromLTRB(14, 12, 14, 8),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              const Icon(Icons.emoji_events_rounded, color: Color(0xFFFFB800), size: 18),
+              const SizedBox(width: 6),
+              Text('السباق إلى كأس الهداف',
+                  style: TextStyle(color: p.text, fontSize: 13.5, fontWeight: FontWeight.w900)),
+            ],
+          ),
+          const SizedBox(height: 8),
+          SizedBox(
+            height: height,
+            child: LayoutBuilder(
+              builder: (context, box) {
+                // The cup takes the far end; the track is what is left.
+                const cup = 52.0;
+                final track = box.maxWidth - cup - _face;
+                return Stack(
+                  children: [
+                    for (var lane = 0; lane < lanes; lane++)
+                      PositionedDirectional(
+                        start: _face / 2,
+                        end: cup,
+                        top: lane * _laneHeight + _face / 2 + 2,
+                        child:
+                            CustomPaint(size: const Size(double.infinity, 2), painter: _DashPainter(color: p.border)),
+                      ),
+                    // The cup, at the finish.
+                    PositionedDirectional(
+                      end: 0,
+                      top: 0,
+                      bottom: 0,
+                      child: SizedBox(
+                        width: cup,
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Container(
+                              width: 44,
+                              height: 44,
+                              decoration: BoxDecoration(
+                                shape: BoxShape.circle,
+                                color: const Color(0xFFFFB800).withOpacity(0.18),
+                                border: Border.all(color: const Color(0xFFFFB800).withOpacity(0.6), width: 1),
+                              ),
+                              child: const Icon(Icons.emoji_events_rounded, color: Color(0xFFFFB800), size: 26),
+                            ),
+                            const SizedBox(height: 4),
+                            Text('$most',
+                                style: TextStyle(color: p.textMuted, fontSize: 10.5, fontWeight: FontWeight.w800)),
+                          ],
+                        ),
+                      ),
+                    ),
+                    for (var i = 0; i < scorers.length; i++)
+                      PositionedDirectional(
+                        // The leader stands nearest the cup; a scorer with a
+                        // third of his goals stands a third of the way.
+                        start: (track * scorers[i].goals / most).clamp(0.0, track),
+                        top: (i % lanes) * _laneHeight,
+                        child: _Runner(scorer: scorers[i], leader: i == 0),
+                      ),
+                  ],
+                );
+              },
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _Runner extends StatelessWidget {
+  const _Runner({required this.scorer, required this.leader});
+
+  final TopScorer scorer;
+  final bool leader;
+
+  @override
+  Widget build(BuildContext context) {
+    final p = AppPalette.of(context);
+    const size = _ScorerRace._face;
+    return SizedBox(
+      width: 88,
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Stack(
+            clipBehavior: Clip.none,
+            children: [
+              Container(
+                width: size,
+                height: size,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: p.glassFill(),
+                  border:
+                      Border.all(color: leader ? const Color(0xFFFFB800) : p.glassFillEdge(), width: leader ? 2 : 0.8),
+                  boxShadow:
+                      leader ? [BoxShadow(color: const Color(0xFFFFB800).withOpacity(0.35), blurRadius: 12)] : null,
+                ),
+                clipBehavior: Clip.antiAlias,
+                child: CachedNetworkImage(
+                  imageUrl: scorer.photoUrl,
+                  cacheManager: appImageCache,
+                  memCacheWidth: 138,
+                  fit: BoxFit.cover,
+                  errorWidget: (_, __, ___) => Icon(Icons.person_rounded, color: p.textFaint, size: 26),
+                ),
+              ),
+              // The goals, on a red badge at the shoulder.
+              PositionedDirectional(
+                end: -4,
+                bottom: -2,
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1),
+                  decoration: BoxDecoration(
+                    color: AppColors.primary,
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(color: p.bg, width: 1.5),
+                  ),
+                  child: Text('${scorer.goals}',
+                      style: const TextStyle(color: Colors.white, fontSize: 10.5, fontWeight: FontWeight.w900)),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 3),
+          Text(
+            scorer.name.split(' ').take(2).join(' '),
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            textAlign: TextAlign.center,
+            style: TextStyle(color: p.text, fontSize: 10, fontWeight: FontWeight.w800),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// A dashed lane line.
+class _DashPainter extends CustomPainter {
+  const _DashPainter({required this.color});
+
+  final Color color;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final paint = Paint()
+      ..color = color
+      ..strokeWidth = 1.5;
+    const dash = 6.0, gap = 5.0;
+    for (var x = 0.0; x < size.width; x += dash + gap) {
+      canvas.drawLine(Offset(x, size.height / 2), Offset((x + dash).clamp(0, size.width), size.height / 2), paint);
+    }
+  }
+
+  @override
+  bool shouldRepaint(_DashPainter old) => old.color != color;
 }
 
 // ---------------------------------------------------------------- bits
