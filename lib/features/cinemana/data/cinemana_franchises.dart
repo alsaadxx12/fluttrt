@@ -428,20 +428,6 @@ class FilmFranchise {
       ],
     ),
     FilmFranchise(
-      id: 'alien',
-      name: 'المخلوق الفضائي',
-      queries: ['Alien'],
-      entries: [
-        FranchiseEntry(1979, ['Alien']),
-        FranchiseEntry(1986, ['Aliens']),
-        FranchiseEntry(1992, ['Alien 3']),
-        FranchiseEntry(1997, ['Alien Resurrection']),
-        FranchiseEntry(2012, ['Prometheus']),
-        FranchiseEntry(2017, ['Alien: Covenant']),
-        FranchiseEntry(2024, ['Alien: Romulus']),
-      ],
-    ),
-    FilmFranchise(
       id: 'predator',
       name: 'المفترس',
       queries: ['Predator'],
