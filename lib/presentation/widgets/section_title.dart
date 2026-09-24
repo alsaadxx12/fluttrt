@@ -51,7 +51,9 @@ class SectionTitle extends StatelessWidget {
                   borderRadius: BorderRadius.circular(3),
                 ),
               ),
-          Flexible(
+          // The title takes the whole row up to the pill, so the pill sits
+          // at the far end; a loose slot left its unused half after the pill.
+          Expanded(
             child: Text(
               title,
               maxLines: 1,
@@ -65,8 +67,7 @@ class SectionTitle extends StatelessWidget {
             ),
           ),
           if (trailing != null) ...[const SizedBox(width: 8), trailing!],
-          const Spacer(),
-          if (onViewAll != null) ViewAllPill(onTap: onViewAll!),
+          if (onViewAll != null) ...[const SizedBox(width: 8), ViewAllPill(onTap: onViewAll!)],
         ],
       ),
     );
