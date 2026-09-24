@@ -1,4 +1,3 @@
-import 'dart:ui' show ImageFilter;
 import 'dart:async';
 import 'dart:io';
 import 'package:cached_network_image/cached_network_image.dart';
@@ -680,23 +679,20 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
               right: 0,
               child: ValueListenableBuilder<bool>(
                 valueListenable: _barScrolled,
-                // Glass, the way iOS draws its bars: what scrolls under shows
-                // through a blur and a tint of the page colour.
+                // Glass: a sheen over the page's tint, brighter at the top,
+                // and a light edge where the pane ends. No backdrop blur:
+                // the renderer ran it again on every frame of every scroll.
                 builder: (context, scrolled, child) => ClipRect(
-                  child: BackdropFilter(
-                    filter: ImageFilter.blur(sigmaX: 26, sigmaY: 26),
-                    child: Container(
+                  child: Container(
                       decoration: BoxDecoration(
-                        // A sheen over the page's tint, brighter at the
-                        // top, and a light edge where the pane ends.
                         gradient: scrolled
                             ? LinearGradient(
                                 begin: Alignment.topCenter,
                                 end: Alignment.bottomCenter,
                                 colors: [
                                   Color.alphaBlend(_p.glassTop, _p.bg)
-                                      .withOpacity(0.72),
-                                  _p.bg.withOpacity(0.58),
+                                      .withOpacity(0.90),
+                                  _p.bg.withOpacity(0.84),
                                 ],
                               )
                             : null,
@@ -709,7 +705,6 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                       ),
                       child: child,
                     ),
-                  ),
                 ),
                 child: SafeArea(
                   bottom: false,
@@ -919,21 +914,22 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
       return Stack(
         fit: StackFit.expand,
         children: [
-          ImageFiltered(
-            imageFilter: ImageFilter.blur(sigmaX: 45, sigmaY: 45),
-            child: CachedNetworkImage(
+          // The soft copy behind the poster: decoded a dozen pixels wide
+          // and stretched to the screen, which is a blur for free. A blur
+          // filter here was run again by the renderer on every frame.
+          CachedNetworkImage(
               imageUrl: imageUrl,
               cacheManager: appImageCache,
               fit: BoxFit.cover,
               alignment: Alignment.center,
-              memCacheWidth: 400, // a blur needs no detail
+              filterQuality: FilterQuality.high,
+              memCacheWidth: 12,
               fadeInDuration: Duration.zero,
               fadeOutDuration: Duration.zero,
               placeholderFadeInDuration: Duration.zero,
               useOldImageOnUrlChange: true,
               errorWidget: (_, __, ___) => const SizedBox.shrink(),
             ),
-          ),
           const ColoredBox(color: Color(0x45000000)),
           Center(
             child: Padding(
@@ -2188,13 +2184,14 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                 return Stack(
                   fit: StackFit.expand,
                   children: [
-                    ImageFiltered(
-                      imageFilter: ImageFilter.blur(sigmaX: 22, sigmaY: 22, tileMode: TileMode.mirror),
-                      child: CachedNetworkImage(
+                    // Decoded a dozen pixels wide and stretched: a blur for
+                    // free, where a blur filter ran on every frame.
+                    CachedNetworkImage(
                         imageUrl: poster,
                         cacheManager: appImageCache,
                         fit: BoxFit.cover,
-                        memCacheWidth: 160,
+                        filterQuality: FilterQuality.high,
+                        memCacheWidth: 14,
                         fadeInDuration: Duration.zero,
                         fadeOutDuration: Duration.zero,
                         placeholderFadeInDuration: Duration.zero,
@@ -2202,7 +2199,6 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                         placeholder: (_, __) => ColoredBox(color: _p.skeleton),
                         errorWidget: (_, __, ___) => ColoredBox(color: _p.skeleton),
                       ),
-                    ),
                     const ColoredBox(color: Color(0x66000000)),
                     CachedNetworkImage(
                       imageUrl: poster,

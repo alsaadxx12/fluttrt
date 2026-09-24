@@ -1,4 +1,3 @@
-import 'dart:ui' show ImageFilter;
 
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
@@ -48,17 +47,15 @@ class AppBottomBar extends StatelessWidget {
       extraTop: archHeight + 6,
       child: SizedBox(
         height: totalHeight,
-        // Glass, the way iOS draws its tab bar: the page shows through a
-        // blur under a tint of its own colour. The clip follows the arch,
-        // so the blur stops where the bar does.
+        // A tint of the page's own colour with a light edge along the
+        // arch. No backdrop blur: nothing scrolls under the bar, and the
+        // renderer ran the blur again on every frame regardless.
         child: ClipPath(
           clipper:
               _CurvedBarClipper(archHeight: archHeight, archWidth: archWidth),
-          child: BackdropFilter(
-            filter: ImageFilter.blur(sigmaX: 22, sigmaY: 22),
-            child: CustomPaint(
+          child: CustomPaint(
               painter: _CurvedBarPainter(
-                backgroundColor: bg.withOpacity(0.72),
+                backgroundColor: bg.withOpacity(0.94),
                 borderColor: line,
                 archHeight: archHeight,
                 archWidth: archWidth,
@@ -102,7 +99,6 @@ class AppBottomBar extends StatelessWidget {
                 ),
               ),
             ),
-          ),
         ),
       ),
     );
