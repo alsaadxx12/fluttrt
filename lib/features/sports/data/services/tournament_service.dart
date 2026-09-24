@@ -96,6 +96,7 @@ class TopScorer {
     required this.teamName,
     required this.goals,
     required this.assists,
+    this.shortName = '',
     this.imageVersion,
     this.live = false,
   });
@@ -106,6 +107,10 @@ class TopScorer {
   final String teamName;
   final int goals;
   final int assists;
+
+  /// The name he is called by - «قاسم», «خيمينيز» - for where the whole
+  /// one will not fit.
+  final String shortName;
 
   /// 365Scores' photo version: with it the newest photo comes, without it
   /// whatever the cache holds.
@@ -121,6 +126,7 @@ class TopScorer {
         teamName: teamName,
         goals: goals ?? this.goals,
         assists: assists ?? this.assists,
+        shortName: shortName,
         imageVersion: imageVersion ?? this.imageVersion,
         live: live ?? this.live,
       );
@@ -279,6 +285,7 @@ class TournamentService {
         teamName: teams[teamId] ?? '',
         goals: goals[memberId] ?? 0,
         assists: assists[memberId] ?? 0,
+        shortName: '${m['shortName'] ?? ''}',
         imageVersion: m['imageVersion'] is num ? _int(m['imageVersion']) : null,
         live: true,
       ));
@@ -334,6 +341,7 @@ class TournamentService {
         teamName: teams[teamId] ?? '',
         goals: _value(r),
         assists: assists[id] ?? 0,
+        shortName: '${e['shortName'] ?? ''}',
         imageVersion: e['imageVersion'] is num ? _int(e['imageVersion']) : null,
       ));
     }

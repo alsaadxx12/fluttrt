@@ -48,6 +48,7 @@ void main() {
     expect(byName['نيكولاس خيمينيز']!.id, 15447);
     expect(byName['نيكولاس خيمينيز']!.teamName, 'الإمارات');
     expect(byName['نيكولاس خيمينيز']!.imageVersion, 23);
+    expect(byName['نيكولاس خيمينيز']!.shortName, 'خيمينيز');
     expect(byName['لوان بيريرا']!.goals, 1);
     expect(byName['برونو دى اوليفيرا']!.assists, 1);
     expect(byName['برونو دى اوليفيرا']!.goals, 0);

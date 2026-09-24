@@ -1212,7 +1212,10 @@ class _Runner extends StatelessWidget {
           ),
           const SizedBox(height: 3),
           Text(
-            scorer.name.split(' ').take(2).join(' '),
+            // The whole name when it fits two words, else what he is called.
+            scorer.name.split(' ').length <= 2 || scorer.shortName.isEmpty
+                ? scorer.name.split(' ').take(2).join(' ')
+                : scorer.shortName,
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
             textAlign: TextAlign.center,
