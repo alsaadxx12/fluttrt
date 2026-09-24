@@ -710,9 +710,10 @@ class _FixtureCard extends StatelessWidget {
     return Padding(
       padding: const EdgeInsets.only(bottom: 10),
       child: GlassPanel(
-        radius: 14,
-        padding: const EdgeInsets.fromLTRB(12, 12, 12, 12),
+        radius: 16,
+        padding: const EdgeInsets.fromLTRB(14, 14, 14, 14),
         child: InkWell(
+          borderRadius: BorderRadius.circular(16),
           onTap: watchable == null
               ? null
               : () =>
@@ -729,25 +730,31 @@ class _FixtureCard extends StatelessWidget {
                       Text(
                         centre,
                         style: TextStyle(
+                          fontFamily: kSportFont,
                           color: live ? const Color(0xFFFF2A4A) : p.text,
-                          fontSize: 18,
-                          fontWeight: FontWeight.w900,
+                          fontSize: 22,
+                          fontWeight: FontWeight.w800,
                           letterSpacing: 1,
+                          height: 1.1,
                         ),
                       ),
-                      const SizedBox(height: 2),
+                      const SizedBox(height: 4),
                       Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
+                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
                         decoration: BoxDecoration(
-                          color: live ? const Color(0xFFFF2A4A).withOpacity(0.16) : p.glassFill(),
+                          color: live ? const Color(0xFFFF2A4A).withOpacity(0.14) : p.glassFill(),
                           borderRadius: BorderRadius.circular(8),
+                          border: Border.all(
+                              color: live ? const Color(0xFFFF2A4A).withOpacity(0.5) : p.glassFillEdge(), width: 0.8),
                         ),
                         child: Text(
                           sub,
                           style: TextStyle(
+                            fontFamily: kSportFont,
                             color: live ? const Color(0xFFFF2A4A) : p.textMuted,
-                            fontSize: 10.5,
+                            fontSize: 11,
                             fontWeight: FontWeight.w700,
+                            height: 1.2,
                           ),
                         ),
                       ),
@@ -766,7 +773,12 @@ class _FixtureCard extends StatelessWidget {
                     const SizedBox(width: 5),
                     Text(
                       live ? 'شاهد الآن' : 'متاحة للمشاهدة',
-                      style: const TextStyle(color: AppColors.primary, fontSize: 11.5, fontWeight: FontWeight.w800),
+                      style: const TextStyle(
+                          fontFamily: kSportFont,
+                          color: AppColors.primary,
+                          fontSize: 12.5,
+                          fontWeight: FontWeight.w700,
+                          height: 1.2),
                     ),
                   ],
                 ),
@@ -803,7 +815,7 @@ class _Team extends StatelessWidget {
         maxLines: 2,
         overflow: TextOverflow.ellipsis,
         textAlign: alignEnd ? TextAlign.end : TextAlign.start,
-        style: TextStyle(color: p.text, fontSize: 12.5, fontWeight: FontWeight.w800),
+        style: TextStyle(fontFamily: kSportFont, color: p.text, fontSize: 14, fontWeight: FontWeight.w700, height: 1.2),
       ),
     );
     return Row(children: alignEnd ? [name, const SizedBox(width: 8), crest] : [crest, const SizedBox(width: 8), name]);

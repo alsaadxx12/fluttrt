@@ -60,25 +60,29 @@ class AppPalette {
   // ---------------------------------------------------------------- glass
 
   /// The sheen of a glass panel where it is brightest (top-left).
-  Color get glassTop => Colors.white.withOpacity(isDark ? 0.20 : 0.88);
+  Color get glassTop => Colors.white.withOpacity(isDark ? 0.20 : 0.94);
 
   /// The sheen of a glass panel where it fades (bottom-right).
-  Color get glassBottom => Colors.white.withOpacity(isDark ? 0.06 : 0.60);
+  Color get glassBottom => Colors.white.withOpacity(isDark ? 0.06 : 0.72);
 
-  /// The thin light edge around a glass panel.
-  Color get glassEdge => Colors.white.withOpacity(isDark ? 0.30 : 1.0);
+  /// The thin edge around a glass panel: a catch of light by night, a
+  /// fine slate line by day (white on a white page is no edge at all).
+  Color get glassEdge => isDark ? Colors.white.withOpacity(0.30) : const Color(0xFF0F172A).withOpacity(0.11);
 
   /// The bright line along the top of a pane, where light catches the edge.
   Color get glassHighlight => Colors.white.withOpacity(isDark ? 0.45 : 1.0);
 
-  /// The soft shadow a pane of glass throws on the page.
-  List<BoxShadow> get glassShadow => [
-        BoxShadow(
-          color: Colors.black.withOpacity(isDark ? 0.45 : 0.10),
-          blurRadius: 18,
-          offset: const Offset(0, 6),
-        ),
-      ];
+  /// The shadow a pane of glass throws on the page: a close one that
+  /// seats it and a soft one that lifts it. By day both are faint, so the
+  /// edge stays the pane's own line and not a grey smear under it.
+  List<BoxShadow> get glassShadow => isDark
+      ? [
+          BoxShadow(color: Colors.black.withOpacity(0.45), blurRadius: 18, offset: const Offset(0, 6)),
+        ]
+      : [
+          BoxShadow(color: const Color(0xFF0F172A).withOpacity(0.05), blurRadius: 2, offset: const Offset(0, 1)),
+          BoxShadow(color: const Color(0xFF0F172A).withOpacity(0.06), blurRadius: 16, offset: const Offset(0, 8)),
+        ];
 
   /// The panel's sheen as a gradient, ready for a [BoxDecoration].
   LinearGradient get glass => LinearGradient(

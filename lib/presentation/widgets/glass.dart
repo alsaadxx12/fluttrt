@@ -35,41 +35,44 @@ class GlassPanel extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final p = AppPalette.of(context);
-    final pane = Stack(
-      children: [
-        Container(
-          width: double.infinity,
-          padding: padding,
-          decoration: BoxDecoration(
-            gradient: p.glass,
-            borderRadius: BorderRadius.circular(radius),
-            border: Border.all(color: p.glassEdge, width: 0.8),
+    final shape = BorderRadius.circular(radius);
+    // The edge is drawn over everything, so nothing inside - a tinted row,
+    // a picture - can blur or break the panel's outline.
+    final pane = DecoratedBox(
+      position: DecorationPosition.foreground,
+      decoration: BoxDecoration(borderRadius: shape, border: Border.all(color: p.glassEdge, width: 1)),
+      child: Stack(
+        children: [
+          Container(
+            width: double.infinity,
+            padding: padding,
+            decoration: BoxDecoration(gradient: p.glass, borderRadius: shape),
+            child: child,
           ),
-          child: child,
-        ),
-        // The catch of light along the top edge.
-        Positioned(
-          top: 0,
-          left: radius,
-          right: radius,
-          height: 1,
-          child: IgnorePointer(
-            child: DecoratedBox(
-              decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  colors: [Colors.transparent, p.glassHighlight, Colors.transparent],
+          // The catch of light along the top edge, just inside it.
+          Positioned(
+            top: 1,
+            left: radius,
+            right: radius,
+            height: 1,
+            child: IgnorePointer(
+              child: DecoratedBox(
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    colors: [Colors.transparent, p.glassHighlight, Colors.transparent],
+                  ),
                 ),
               ),
             ),
           ),
-        ),
-      ],
+        ],
+      ),
     );
     return Container(
       margin: margin,
-      decoration: BoxDecoration(borderRadius: BorderRadius.circular(radius), boxShadow: p.glassShadow),
+      decoration: BoxDecoration(borderRadius: shape, boxShadow: p.glassShadow),
       child: ClipRRect(
-        borderRadius: BorderRadius.circular(radius),
+        borderRadius: shape,
         clipBehavior: Clip.antiAlias,
         child: blur > 0 ? BackdropFilter(filter: ImageFilter.blur(sigmaX: blur, sigmaY: blur), child: pane) : pane,
       ),
