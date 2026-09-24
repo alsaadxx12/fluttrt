@@ -24,8 +24,7 @@ class WebCastService implements CastService {
   CastDevice? _device;
   Timer? _heartbeat;
 
-  final StreamController<CastPlaybackEvent> _events =
-      StreamController<CastPlaybackEvent>.broadcast();
+  final StreamController<CastPlaybackEvent> _events = StreamController<CastPlaybackEvent>.broadcast();
 
   @override
   CastTransport get transport => CastTransport.web;
@@ -174,8 +173,7 @@ class WebCastService implements CastService {
   /// Handing it a wrapper instead means the keys it adds land on the wrapper,
   /// and what goes out is the envelope every other Realtime client speaks:
   /// `{type:'broadcast', event:'command', payload:{…}}`.
-  static Map<String, dynamic> _envelope(Map<String, dynamic> body) =>
-      <String, dynamic>{'payload': body};
+  static Map<String, dynamic> _envelope(Map<String, dynamic> body) => <String, dynamic>{'payload': body};
 
   Future<void> _send(Map<String, dynamic> command) async {
     final channel = _channel;
@@ -215,6 +213,9 @@ class WebCastService implements CastService {
 
   @override
   Future<void> setMuted(bool muted) => _send({'type': muted ? 'MUTE' : 'UNMUTE'});
+
+  /// Draws the subtitle [scale] times its usual size, from now on.
+  Future<void> setSubtitleScale(double scale) => _send({'type': 'SUBTITLE_SIZE', 'scale': scale});
 
   @override
   Future<void> stop() async {

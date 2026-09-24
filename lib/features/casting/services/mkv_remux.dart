@@ -109,15 +109,10 @@ class SrtCue {
   /// `{\an8}`-style styling that a television would print verbatim.
   static List<SrtCue> parse(String srt) {
     final text = srt.replaceAll('\r\n', '\n').replaceAll('\r', '\n');
-    final time = RegExp(
-        r'(\d+):(\d{1,2}):(\d{1,2})[,.](\d{1,3})\s*-->\s*(\d+):(\d{1,2}):(\d{1,2})[,.](\d{1,3})');
+    final time = RegExp(r'(\d+):(\d{1,2}):(\d{1,2})[,.](\d{1,3})\s*-->\s*(\d+):(\d{1,2}):(\d{1,2})[,.](\d{1,3})');
     final cues = <SrtCue>[];
     for (final block in text.split(RegExp(r'\n\s*\n'))) {
-      final lines = block
-          .split('\n')
-          .map((l) => l.replaceAll('﻿', ''))
-          .where((l) => l.trim().isNotEmpty)
-          .toList();
+      final lines = block.split('\n').map((l) => l.replaceAll('﻿', '')).where((l) => l.trim().isNotEmpty).toList();
       if (lines.isEmpty) continue;
       var at = lines.indexWhere((l) => l.contains('-->'));
       if (at < 0) continue;
@@ -128,16 +123,30 @@ class SrtCue {
           int.parse(frac.padRight(3, '0').substring(0, 3));
       final start = ms(m[1]!, m[2]!, m[3]!, m[4]!);
       final end = ms(m[5]!, m[6]!, m[7]!, m[8]!);
-      final body = lines
-          .sublist(at + 1)
-          .join('\n')
-          .replaceAll(RegExp(r'\{\\[^}]*\}'), '')
-          .trim();
+      final body = lines.sublist(at + 1).join('\n').replaceAll(RegExp(r'\{\\[^}]*\}'), '').trim();
       if (body.isEmpty || end <= start) continue;
       cues.add(SrtCue(start, end, body));
     }
     cues.sort((a, b) => a.startMs.compareTo(b.startMs));
     return cues;
+  }
+
+  /// The size a television's SubRip renderer draws by default, in the
+  /// units of the `<font size>` tag (ffmpeg's SubRip decoder, which most
+  /// sets' players are built on, reads the tag as a font size against a
+  /// 288-line canvas and draws untagged text at 18).
+  static const int _defaultFontSize = 18;
+
+  /// [cues] asking the set for [scale] times its usual size.
+  ///
+  /// SubRip inside Matroska allows the `<font size="…">` tag; a scale of 1
+  /// leaves the lines untouched, which is what every set has been proved
+  /// to show. A set that does not know the tag would print it, so it is
+  /// only ever written when the viewer asks for another size.
+  static List<SrtCue> sized(List<SrtCue> cues, double scale) {
+    if ((scale - 1).abs() < 0.01 || scale <= 0) return cues;
+    final size = (_defaultFontSize * scale).round();
+    return [for (final c in cues) SrtCue(c.startMs, c.endMs, '<font size="$size">${c.text}</font>')];
   }
 }
 
@@ -209,9 +218,7 @@ class MkvLayout {
       final length = b - a + 1;
       if (_kinds[i] == 0) {
         final at = _where[i] + skip;
-        yield MkvPiece(a, length,
-            sourceOffset: -1,
-            literal: Uint8List.sublistView(_literal, at, at + length));
+        yield MkvPiece(a, length, sourceOffset: -1, literal: Uint8List.sublistView(_literal, at, at + length));
       } else {
         yield MkvPiece(a, length, sourceOffset: _where[i] + skip, literal: null);
       }
@@ -261,8 +268,7 @@ class _Bytes {
     _buffer[length++] = b;
   }
 
-  void setUint64(int at, int value) =>
-      ByteData.sublistView(_buffer).setUint64(at, value);
+  void setUint64(int at, int value) => ByteData.sublistView(_buffer).setUint64(at, value);
 
   Uint8List take() => Uint8List.sublistView(_buffer, 0, length);
 }
@@ -378,9 +384,7 @@ class _Builder {
     }
 
     void block(int track, int timecode, bool key, int sourceOffset, int size) {
-      if (clusterSizeAt < 0 ||
-          timecode - clusterStart > 32767 ||
-          timecode - clusterStart < -32768) {
+      if (clusterSizeAt < 0 || timecode - clusterStart > 32767 || timecode - clusterStart < -32768) {
         openCluster(timecode);
       }
       final rel = timecode - clusterStart;
@@ -401,9 +405,7 @@ class _Builder {
 
     void subtitle(SrtCue cue) {
       final text = utf8.encode(cue.text);
-      if (clusterSizeAt < 0 ||
-          cue.startMs - clusterStart > 32767 ||
-          cue.startMs - clusterStart < -32768) {
+      if (clusterSizeAt < 0 || cue.startMs - clusterStart > 32767 || cue.startMs - clusterStart < -32768) {
         openCluster(cue.startMs);
       }
       final rel = cue.startMs - clusterStart;
@@ -418,9 +420,7 @@ class _Builder {
       _literalPiece(_element(0xA0, group.takeBytes()));
     }
 
-    while (v < video.sampleCount ||
-        (audio != null && a < audio.sampleCount) ||
-        s < cues.length) {
+    while (v < video.sampleCount || (audio != null && a < audio.sampleCount) || s < cues.length) {
       final vt = v < video.sampleCount ? videoDts[v] : null;
       final at = audio != null && a < audio.sampleCount ? _msOf(audio.dts[a], audio.timescale) : null;
       final st = s < cues.length ? cues[s].startMs : null;
@@ -447,22 +447,26 @@ class _Builder {
 
     // ---- what goes in front of the clusters, all of it fixed-width where
     // a position is written, so the positions can be worked out at once.
-    final ebml = _element4(const [0x1A, 0x45, 0xDF, 0xA3], (BytesBuilder()
-          ..add(_element2(const [0x42, 0x86], _uint(1)))
-          ..add(_element2(const [0x42, 0xF7], _uint(1)))
-          ..add(_element2(const [0x42, 0xF2], _uint(4)))
-          ..add(_element2(const [0x42, 0xF3], _uint(8)))
-          ..add(_element2(const [0x42, 0x82], ascii.encode('matroska')))
-          ..add(_element2(const [0x42, 0x87], _uint(4)))
-          ..add(_element2(const [0x42, 0x85], _uint(2))))
-        .takeBytes());
+    final ebml = _element4(
+        const [0x1A, 0x45, 0xDF, 0xA3],
+        (BytesBuilder()
+              ..add(_element2(const [0x42, 0x86], _uint(1)))
+              ..add(_element2(const [0x42, 0xF7], _uint(1)))
+              ..add(_element2(const [0x42, 0xF2], _uint(4)))
+              ..add(_element2(const [0x42, 0xF3], _uint(8)))
+              ..add(_element2(const [0x42, 0x82], ascii.encode('matroska')))
+              ..add(_element2(const [0x42, 0x87], _uint(4)))
+              ..add(_element2(const [0x42, 0x85], _uint(2))))
+            .takeBytes());
 
-    final info = _element4(const [0x15, 0x49, 0xA9, 0x66], (BytesBuilder()
-          ..add(_element3(const [0x2A, 0xD7, 0xB1], _uint(MkvRemux._timecodeScale)))
-          ..add(_element2(const [0x4D, 0x80], utf8.encode('CINEBALL')))
-          ..add(_element2(const [0x57, 0x41], utf8.encode('CINEBALL')))
-          ..add(_element2(const [0x44, 0x89], _float(movie.length.inMilliseconds.toDouble()))))
-        .takeBytes());
+    final info = _element4(
+        const [0x15, 0x49, 0xA9, 0x66],
+        (BytesBuilder()
+              ..add(_element3(const [0x2A, 0xD7, 0xB1], _uint(MkvRemux._timecodeScale)))
+              ..add(_element2(const [0x4D, 0x80], utf8.encode('CINEBALL')))
+              ..add(_element2(const [0x57, 0x41], utf8.encode('CINEBALL')))
+              ..add(_element2(const [0x44, 0x89], _float(movie.length.inMilliseconds.toDouble()))))
+            .takeBytes());
 
     final tracks = BytesBuilder()
       ..add(_trackEntry(
@@ -482,10 +486,12 @@ class _Builder {
         codecPrivate: audio.codecPrivate,
         language: 'und',
         forced: false,
-        extra: _element1(0xE1, (BytesBuilder()
-              ..add(_element1(0xB5, _float(audio.sampleRate.toDouble())))
-              ..add(_element1(0x9F, _uint(audio.channels == 0 ? 2 : audio.channels))))
-            .takeBytes()),
+        extra: _element1(
+            0xE1,
+            (BytesBuilder()
+                  ..add(_element1(0xB5, _float(audio.sampleRate.toDouble())))
+                  ..add(_element1(0x9F, _uint(audio.channels == 0 ? 2 : audio.channels))))
+                .takeBytes()),
       ));
     }
     tracks.add(_trackEntry(
@@ -509,11 +515,13 @@ class _Builder {
     final cuesLength = 4 + 8 + clusterTimes.length * 23;
     final clustersAt = cuesAt + cuesLength;
 
-    final seekHead = _element4(const [0x11, 0x4D, 0x9B, 0x74], (BytesBuilder()
-          ..add(_seek(const [0x15, 0x49, 0xA9, 0x66], infoAt))
-          ..add(_seek(const [0x16, 0x54, 0xAE, 0x6B], tracksAt))
-          ..add(_seek(const [0x1C, 0x53, 0xBB, 0x6B], cuesAt)))
-        .takeBytes());
+    final seekHead = _element4(
+        const [0x11, 0x4D, 0x9B, 0x74],
+        (BytesBuilder()
+              ..add(_seek(const [0x15, 0x49, 0xA9, 0x66], infoAt))
+              ..add(_seek(const [0x16, 0x54, 0xAE, 0x6B], tracksAt))
+              ..add(_seek(const [0x1C, 0x53, 0xBB, 0x6B], cuesAt)))
+            .takeBytes());
     assert(seekHead.length == seekHeadLength);
 
     final cuesBody = BytesBuilder(copy: false);
@@ -656,11 +664,17 @@ class _Builder {
 
   static Uint8List _element(int id, List<int> body) => _element1(id, body);
 
-  static Uint8List _element1(int id, List<int> body) =>
-      (BytesBuilder(copy: false)..addByte(id)..add(_vint(body.length))..add(body)).takeBytes();
+  static Uint8List _element1(int id, List<int> body) => (BytesBuilder(copy: false)
+        ..addByte(id)
+        ..add(_vint(body.length))
+        ..add(body))
+      .takeBytes();
 
-  static Uint8List _element2(List<int> id, List<int> body) =>
-      (BytesBuilder(copy: false)..add(id)..add(_vint(body.length))..add(body)).takeBytes();
+  static Uint8List _element2(List<int> id, List<int> body) => (BytesBuilder(copy: false)
+        ..add(id)
+        ..add(_vint(body.length))
+        ..add(body))
+      .takeBytes();
 
   static Uint8List _element3(List<int> id, List<int> body) => _element2(id, body);
 

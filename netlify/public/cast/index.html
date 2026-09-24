@@ -89,7 +89,7 @@
      over a bright one it is worse. */
   video::cue {
     font-family: 'Noto Sans Arabic', system-ui, sans-serif;
-    font-size: 2.4vh;
+    font-size: 2.4vh; /* scaled by #cue-size, from the phone */
     line-height: 1.4;
     background: transparent;
     color: #FFFFFF;
@@ -160,6 +160,7 @@
 </button>
 
 <div id="toast"><span id="toast-text"></span></div>
+<style id="cue-size"></style>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/hls.js@1.5.17/dist/hls.min.js"></script>
@@ -323,12 +324,29 @@
     }, 60000);
   }
 
+  // ------------------------------------------------------- subtitle size
+  // The phone says how big the words should be, as a multiple of the
+  // 2.4vh above. ::cue takes a stylesheet and nothing else - no class, no
+  // inline style - so the rule is rewritten. Kept in this browser for the
+  // next film, and sent again with every film anyway.
+  function setSubtitleScale(scale) {
+    var s = Number(scale);
+    if (!isFinite(s) || s <= 0) s = 1;
+    document.getElementById('cue-size').textContent =
+      'video::cue { font-size: ' + (2.4 * s).toFixed(2) + 'vh; }';
+    try { localStorage.setItem('cast_subtitle_scale', String(s)); } catch (e) {}
+  }
+  try { setSubtitleScale(localStorage.getItem('cast_subtitle_scale') || 1); } catch (e) {}
+
   // --------------------------------------------------------------- commands
   function handle(cmd) {
     switch (cmd.type) {
       case 'LOAD_MEDIA':
       case 'CHANGE_MEDIA':
         return load(cmd);
+      case 'SUBTITLE_SIZE':
+        setSubtitleScale(cmd.scale);
+        return;
       case 'PLAY':   return video.play().catch(function () {});
       case 'PAUSE':  return video.pause();
       case 'SEEK':
@@ -518,6 +536,7 @@
       video.src = cmd.url;
     }
 
+    if (typeof cmd.subtitleScale === 'number') setSubtitleScale(cmd.subtitleScale);
     if (cmd.subtitleUrl) attachSubtitle(cmd.subtitleUrl, cmd.subtitleLabel);
 
     video.play().then(function () {

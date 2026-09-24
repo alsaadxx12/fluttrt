@@ -635,6 +635,7 @@ class DlnaCastService implements CastService {
             headers: media.headers,
             contentType: plan.mime,
             subtitleFuture: plan.withSubtitle ? plan.subtitle : null,
+            subtitleScale: media.subtitleScale,
             fill: MkvFill.crop,
           ) ??
           media.streamUrl;

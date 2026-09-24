@@ -11,8 +11,8 @@ import '../models/cast_models.dart';
 class CastRemotePage extends ConsumerWidget {
   const CastRemotePage({super.key});
 
-  static Future<void> open(BuildContext context) => Navigator.of(context, rootNavigator: true)
-      .push(MaterialPageRoute(builder: (_) => const CastRemotePage()));
+  static Future<void> open(BuildContext context) =>
+      Navigator.of(context, rootNavigator: true).push(MaterialPageRoute(builder: (_) => const CastRemotePage()));
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -90,15 +90,14 @@ class CastRemotePage extends ConsumerWidget {
                             child: Icon(Icons.movie_rounded, color: p.textFaint, size: 48),
                           )
                         : CachedNetworkImage(
-                          memCacheWidth: 600,
+                            memCacheWidth: 600,
                             imageUrl: media.posterUrl,
                             cacheManager: appImageCache,
                             width: 200,
                             height: 300,
                             fit: BoxFit.cover,
                             placeholder: (_, __) => Container(width: 200, height: 300, color: p.card),
-                            errorWidget: (_, __, ___) =>
-                                Container(width: 200, height: 300, color: p.card),
+                            errorWidget: (_, __, ___) => Container(width: 200, height: 300, color: p.card),
                           ),
                   ),
                 ),
@@ -128,6 +127,11 @@ class CastRemotePage extends ConsumerWidget {
               _Transport(cast: cast),
               const SizedBox(height: 20),
               _Volume(cast: cast),
+              // The subtitle's size on the other screen, when there is one.
+              if (media.subtitleUrl != null && !media.isLive) ...[
+                const SizedBox(height: 6),
+                _SubtitleSize(cast: cast),
+              ],
               const SizedBox(height: 14),
               TextButton.icon(
                 onPressed: () async {
@@ -205,9 +209,7 @@ class _Progress extends ConsumerWidget {
             max: max,
             onChanged: total.inMilliseconds <= 0
                 ? null
-                : (v) => ref
-                    .read(castControllerProvider.notifier)
-                    .seek(Duration(milliseconds: v.round())),
+                : (v) => ref.read(castControllerProvider.notifier).seek(Duration(milliseconds: v.round())),
           ),
         ),
         Padding(
@@ -216,8 +218,7 @@ class _Progress extends ConsumerWidget {
             textDirection: TextDirection.ltr,
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Text(castClock(cast.position),
-                  style: TextStyle(color: p.textMuted, fontSize: 12)),
+              Text(castClock(cast.position), style: TextStyle(color: p.textMuted, fontSize: 12)),
               Text(castClock(total), style: TextStyle(color: p.textMuted, fontSize: 12)),
             ],
           ),
@@ -246,8 +247,7 @@ class _Transport extends ConsumerWidget {
             child: SizedBox(
               width: size,
               height: size,
-              child: Icon(icon,
-                  color: onTap == null ? p.textFaint : Colors.white, size: size * 0.46),
+              child: Icon(icon, color: onTap == null ? p.textFaint : Colors.white, size: size * 0.46),
             ),
           ),
         );
@@ -256,8 +256,7 @@ class _Transport extends ConsumerWidget {
       textDirection: TextDirection.ltr,
       mainAxisAlignment: MainAxisAlignment.center,
       children: [
-        round(Icons.replay_10_rounded,
-            live ? null : () => notifier.skip(const Duration(seconds: -10))),
+        round(Icons.replay_10_rounded, live ? null : () => notifier.skip(const Duration(seconds: -10))),
         const SizedBox(width: 22),
         round(
           cast.isPlaying ? Icons.pause_rounded : Icons.play_arrow_rounded,
@@ -266,9 +265,70 @@ class _Transport extends ConsumerWidget {
           fill: const Color(0xFFE50914),
         ),
         const SizedBox(width: 22),
-        round(Icons.forward_10_rounded,
-            live ? null : () => notifier.skip(const Duration(seconds: 10))),
+        round(Icons.forward_10_rounded, live ? null : () => notifier.skip(const Duration(seconds: 10))),
       ],
+    );
+  }
+}
+
+/// «حجم الترجمة»: a row of sizes, the chosen one filled.
+class _SubtitleSize extends ConsumerWidget {
+  const _SubtitleSize({required this.cast});
+  final CastState cast;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final p = AppPalette.of(context);
+    final notifier = ref.read(castControllerProvider.notifier);
+    return Row(
+      children: [
+        Icon(Icons.subtitles_rounded, color: p.textMuted, size: 20),
+        const SizedBox(width: 8),
+        Text('حجم الترجمة', style: TextStyle(color: p.textMuted, fontSize: 12.5, fontWeight: FontWeight.w700)),
+        const Spacer(),
+        for (final size in kSubtitleSizes)
+          Padding(
+            padding: const EdgeInsetsDirectional.only(start: 4),
+            child: _SizeChip(
+              size: size,
+              selected: (cast.subtitleScale - size.scale).abs() < 0.01,
+              onTap: () => notifier.setSubtitleScale(size.scale),
+            ),
+          ),
+      ],
+    );
+  }
+}
+
+class _SizeChip extends StatelessWidget {
+  const _SizeChip({required this.size, required this.selected, required this.onTap});
+  final SubtitleSize size;
+  final bool selected;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final p = AppPalette.of(context);
+    return Material(
+      color: selected ? const Color(0xFFE50914) : p.card,
+      borderRadius: BorderRadius.circular(9),
+      clipBehavior: Clip.antiAlias,
+      child: InkWell(
+        onTap: onTap,
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 6),
+          child: Text(
+            size.name,
+            style: TextStyle(
+              color: selected ? Colors.white : p.text,
+              // The chip's own letters grow with the size they stand for.
+              fontSize: 10 + 2.5 * size.scale,
+              fontWeight: FontWeight.w800,
+              height: 1.1,
+            ),
+          ),
+        ),
+      ),
     );
   }
 }

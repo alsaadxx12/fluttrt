@@ -27,6 +27,11 @@ const String seekTo = String.fromEnvironment('TV_SEEK');
 /// `crop` or `stretch`: how a wide film should fill the 16:9 screen.
 const String fillName = String.fromEnvironment('TV_FILL');
 
+/// The subtitle size to ask the set for, as a multiple of its own: `1.6`
+/// wraps every line in a `<font size>` tag. Whether the set grows the
+/// words, ignores the tag or prints it is for the person in the room.
+const String subtitleScale = String.fromEnvironment('TV_SUB_SCALE', defaultValue: '1');
+
 const String api = 'https://cinemana.shabakaty.com/api/android';
 const String avTransport = 'urn:schemas-upnp-org:service:AVTransport:1';
 
@@ -54,7 +59,8 @@ void main() {
             ?.replaceAll(r'\/', '/') ??
         RegExp(r'"videoUrl":"(.*?)"').firstMatch(listing)!.group(1)!.replaceAll(r'\/', '/');
     final translations = await get('$api/translationFiles/id/3134510');
-    final srtUrl = RegExp(r'"arTranslationFilePath":"(.*?)"').firstMatch(translations)!.group(1)!.replaceAll(r'\/', '/');
+    final srtUrl =
+        RegExp(r'"arTranslationFilePath":"(.*?)"').firstMatch(translations)!.group(1)!.replaceAll(r'\/', '/');
     final subtitle = await get(srtUrl);
     // ignore: avoid_print
     print('film: $url\nsubtitle: ${subtitle.length} chars');
@@ -62,9 +68,10 @@ void main() {
     // ---- the phone's server, on this machine
     final server = LocalStreamServer();
     addTearDown(server.stop);
-    final fill = MkvFill.values.cast<MkvFill?>().firstWhere(
-        (f) => f!.name == fillName, orElse: () => null) ?? MkvFill.keep;
-    final served = await server.publish(url, contentType: 'video/mp4', subtitle: subtitle, fill: fill);
+    final fill =
+        MkvFill.values.cast<MkvFill?>().firstWhere((f) => f!.name == fillName, orElse: () => null) ?? MkvFill.keep;
+    final served = await server.publish(url,
+        contentType: 'video/mp4', subtitle: subtitle, subtitleScale: double.tryParse(subtitleScale) ?? 1, fill: fill);
     expect(served, isNotNull);
     expect(served, endsWith('.mkv'), reason: 'the subtitle should have made it an mkv');
     // ignore: avoid_print
@@ -102,9 +109,10 @@ void main() {
         '<upnp:class>object.item.videoItem</upnp:class>'
         '<res protocolInfo="${_escape(protocol)}">${_escape(served!)}</res></item></DIDL-Lite>';
 
-    await soap('SetAVTransportURI',
+    await soap(
+        'SetAVTransportURI',
         '<InstanceID>0</InstanceID><CurrentURI>${_escape(served)}</CurrentURI>'
-        '<CurrentURIMetaData>${_escape(didl)}</CurrentURIMetaData>');
+            '<CurrentURIMetaData>${_escape(didl)}</CurrentURIMetaData>');
     await soap('Play', '<InstanceID>0</InstanceID><Speed>1</Speed>');
 
     var playing = 0;
@@ -136,11 +144,8 @@ void main() {
   }, timeout: const Timeout(Duration(minutes: 5)));
 }
 
-String _escape(String s) => s
-    .replaceAll('&', '&amp;')
-    .replaceAll('<', '&lt;')
-    .replaceAll('>', '&gt;')
-    .replaceAll('"', '&quot;');
+String _escape(String s) =>
+    s.replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('>', '&gt;').replaceAll('"', '&quot;');
 
 /// The set's description url and document: found over SSDP, or at the port
 /// it was last seen on when the multicast reply goes astray.

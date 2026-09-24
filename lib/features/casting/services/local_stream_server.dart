@@ -99,6 +99,7 @@ class LocalStreamServer {
     String? contentType,
     String? subtitle,
     Future<String?>? subtitleFuture,
+    double subtitleScale = 1,
     MkvFill fill = MkvFill.keep,
     bool loopback = false,
   }) async {
@@ -153,7 +154,7 @@ class LocalStreamServer {
     // few megabytes and a moment, and doing it while the television waits
     // on its first request risks the set giving up first.
     if (source.live == null && (suffix == '.mp4' || suffix == '.mov')) {
-      await _plan(source, subtitle, subtitleFuture, fill);
+      await _plan(source, subtitle, subtitleFuture, fill, subtitleScale);
       if (source.mkv != null) suffix = '.mkv';
     }
 
@@ -224,8 +225,9 @@ class LocalStreamServer {
     _Source source,
     String? subtitle,
     Future<String?>? subtitleFuture,
-    MkvFill fill,
-  ) async {
+    MkvFill fill, [
+    double subtitleScale = 1,
+  ]) async {
     var total = 0;
 
     // Read straight from the CDN, exactly as much as asked, and not kept.
@@ -279,7 +281,7 @@ class LocalStreamServer {
       if (file == null) return;
 
       final text = subtitle ?? (subtitleFuture == null ? null : await subtitleFuture);
-      final cues = text == null ? const <SrtCue>[] : SrtCue.parse(text);
+      final cues = text == null ? const <SrtCue>[] : SrtCue.sized(SrtCue.parse(text), subtitleScale);
       if (cues.isNotEmpty) {
         final movie = Mp4Movie.parse(file.moov);
         final mkv = movie == null ? null : MkvRemux.plan(movie: movie, cues: cues, fill: fill);

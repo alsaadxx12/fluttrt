@@ -29,6 +29,10 @@ class CastController extends StateNotifier<CastState> {
     // phone that has gone. Detach is the last word the framework gives
     // before the engine goes; the commands are short and go out in time.
     _lifecycle = AppLifecycleListener(onDetach: _letGo);
+    // The subtitle size the viewer settled on last time.
+    unawaited(CastPrefs.subtitleScale().then((scale) {
+      if (mounted) state = state.copyWith(subtitleScale: scale);
+    }));
     // The buttons on the notification come back here.
     CastNotification.onAction = (action) {
       switch (action) {
@@ -358,6 +362,8 @@ class CastController extends StateNotifier<CastState> {
       return;
     }
     final swapping = state.media != null && state.media!.mediaId != media.mediaId;
+    // The viewer's subtitle size goes with every title.
+    media = media.copyWith(subtitleScale: state.subtitleScale);
     state = state.copyWith(
       media: media,
       position: media.position,
@@ -416,6 +422,36 @@ class CastController extends StateNotifier<CastState> {
     final muted = !state.isMuted;
     await _active?.setMuted(muted);
     state = state.copyWith(isMuted: muted);
+  }
+
+  /// Draws the subtitle [scale] times its usual size on the other screen,
+  /// and remembers the choice for every screen after.
+  ///
+  /// A browser is simply told. A television reads the subtitle out of the
+  /// file it is playing, so it is sent the same film again, with the
+  /// lines at the new size, from the minute it is at.
+  Future<void> setSubtitleScale(double scale) async {
+    state = state.copyWith(subtitleScale: scale);
+    unawaited(CastPrefs.setSubtitleScale(scale));
+    final media = state.media;
+    final service = _active;
+    if (media == null || service == null) return;
+    if (service is WebCastService) {
+      try {
+        await service.setSubtitleScale(scale);
+      } on CastException catch (e) {
+        state = state.copyWith(error: e.message);
+      }
+      return;
+    }
+    if (service is! DlnaCastService) return;
+    if (media.subtitleUrl == null || media.isLive || media.isHls) return;
+    state = state.copyWith(note: 'تغيير حجم الترجمة على التلفاز…');
+    try {
+      await cast(media.copyWith(position: state.position, subtitleScale: scale));
+    } catch (e) {
+      debugPrint('[cast] subtitle size: $e');
+    }
   }
 
   /// Stops the picture but keeps the device: the viewer can send something

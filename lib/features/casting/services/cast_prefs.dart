@@ -12,6 +12,27 @@ class CastPrefs {
 
   static const String _lastKey = 'cast_last_device_v1';
   static const String _namesKey = 'cast_device_names_v1';
+  static const String _subtitleKey = 'cast_subtitle_scale_v1';
+
+  /// The subtitle size chosen for the other screen; 1 until one is.
+  static Future<double> subtitleScale() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final v = prefs.getDouble(_subtitleKey);
+      return v == null || v <= 0 ? 1 : v;
+    } catch (_) {
+      return 1;
+    }
+  }
+
+  static Future<void> setSubtitleScale(double scale) async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setDouble(_subtitleKey, scale);
+    } catch (e) {
+      debugPrint('[cast] could not save the subtitle size: $e');
+    }
+  }
 
   static Map<String, String>? _names;
 
@@ -74,9 +95,7 @@ class CastPrefs {
     try {
       final prefs = await SharedPreferences.getInstance();
       final raw = prefs.getString(_namesKey);
-      final map = raw == null || raw.isEmpty
-          ? <String, String>{}
-          : Map<String, String>.from(jsonDecode(raw) as Map);
+      final map = raw == null || raw.isEmpty ? <String, String>{} : Map<String, String>.from(jsonDecode(raw) as Map);
       return _names = map;
     } catch (_) {
       return _names = <String, String>{};

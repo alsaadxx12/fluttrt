@@ -126,6 +126,7 @@ class CastMedia {
     this.height = 0,
     this.fallbacks = const [],
     this.headers,
+    this.subtitleScale = 1,
   });
 
   final String mediaId;
@@ -146,6 +147,11 @@ class CastMedia {
 
   final String? subtitleUrl;
   final String? subtitleLabel;
+
+  /// How big the subtitle is drawn on the other screen, as a multiple of
+  /// its usual size: 1 is what the screen does by itself. See
+  /// [kSubtitleSizes] for the sizes offered.
+  final double subtitleScale;
 
   /// Where the phone had got to, so the other screen picks it up there.
   final Duration position;
@@ -183,6 +189,7 @@ class CastMedia {
     String? streamUrl,
     int? height,
     String? quality,
+    double? subtitleScale,
   }) =>
       CastMedia(
         mediaId: mediaId,
@@ -200,6 +207,7 @@ class CastMedia {
         height: height ?? this.height,
         fallbacks: fallbacks,
         headers: headers,
+        subtitleScale: subtitleScale ?? this.subtitleScale,
       );
 
   /// The LOAD_MEDIA command as the receiver reads it.
@@ -213,11 +221,28 @@ class CastMedia {
         'contentType': contentType ?? (isHls ? 'application/x-mpegURL' : 'video/mp4'),
         if (subtitleUrl != null) 'subtitleUrl': subtitleUrl,
         if (subtitleLabel != null) 'subtitleLabel': subtitleLabel,
+        'subtitleScale': subtitleScale,
         'position': position.inSeconds,
         'duration': duration?.inSeconds,
         'isLive': isLive,
       };
 }
+
+/// The subtitle sizes the viewer can pick from, as multiples of the
+/// screen's usual size, with their names.
+class SubtitleSize {
+  const SubtitleSize(this.scale, this.name);
+  final double scale;
+  final String name;
+}
+
+const List<SubtitleSize> kSubtitleSizes = [
+  SubtitleSize(0.8, 'صغير'),
+  SubtitleSize(1, 'عادي'),
+  SubtitleSize(1.3, 'كبير'),
+  SubtitleSize(1.6, 'أكبر'),
+  SubtitleSize(2, 'ضخم'),
+];
 
 /// Where casting stands, as the button, the sheet and the remote read it.
 enum CastStatus {
@@ -251,6 +276,7 @@ class CastState {
     this.volume = 1,
     this.error,
     this.note,
+    this.subtitleScale = 1,
   });
 
   final CastStatus status;
@@ -271,6 +297,10 @@ class CastState {
   /// Not an error: the attempt is still on.
   final String? note;
 
+  /// The subtitle size the viewer has chosen for the other screen; goes
+  /// with every title sent.
+  final double subtitleScale;
+
   bool get isConnected => status == CastStatus.connected && device != null;
 
   /// True once something has been sent to the device: the mini controller
@@ -289,6 +319,7 @@ class CastState {
     double? volume,
     String? error,
     String? note,
+    double? subtitleScale,
     bool clearDevice = false,
     bool clearMedia = false,
     bool clearError = false,
@@ -306,5 +337,6 @@ class CastState {
         volume: volume ?? this.volume,
         error: clearError ? null : (error ?? this.error),
         note: clearNote ? null : (note ?? this.note),
+        subtitleScale: subtitleScale ?? this.subtitleScale,
       );
 }
