@@ -968,7 +968,8 @@ class _ScorerRace extends StatelessWidget {
     final p = AppPalette.of(context);
     final most = scorers.fold<int>(1, (m, s) => s.goals > m ? s.goals : m);
     final lanes = _lanes;
-    final height = lanes * _laneHeight + 6;
+    // The last lane needs only a runner's height, not a whole lane.
+    final height = (lanes - 1) * _laneHeight + _face + 26;
     return GlassPanel(
       radius: 16,
       padding: const EdgeInsets.fromLTRB(14, 12, 14, 10),
