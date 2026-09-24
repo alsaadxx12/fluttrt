@@ -7,6 +7,7 @@ import 'package:youtube_downloader/core/network/image_cache.dart';
 import 'package:youtube_downloader/presentation/widgets/glass.dart';
 import 'package:youtube_downloader/presentation/widgets/section_title.dart';
 
+import '../../../home/presentation/widgets/football_showcase.dart' show FootballLeague;
 import '../../data/models/sports_models.dart';
 import '../../data/services/league_service.dart';
 import '../../data/services/tournament_service.dart';
@@ -24,13 +25,29 @@ final tournamentScorersProvider = FutureProvider.family<List<TopScorer>, int>(
   (ref, id) => ref.watch(tournamentServiceProvider).fetchTopScorers(id),
 );
 
-/// «البطولات»: a tournament's page - the cup at the top, then the group
-/// tables with who goes through, the fixtures and results by round, and
-/// the scorers, all on the app's glass.
-class TournamentScreen extends ConsumerStatefulWidget {
-  const TournamentScreen({super.key, this.tournament = Tournament.gulfCup});
+/// Every competition the app knows, the Gulf Cup first: what the row at
+/// the top of the page swipes through.
+final List<Tournament> kTournaments = () {
+  Tournament fromLeague(FootballLeague l) => Tournament(
+        id: l.id,
+        name: l.name,
+        logoUrl: l.logoUrl,
+        accent: l.colors.first.value,
+        darkBadge: l.darkBadge,
+      );
+  final out = <Tournament>[Tournament.gulfCup];
+  for (final l in [...FootballLeague.arab, ...FootballLeague.world]) {
+    if (out.every((t) => t.id != l.id)) out.add(fromLeague(l));
+  }
+  return out;
+}();
 
-  final Tournament tournament;
+/// «البطولات»: a row of competitions to swipe through at the top, and
+/// under it the one in the middle - its group tables or league table with
+/// who goes through, its fixtures and results by round, and its scorers,
+/// all on the app's glass.
+class TournamentScreen extends ConsumerStatefulWidget {
+  const TournamentScreen({super.key});
 
   @override
   ConsumerState<TournamentScreen> createState() => _TournamentScreenState();
@@ -38,8 +55,11 @@ class TournamentScreen extends ConsumerStatefulWidget {
 
 class _TournamentScreenState extends ConsumerState<TournamentScreen> {
   int _tab = 0;
+  int _index = 0;
 
   static const _tabs = ['الترتيب', 'المباريات', 'الهدافون'];
+
+  Tournament get _current => kTournaments[_index];
 
   /// The app's own matches of this competition (yesterday / today /
   /// tomorrow), by 365Scores game id: the ones with a stream.
@@ -48,7 +68,7 @@ class _TournamentScreenState extends ConsumerState<TournamentScreen> {
     for (final day in const ['yesterday', 'today', 'tomorrow']) {
       final state = ref.watch(sportsNotifierProvider(day));
       for (final g in state.groups) {
-        if (g.cid != widget.tournament.id) continue;
+        if (g.cid != _current.id) continue;
         for (final m in g.matches) {
           if (m.sourceId != null) out[m.sourceId!] = m;
         }
@@ -58,7 +78,7 @@ class _TournamentScreenState extends ConsumerState<TournamentScreen> {
   }
 
   Future<void> _refresh() async {
-    final id = widget.tournament.id;
+    final id = _current.id;
     ref.invalidate(tournamentStandingsProvider(id));
     ref.invalidate(leagueFixturesProvider(id));
     ref.invalidate(tournamentScorersProvider(id));
@@ -73,8 +93,9 @@ class _TournamentScreenState extends ConsumerState<TournamentScreen> {
   @override
   Widget build(BuildContext context) {
     final p = AppPalette.of(context);
-    final t = widget.tournament;
+    final t = _current;
     final standings = ref.watch(tournamentStandingsProvider(t.id));
+    final stage = standings.valueOrNull?.stage ?? '';
 
     return Scaffold(
       backgroundColor: p.bg,
@@ -91,19 +112,16 @@ class _TournamentScreenState extends ConsumerState<TournamentScreen> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    // The page's own bar: a back button and the title.
-                    Padding(
-                      padding: const EdgeInsets.fromLTRB(8, 6, 16, 4),
-                      child: Row(
-                        children: [
-                          _RoundButton(icon: Icons.arrow_back_rounded, onTap: () => Navigator.of(context).maybePop()),
-                          const SizedBox(width: 6),
-                          Text('البطولات', style: TextStyle(color: p.text, fontSize: 18, fontWeight: FontWeight.w900)),
-                        ],
-                      ),
+                    const SizedBox(height: 12),
+                    _TournamentPicker(
+                      tournaments: kTournaments,
+                      index: _index,
+                      onChanged: (i) => setState(() => _index = i),
                     ),
-                    const SizedBox(height: 8),
-                    _Header(tournament: t, standings: standings.valueOrNull),
+                    if (stage.isNotEmpty) ...[
+                      const SizedBox(height: 10),
+                      Center(child: _Chip(icon: Icons.flag_rounded, text: stage, accent: true)),
+                    ],
                     const SizedBox(height: 14),
                     _Tabs(labels: _tabs, index: _tab, onChanged: (i) => setState(() => _tab = i)),
                     const SizedBox(height: 14),
@@ -122,93 +140,116 @@ class _TournamentScreenState extends ConsumerState<TournamentScreen> {
   }
 }
 
-// ---------------------------------------------------------------- header
+// ---------------------------------------------------------------- the row of competitions
 
-class _Header extends StatelessWidget {
-  const _Header({required this.tournament, required this.standings});
+/// The competitions on a row of glass cards, swiped through; the one in
+/// the middle is the page's.
+class _TournamentPicker extends StatefulWidget {
+  const _TournamentPicker({required this.tournaments, required this.index, required this.onChanged});
+
+  final List<Tournament> tournaments;
+  final int index;
+  final ValueChanged<int> onChanged;
+
+  @override
+  State<_TournamentPicker> createState() => _TournamentPickerState();
+}
+
+class _TournamentPickerState extends State<_TournamentPicker> {
+  late final PageController _pages = PageController(viewportFraction: 0.58, initialPage: widget.index);
+
+  @override
+  void dispose() {
+    _pages.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      height: 128,
+      child: PageView.builder(
+        controller: _pages,
+        itemCount: widget.tournaments.length,
+        onPageChanged: widget.onChanged,
+        itemBuilder: (context, i) => AnimatedBuilder(
+          animation: _pages,
+          builder: (context, child) {
+            // The card in the middle stands full size; the neighbours a
+            // step back and dimmer.
+            var page = widget.index.toDouble();
+            if (_pages.hasClients && _pages.position.haveDimensions) page = _pages.page ?? page;
+            final away = (page - i).abs().clamp(0.0, 1.0);
+            return Transform.scale(
+              scale: 1 - away * 0.08,
+              child: Opacity(opacity: 1 - away * 0.35, child: child),
+            );
+          },
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 6),
+            child: _TournamentCard(
+              tournament: widget.tournaments[i],
+              selected: i == widget.index,
+              onTap: () => _pages.animateToPage(i, duration: const Duration(milliseconds: 260), curve: Curves.easeOut),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _TournamentCard extends StatelessWidget {
+  const _TournamentCard({required this.tournament, required this.selected, required this.onTap});
 
   final Tournament tournament;
-  final TournamentStandings? standings;
+  final bool selected;
+  final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) {
     final p = AppPalette.of(context);
     final accent = Color(tournament.accent);
-    final stage = standings?.stage ?? '';
-    final destination = standings?.destination ?? '';
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16),
-      child: GlassPanel(
-        radius: 18,
-        padding: const EdgeInsets.fromLTRB(16, 16, 16, 14),
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        decoration: BoxDecoration(
+          gradient: p.glass,
+          borderRadius: BorderRadius.circular(18),
+          border: Border.all(color: selected ? AppColors.primary : p.glassEdge, width: selected ? 1.4 : 0.8),
+          boxShadow: p.glassShadow,
+        ),
+        padding: const EdgeInsets.fromLTRB(12, 12, 12, 10),
         child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Row(
-              children: [
-                // The cup on a white badge, with a wash of its own colour.
-                Container(
-                  width: 74,
-                  height: 74,
-                  padding: const EdgeInsets.all(10),
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.circular(20),
-                    boxShadow: [BoxShadow(color: accent.withOpacity(0.35), blurRadius: 18, spreadRadius: 1)],
-                  ),
-                  child: CachedNetworkImage(
-                    imageUrl: tournament.logoUrl,
-                    cacheManager: appImageCache,
-                    memCacheWidth: 220,
-                    fit: BoxFit.contain,
-                    errorWidget: (_, __, ___) => Icon(Icons.emoji_events_rounded, color: accent, size: 36),
-                  ),
-                ),
-                const SizedBox(width: 14),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        tournament.name,
-                        style: TextStyle(color: p.text, fontSize: 18, fontWeight: FontWeight.w900, height: 1.2),
-                      ),
-                      const SizedBox(height: 4),
-                      Text(tournament.season,
-                          style: TextStyle(color: p.textMuted, fontSize: 12.5, fontWeight: FontWeight.w700)),
-                      const SizedBox(height: 8),
-                      Wrap(
-                        spacing: 6,
-                        runSpacing: 6,
-                        children: [
-                          if (tournament.host.isNotEmpty) _Chip(icon: Icons.place_rounded, text: tournament.host),
-                          if (stage.isNotEmpty) _Chip(icon: Icons.flag_rounded, text: stage, accent: true),
-                        ],
-                      ),
-                    ],
-                  ),
-                ),
-              ],
-            ),
-            if (destination.isNotEmpty) ...[
-              const SizedBox(height: 12),
-              Row(
-                children: [
-                  Container(
-                    width: 10,
-                    height: 10,
-                    decoration: const BoxDecoration(color: Color(0xFF22C55E), shape: BoxShape.circle),
-                  ),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: Text(
-                      'الأول والثاني من كل مجموعة يتأهلان إلى $destination',
-                      style: TextStyle(color: p.textMuted, fontSize: 12, fontWeight: FontWeight.w600),
-                    ),
-                  ),
+            Container(
+              width: 58,
+              height: 58,
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: tournament.darkBadge ? const Color(0xFF0C1410) : Colors.white,
+                borderRadius: BorderRadius.circular(16),
+                boxShadow: [
+                  BoxShadow(color: accent.withOpacity(selected ? 0.40 : 0.18), blurRadius: 16, spreadRadius: 1)
                 ],
               ),
-            ],
+              child: CachedNetworkImage(
+                imageUrl: tournament.logoUrl,
+                cacheManager: appImageCache,
+                memCacheWidth: 180,
+                fit: BoxFit.contain,
+                errorWidget: (_, __, ___) => Icon(Icons.emoji_events_rounded, color: accent, size: 28),
+              ),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              tournament.name,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              textAlign: TextAlign.center,
+              style: TextStyle(color: p.text, fontSize: 12.5, fontWeight: FontWeight.w900),
+            ),
           ],
         ),
       ),
@@ -242,35 +283,6 @@ class _Chip extends StatelessWidget {
               style:
                   TextStyle(color: accent ? AppColors.primary : p.text, fontSize: 11.5, fontWeight: FontWeight.w700)),
         ],
-      ),
-    );
-  }
-}
-
-class _RoundButton extends StatelessWidget {
-  const _RoundButton({required this.icon, required this.onTap});
-
-  final IconData icon;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    final p = AppPalette.of(context);
-    return Material(
-      color: Colors.transparent,
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(20),
-        child: Container(
-          width: 40,
-          height: 40,
-          decoration: BoxDecoration(
-            color: p.glassFill(),
-            shape: BoxShape.circle,
-            border: Border.all(color: p.glassFillEdge(), width: 0.8),
-          ),
-          child: Icon(icon, color: p.icon, size: 20),
-        ),
       ),
     );
   }

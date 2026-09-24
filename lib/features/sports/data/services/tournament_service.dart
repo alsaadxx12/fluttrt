@@ -8,30 +8,28 @@ class Tournament {
   const Tournament({
     required this.id,
     required this.name,
-    required this.season,
-    required this.host,
+    required this.logoUrl,
     required this.accent,
+    this.darkBadge = false,
   });
 
   /// 365Scores competition id.
   final int id;
   final String name;
-  final String season;
-  final String host;
+  final String logoUrl;
 
-  /// The competition's own colour, for the header.
+  /// The competition's own colour, for its card.
   final int accent;
 
-  String get logoUrl =>
-      'https://imagecache.365scores.com/image/upload/f_png,w_300,h_300,c_limit,q_auto:best,dpr_2/Competitions/light/$id';
+  /// A logo drawn in white sits on a dark badge, not a white one.
+  final bool darkBadge;
 
   /// Arabian Gulf Cup 27, 2026.
   static const gulfCup = Tournament(
     id: 5452,
     name: 'كأس الخليج العربي 27',
-    season: 'خليجي 27 · 2026',
-    // The feed names no venues; nothing is claimed about the host.
-    host: '',
+    logoUrl:
+        'https://imagecache.365scores.com/image/upload/f_png,w_300,h_300,c_limit,q_auto:best,dpr_2/Competitions/light/5452',
     accent: 0xFF00B1E8,
   );
 }
