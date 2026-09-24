@@ -64,6 +64,7 @@ class _CinemanaWatchScreenState extends ConsumerState<CinemanaWatchScreen> {
   @override
   void initState() {
     super.initState();
+    _history = ref.read(watchHistoryProvider.notifier);
     _currentEpisode = widget.initialEpisode;
     // «سجل المشاهدة»: the title goes in once, when its player opens. For a
     // series or anime [widget.item] is the show, so the history lists it
@@ -173,14 +174,20 @@ class _CinemanaWatchScreenState extends ConsumerState<CinemanaWatchScreen> {
     final position = video.value.position;
     final duration = video.value.duration;
     ResumeStore.save(_currentVideoId, position, duration: duration);
-    // And in the history, where the page shows «وصلت إلى 42:10».
-    ref.read(watchHistoryProvider.notifier).updatePosition(
-          _currentVideoId,
-          position,
-          duration: duration,
-          now: now,
-        );
+    // And in the history, where the page shows «وصلت إلى 42:10». Through
+    // the notifier kept from initState: this also runs from dispose, and
+    // `ref` may not be used once the widget is being unmounted - the whole
+    // tree goes when the activity is recreated, and that threw.
+    _history?.updatePosition(
+      _currentVideoId,
+      position,
+      duration: duration,
+      now: now,
+    );
   }
+
+  /// The history's notifier, taken while `ref` is still usable.
+  WatchHistoryNotifier? _history;
 
   Future<void> _loadSubtitlePrefs() async {
     final saved = await SubtitleSettings.load();
