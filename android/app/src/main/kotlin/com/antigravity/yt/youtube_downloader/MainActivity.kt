@@ -11,11 +11,17 @@ import android.content.IntentFilter
 import android.content.pm.PackageManager
 import android.net.Uri
 import android.os.Build
+import android.os.Handler
+import android.os.Looper
 import android.os.StatFs
 import android.provider.Settings
 import android.speech.RecognizerIntent
 import androidx.core.app.NotificationCompat
 import androidx.core.content.FileProvider
+import androidx.mediarouter.media.MediaRouteSelector
+import androidx.mediarouter.media.MediaRouter
+import com.google.android.gms.cast.CastDevice
+import com.google.android.gms.cast.CastMediaControlIntent
 import io.flutter.embedding.android.FlutterActivity
 import io.flutter.embedding.engine.FlutterEngine
 import io.flutter.plugin.common.MethodChannel
@@ -43,6 +49,48 @@ class MainActivity : FlutterActivity() {
     // the multicast a set announces itself with.
     private var multicastLock: android.net.wifi.WifiManager.MulticastLock? = null
     private var castReceiver: BroadcastReceiver? = null
+
+    /// The callback that keeps an active Cast scan going, while it does.
+    private var activeScan: MediaRouter.Callback? = null
+
+    /// Every route the media router knows right now, for the diagnostics
+    /// page: its name, what it says it is, and whether it is a Cast device.
+    private fun castRoutes(): List<Map<String, Any?>> {
+        val router = MediaRouter.getInstance(applicationContext)
+        return router.routes.map { route ->
+            val device = try { CastDevice.getFromBundle(route.extras) } catch (_: Exception) { null }
+            mapOf(
+                "name" to route.name,
+                "description" to (route.description ?: ""),
+                "isCast" to (device != null),
+                "isDefault" to route.isDefault,
+                "model" to (device?.modelName ?: "")
+            )
+        }
+    }
+
+    /// Searches actively for Cast devices for [seconds], as the Cast
+    /// button's own dialog does while it is open. Passive discovery - what
+    /// the plugin asks for - only listens for sets announcing themselves;
+    /// a Google TV that has gone quiet is found by asking.
+    private fun startActiveScan(seconds: Int) {
+        val router = MediaRouter.getInstance(applicationContext)
+        activeScan?.let { try { router.removeCallback(it) } catch (_: Exception) {} }
+        val selector = MediaRouteSelector.Builder()
+            .addControlCategory(CastMediaControlIntent.categoryForRemotePlayback())
+            .build()
+        val callback = object : MediaRouter.Callback() {}
+        activeScan = callback
+        router.addCallback(
+            selector, callback,
+            MediaRouter.CALLBACK_FLAG_REQUEST_DISCOVERY or MediaRouter.CALLBACK_FLAG_PERFORM_ACTIVE_SCAN
+        )
+        // An active scan is a steady stream of multicast; it ends by itself.
+        Handler(Looper.getMainLooper()).postDelayed({
+            try { router.removeCallback(callback) } catch (_: Exception) {}
+            if (activeScan === callback) activeScan = null
+        }, seconds.coerceIn(1, 60) * 1000L)
+    }
 
     /// Puts up, or updates, the line in the shade for a film playing on
     /// another screen: its title, the screen's name, and play/pause and
@@ -209,6 +257,27 @@ class MainActivity : FlutterActivity() {
                     } catch (_: Exception) {
                     }
                     result.success(true)
+                }
+                else -> result.notImplemented()
+            }
+        }
+        // Finding Cast devices the way the Cast button's own dialog does.
+        MethodChannel(flutterEngine.dartExecutor.binaryMessenger, "cineball/cast_discovery").setMethodCallHandler { call, result ->
+            when (call.method) {
+                "activeScan" -> {
+                    try {
+                        startActiveScan(call.argument<Int>("seconds") ?: 12)
+                        result.success(true)
+                    } catch (e: Exception) {
+                        result.success(false)
+                    }
+                }
+                "routes" -> {
+                    try {
+                        result.success(castRoutes())
+                    } catch (e: Exception) {
+                        result.success(emptyList<Map<String, Any?>>())
+                    }
                 }
                 else -> result.notImplemented()
             }

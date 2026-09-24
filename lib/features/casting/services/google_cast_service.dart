@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter/foundation.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_chrome_cast/lib.dart';
 import 'package:permission_handler/permission_handler.dart';
 
@@ -112,6 +113,41 @@ class GoogleCastService implements CastService {
       await GoogleCastDiscoveryManager.instance.startDiscovery();
     } catch (e) {
       debugPrint('[cast] discovery: $e');
+    }
+    unawaited(_scanActively());
+  }
+
+  /// The app's own line to the media router (MainActivity).
+  static const MethodChannel _router = MethodChannel('cineball/cast_discovery');
+
+  /// How long the active scan runs each time the list is opened.
+  static const int _activeScanSeconds = 12;
+
+  /// Asks the network for Cast devices, rather than waiting for them to
+  /// announce themselves - what the Cast button's own dialog does while
+  /// it is open. A set that shows in other Cast apps and not here was a
+  /// set that only answered when asked. After a while the routes the
+  /// router knows are written to the log, Cast or not, so the diagnostics
+  /// page can say whether the phone sees the set at all.
+  Future<void> _scanActively() async {
+    if (defaultTargetPlatform != TargetPlatform.android) return;
+    try {
+      await _router.invokeMethod<bool>('activeScan', {'seconds': _activeScanSeconds});
+    } catch (e) {
+      debugPrint('[cast] active scan: $e');
+      return;
+    }
+    await Future<void>.delayed(const Duration(seconds: 8));
+    try {
+      final routes = await _router.invokeListMethod<Map>('routes') ?? const [];
+      final seen = [
+        for (final r in routes)
+          if (r['isDefault'] != true)
+            '${r['name']}${r['isCast'] == true ? ' (Cast ${r['model']})' : ' (${r['description']})'}',
+      ];
+      debugPrint('[cast] routes after the scan: ${seen.isEmpty ? 'none' : seen.join(', ')}');
+    } catch (e) {
+      debugPrint('[cast] routes: $e');
     }
   }
 
