@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -26,9 +28,16 @@ final tournamentStandingsProvider = FutureProvider.family<TournamentStandings, i
   (ref, id) => ref.watch(tournamentServiceProvider).fetchStandings(id),
 );
 
-final tournamentScorersProvider = FutureProvider.family<List<TopScorer>, int>(
-  (ref, id) => ref.watch(tournamentServiceProvider).fetchTopScorers(id),
-);
+final tournamentScorersProvider = FutureProvider.family<List<TopScorer>, int>((ref, id) async {
+  final scorers = await ref.watch(tournamentServiceProvider).fetchTopScorers(id);
+  // While a match is being played its goals keep coming: look again in a
+  // minute.
+  if (scorers.any((s) => s.live)) {
+    final timer = Timer(const Duration(minutes: 1), ref.invalidateSelf);
+    ref.onDispose(timer.cancel);
+  }
+  return scorers;
+});
 
 /// Every competition the app knows, the Gulf Cup first: what the row at
 /// the top of the page swipes through.
@@ -483,11 +492,12 @@ class _GroupTable extends StatelessWidget {
           const SizedBox(height: 10),
         ],
         GlassPanel(
-          radius: 14,
+          radius: 16,
+          padding: const EdgeInsets.fromLTRB(6, 4, 6, 6),
           child: Column(
             children: [
               Padding(
-                padding: const EdgeInsets.fromLTRB(12, 10, 12, 8),
+                padding: const EdgeInsets.fromLTRB(12, 8, 8, 6),
                 child: Row(
                   children: [
                     SizedBox(width: 22, child: Text('#', style: head)),
@@ -521,14 +531,24 @@ class _GroupRow extends StatelessWidget {
     final cell = TextStyle(color: p.textMuted, fontSize: 12, fontWeight: FontWeight.w700);
     const green = Color(0xFF22C55E);
     return Container(
+      margin: const EdgeInsets.only(top: 3),
+      padding: const EdgeInsetsDirectional.only(start: 6, end: 2),
       decoration: BoxDecoration(
-        color: r.qualifies ? green.withOpacity(p.isDark ? 0.08 : 0.10) : null,
-        border: Border(top: BorderSide(color: p.border)),
+        color: r.qualifies ? green.withOpacity(p.isDark ? 0.10 : 0.12) : p.glassFill().withOpacity(0.35),
+        borderRadius: BorderRadius.circular(10),
       ),
       child: Row(
         children: [
           // A green mark on the rows that go through.
-          Container(width: 3, height: 44, color: r.qualifies ? green : Colors.transparent),
+          Container(
+            width: 3,
+            height: 30,
+            margin: const EdgeInsets.symmetric(vertical: 8),
+            decoration: BoxDecoration(
+              color: r.qualifies ? green : Colors.transparent,
+              borderRadius: BorderRadius.circular(2),
+            ),
+          ),
           const SizedBox(width: 9),
           SizedBox(
             width: 22,
@@ -874,11 +894,40 @@ class _ScorerCard extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               mainAxisSize: MainAxisSize.min,
               children: [
-                Text(s.name,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: TextStyle(
-                        fontFamily: kSportFont, color: p.text, fontSize: 15, fontWeight: FontWeight.w700, height: 1.2)),
+                Row(
+                  children: [
+                    Flexible(
+                      child: Text(s.name,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(
+                              fontFamily: kSportFont,
+                              color: p.text,
+                              fontSize: 15,
+                              fontWeight: FontWeight.w700,
+                              height: 1.2)),
+                    ),
+                    if (s.live) ...[
+                      const SizedBox(width: 6),
+                      // A goal of his is from a match still being played.
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1),
+                        decoration: BoxDecoration(
+                          color: AppColors.primary.withOpacity(0.14),
+                          borderRadius: BorderRadius.circular(6),
+                          border: Border.all(color: AppColors.primary.withOpacity(0.5), width: 0.8),
+                        ),
+                        child: const Text('مباشر',
+                            style: TextStyle(
+                                fontFamily: kSportFont,
+                                color: AppColors.primary,
+                                fontSize: 9.5,
+                                fontWeight: FontWeight.w800,
+                                height: 1.2)),
+                      ),
+                    ],
+                  ],
+                ),
                 const SizedBox(height: 2),
                 Row(
                   children: [

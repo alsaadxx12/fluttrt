@@ -96,6 +96,8 @@ class TopScorer {
     required this.teamName,
     required this.goals,
     required this.assists,
+    this.imageVersion,
+    this.live = false,
   });
 
   final int id;
@@ -105,8 +107,29 @@ class TopScorer {
   final int goals;
   final int assists;
 
-  String get photoUrl =>
-      'https://imagecache.365scores.com/image/upload/f_png,w_80,h_80,c_limit,q_auto:eco,dpr_2/athletes/$id';
+  /// 365Scores' photo version: with it the newest photo comes, without it
+  /// whatever the cache holds.
+  final int? imageVersion;
+
+  /// Some of these goals were scored in a match still being played.
+  final bool live;
+
+  TopScorer copyWith({int? goals, int? assists, int? imageVersion, bool? live}) => TopScorer(
+        id: id,
+        name: name,
+        teamId: teamId,
+        teamName: teamName,
+        goals: goals ?? this.goals,
+        assists: assists ?? this.assists,
+        imageVersion: imageVersion ?? this.imageVersion,
+        live: live ?? this.live,
+      );
+
+  /// The player's newest photo, cropped to his face; a silhouette when
+  /// 365Scores has none.
+  String get photoUrl => 'https://imagecache.365scores.com/image/upload/'
+      'f_png,w_200,h_200,c_limit,q_auto:eco,dpr_2,d_Athletes:default.png,r_max,c_thumb,g_face,z_0.65/'
+      '${imageVersion == null ? '' : 'v$imageVersion/'}Athletes/$id';
   String get crestUrl =>
       'https://imagecache.365scores.com/image/upload/f_png,w_96,h_96,c_limit,q_auto:eco,dpr_2/Competitors/$teamId';
 }
@@ -188,9 +211,101 @@ class TournamentService {
   }
 
   /// The tournament's scorers, most goals first; assists ride along.
+  /// 365Scores' table counts a match only once it is over, so the goals
+  /// of the matches being played right now are read from those matches'
+  /// events and added on top.
   Future<List<TopScorer>> fetchTopScorers(int competitionId) async {
-    final res = await _dio.get('/stats/', queryParameters: {..._base, 'competitions': competitionId});
-    return parseTopScorers(res.data is Map ? res.data as Map : const {});
+    final results = await Future.wait([
+      _dio.get('/stats/', queryParameters: {..._base, 'competitions': competitionId}),
+      fetchLiveGoals(competitionId).catchError((_) => <TopScorer>[]),
+    ]);
+    final res = results[0] as Response;
+    final table = parseTopScorers(res.data is Map ? res.data as Map : const {});
+    return mergeLive(table, results[1] as List<TopScorer>);
+  }
+
+  /// The goals and assists of the competition's matches being played now.
+  Future<List<TopScorer>> fetchLiveGoals(int competitionId) async {
+    final res = await _dio.get('/games/current/', queryParameters: {..._base, 'competitions': competitionId});
+    final data = res.data;
+    final games = data is Map ? (data['games'] as List? ?? const []).whereType<Map>() : const <Map>[];
+    final live = [
+      for (final g in games)
+        if (_int(g['statusGroup']) == 3) _int(g['id']),
+    ];
+    if (live.isEmpty) return const [];
+    final details = await Future.wait([
+      for (final id in live)
+        _dio.get('/game/', queryParameters: {..._base, 'gameId': id}).then<Map>((r) {
+          final d = r.data;
+          return d is Map && d['game'] is Map ? d['game'] as Map : const {};
+        }).catchError((_) => <dynamic, dynamic>{}),
+    ]);
+    return mergeLive(const [], [for (final g in details) ...parseGameGoals(g)]);
+  }
+
+  /// The scorers of one match from its events: a goal for the player who
+  /// scored it, an assist for the player named beside him; an own goal
+  /// is nobody's. The match's members carry the players' athlete ids,
+  /// names and photo versions. Every scorer is marked [TopScorer.live].
+  static List<TopScorer> parseGameGoals(Map game) {
+    final teams = <int, String>{
+      for (final c in [game['homeCompetitor'], game['awayCompetitor']])
+        if (c is Map) _int(c['id']): '${c['name'] ?? ''}',
+    };
+    final members = <int, Map>{
+      for (final m in (game['members'] as List? ?? const []).whereType<Map>()) _int(m['id']): m,
+    };
+    final goals = <int, int>{}, assists = <int, int>{};
+    for (final e in (game['events'] as List? ?? const []).whereType<Map>()) {
+      final type = e['eventType'];
+      if (type is! Map || _int(type['id']) != 1) continue;
+      if (_int(type['subTypeId']) == 2) continue; // an own goal
+      goals.update(_int(e['playerId']), (v) => v + 1, ifAbsent: () => 1);
+      final extra = e['extraPlayers'];
+      if (extra is List && extra.isNotEmpty) {
+        assists.update(_int(extra.first), (v) => v + 1, ifAbsent: () => 1);
+      }
+    }
+    final out = <TopScorer>[];
+    for (final memberId in {...goals.keys, ...assists.keys}) {
+      final m = members[memberId];
+      if (m == null) continue;
+      final teamId = _int(m['competitorId']);
+      out.add(TopScorer(
+        id: _int(m['athleteId']),
+        name: '${m['name'] ?? ''}',
+        teamId: teamId,
+        teamName: teams[teamId] ?? '',
+        goals: goals[memberId] ?? 0,
+        assists: assists[memberId] ?? 0,
+        imageVersion: m['imageVersion'] is num ? _int(m['imageVersion']) : null,
+        live: true,
+      ));
+    }
+    return out;
+  }
+
+  /// [table] with [live] goals and assists added on, by player; players
+  /// the table has not seen yet join it. Most goals first.
+  static List<TopScorer> mergeLive(List<TopScorer> table, List<TopScorer> live) {
+    if (live.isEmpty) return table;
+    final byId = <int, TopScorer>{for (final s in table) s.id: s};
+    for (final l in live) {
+      final was = byId[l.id];
+      byId[l.id] = was == null
+          ? l
+          : was.copyWith(
+              goals: was.goals + l.goals,
+              assists: was.assists + l.assists,
+              imageVersion: was.imageVersion ?? l.imageVersion,
+              live: true,
+            );
+    }
+    // A scorer is one with a goal; an assist alone does not put him here.
+    final out = byId.values.where((s) => s.goals > 0).toList();
+    out.sort((a, b) => b.goals != a.goals ? b.goals.compareTo(a.goals) : b.assists.compareTo(a.assists));
+    return out;
   }
 
   static List<TopScorer> parseTopScorers(Map data) {
@@ -219,6 +334,7 @@ class TournamentService {
         teamName: teams[teamId] ?? '',
         goals: _value(r),
         assists: assists[id] ?? 0,
+        imageVersion: e['imageVersion'] is num ? _int(e['imageVersion']) : null,
       ));
     }
     out.sort((a, b) => b.goals != a.goals ? b.goals.compareTo(a.goals) : b.assists.compareTo(a.assists));

@@ -1,0 +1,138 @@
+{
+ "game": {
+  "id": 4716561,
+  "statusGroup": 3,
+  "statusText": "شوط",
+  "homeCompetitor": {
+   "id": 5089,
+   "name": "الإمارات",
+   "score": 3.0
+  },
+  "awayCompetitor": {
+   "id": 7497,
+   "name": "اليمن",
+   "score": 0.0
+  },
+  "events": [
+   {
+    "competitorId": 5089,
+    "statusId": 6,
+    "stageId": 7,
+    "order": 1,
+    "num": 1,
+    "gameTime": 26.0,
+    "addedTime": 0,
+    "gameTimeDisplay": "26'",
+    "gameTimeAndStatusDisplayType": 2,
+    "playerId": 424437,
+    "extraPlayers": [
+     40406401
+    ],
+    "isMajor": true,
+    "eventType": {
+     "id": 1,
+     "name": "هدف",
+     "subTypeId": 1,
+     "subTypeName": "هدف ميداني"
+    }
+   },
+   {
+    "competitorId": 5089,
+    "statusId": 6,
+    "stageId": 7,
+    "order": 2,
+    "num": 2,
+    "gameTime": 36.0,
+    "addedTime": 0,
+    "gameTimeDisplay": "36'",
+    "gameTimeAndStatusDisplayType": 2,
+    "playerId": 77190706,
+    "isMajor": true,
+    "eventType": {
+     "id": 1,
+     "name": "هدف",
+     "subTypeId": 2,
+     "subTypeName": "هدف ذاتي"
+    }
+   },
+   {
+    "competitorId": 5089,
+    "statusId": 6,
+    "stageId": 7,
+    "order": 3,
+    "num": 3,
+    "gameTime": 45.0,
+    "addedTime": 4,
+    "gameTimeDisplay": "45'",
+    "gameTimeAndStatusDisplayType": 2,
+    "playerId": 3640183,
+    "extraPlayers": [
+     11890351
+    ],
+    "isMajor": true,
+    "eventType": {
+     "id": 1,
+     "name": "هدف",
+     "subTypeId": 1,
+     "subTypeName": "هدف ميداني"
+    }
+   }
+  ],
+  "members": [
+   {
+    "competitorId": 5089,
+    "id": 11890351,
+    "athleteId": 73854,
+    "name": "علاء الدين زهير",
+    "shortName": "زهير",
+    "jerseyNumber": 5,
+    "nameForURL": "ala-zhir",
+    "imageVersion": 24,
+    "createdAt": "2018-11-21T13:03:24.8"
+   },
+   {
+    "competitorId": 5089,
+    "id": 3640183,
+    "athleteId": 50336,
+    "name": "لوان بيريرا",
+    "shortName": "لوانزينيو",
+    "jerseyNumber": 18,
+    "nameForURL": "luan-pereira",
+    "imageVersion": 24,
+    "createdAt": "2017-08-03T22:20:13.463"
+   },
+   {
+    "competitorId": 5089,
+    "id": 424437,
+    "athleteId": 15447,
+    "name": "نيكولاس خيمينيز",
+    "shortName": "خيمينيز",
+    "jerseyNumber": 8,
+    "nameForURL": "nicolas-gimenez",
+    "imageVersion": 23
+   },
+   {
+    "competitorId": 5089,
+    "id": 40406401,
+    "athleteId": 72281,
+    "name": "برونو دى اوليفيرا",
+    "shortName": "اوليفيرا",
+    "jerseyNumber": 11,
+    "nameForURL": "bruno-de-oliveira",
+    "imageVersion": 20,
+    "createdAt": "2019-10-19T14:20:36.617"
+   },
+   {
+    "competitorId": 7497,
+    "id": 77190706,
+    "athleteId": 204821,
+    "name": "نادر سهل",
+    "shortName": "سهل",
+    "jerseyNumber": 2,
+    "nameForURL": "nader-yahya-sahl",
+    "imageVersion": 3,
+    "createdAt": "2025-06-03T12:08:13.827"
+   }
+  ]
+ }
+}

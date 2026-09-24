@@ -27,5 +27,50 @@ void main() {
     expect(scorers, isNotEmpty);
     expect(scorers.first.goals, greaterThanOrEqualTo(scorers.last.goals));
     expect(scorers.first.teamName, isNotEmpty);
+    expect(scorers.first.live, isFalse);
+  });
+
+  test('the newest photo, cropped to the face, carries the photo version', () {
+    const s = TopScorer(id: 72150, name: 'x', teamId: 1, teamName: 't', goals: 1, assists: 0, imageVersion: 27);
+    expect(s.photoUrl, contains('/v27/Athletes/72150'));
+    expect(s.photoUrl, contains('g_face'));
+    const bare = TopScorer(id: 72150, name: 'x', teamId: 1, teamName: 't', goals: 1, assists: 0);
+    expect(bare.photoUrl, contains('/Athletes/72150'));
+    expect(bare.photoUrl, isNot(contains('/v27/')));
+  });
+
+  test("a live match's goals go to their scorers by athlete id; an own goal is nobody's", () {
+    // UAE 3-0 Yemen at half time: two goals with assists, one own goal.
+    final game = _load('gulf_cup_game_live.json')['game'] as Map;
+    final live = TournamentService.parseGameGoals(game);
+    final byName = {for (final s in live) s.name: s};
+    expect(byName['نيكولاس خيمينيز']!.goals, 1);
+    expect(byName['نيكولاس خيمينيز']!.id, 15447);
+    expect(byName['نيكولاس خيمينيز']!.teamName, 'الإمارات');
+    expect(byName['نيكولاس خيمينيز']!.imageVersion, 23);
+    expect(byName['لوان بيريرا']!.goals, 1);
+    expect(byName['برونو دى اوليفيرا']!.assists, 1);
+    expect(byName['برونو دى اوليفيرا']!.goals, 0);
+    expect(byName.containsKey('نادر سهل'), isFalse, reason: 'the own goal credits no scorer');
+    expect(live.every((s) => s.live), isTrue);
+  });
+
+  test('live goals add to the table, new scorers join it, most goals first', () {
+    const table = [
+      TopScorer(id: 1, name: 'a', teamId: 1, teamName: 't', goals: 2, assists: 0),
+      TopScorer(id: 2, name: 'b', teamId: 1, teamName: 't', goals: 1, assists: 1),
+    ];
+    const live = [
+      TopScorer(id: 2, name: 'b', teamId: 1, teamName: 't', goals: 2, assists: 0, imageVersion: 5, live: true),
+      TopScorer(id: 3, name: 'c', teamId: 2, teamName: 'u', goals: 1, assists: 0, live: true),
+      TopScorer(id: 4, name: 'd', teamId: 2, teamName: 'u', goals: 0, assists: 1, live: true),
+    ];
+    final merged = TournamentService.mergeLive(table, live);
+    expect(merged.map((s) => s.id).toList(), [2, 1, 3], reason: 'an assist alone is not a scorer');
+    expect(merged.first.goals, 3);
+    expect(merged.first.live, isTrue);
+    expect(merged.first.imageVersion, 5);
+    expect(merged[1].live, isFalse);
+    expect(TournamentService.mergeLive(table, const []), same(table));
   });
 }
