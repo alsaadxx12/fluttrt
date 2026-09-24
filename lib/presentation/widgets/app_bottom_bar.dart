@@ -35,7 +35,7 @@ class AppBottomBar extends StatelessWidget {
     final palette = AppPalette.of(context);
     final bottomInset = MediaQuery.paddingOf(context).bottom;
     final Color bg = palette.bg;
-    final Color line = palette.border;
+    final Color line = palette.glassEdge;
     const Color inactive = Color(0xFF94A3B8);
 
     final homeActive = location == '/';

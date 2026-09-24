@@ -93,13 +93,12 @@ class _SegmentedSwitch extends StatelessWidget {
   final List<String> labels;
   final ValueChanged<int> onChanged;
 
-  static const Color _trackLight = Color(0xFFF2F2F2);
   static const Color _mutedLight = Color(0xFF64748B);
 
   @override
   Widget build(BuildContext context) {
     final p = AppPalette.of(context);
-    final trackColor = p.isDark ? Colors.white.withOpacity(0.06) : _trackLight;
+    final trackColor = p.glassFill();
     final muted = p.isDark ? Colors.white70 : _mutedLight;
 
     return Container(
@@ -115,8 +114,8 @@ class _SegmentedSwitch extends StatelessWidget {
               child: _SegmentPill(
                 label: labels[i],
                 selected: i == index,
-                selectedFill: p.card,
-                border: p.border,
+                selectedFill: p.glassFill(selected: true),
+                border: p.glassFillEdge(selected: true),
                 mutedColor: muted,
                 onTap: () => onChanged(i),
               ),

@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:lottie/lottie.dart';
+import 'package:youtube_downloader/presentation/widgets/glass.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'package:youtube_downloader/core/constants/app_palette.dart';
@@ -51,10 +52,9 @@ class _CastSheetState extends ConsumerState<_CastSheet> {
     final networkAdvice = network == null ? null : LocalNetwork.advice(network);
     // A line of words under the animation costs height; the animation
     // gives some of its own up, so the list is never pushed off the foot.
-    final hasLine =
-        cast.error != null || cast.note != null || networkAdvice != null;
+    final hasLine = cast.error != null || cast.note != null || networkAdvice != null;
 
-    return Container(
+    return GlassSheet(
       // Named so a test can measure it: how tall this stands is the kind of
       // thing that looks right in the code and wrong on a phone.
       key: const ValueKey('cast-sheet'),
@@ -68,14 +68,7 @@ class _CastSheetState extends ConsumerState<_CastSheet> {
       // Half the screen: the animation strip, a line of words, and two or
       // three screens under it.
       height: MediaQuery.of(context).size.height * 0.5,
-      decoration: BoxDecoration(
-        // The same colour as the bar under it, exactly: the two read as
-        // one surface.
-        color: p.bg,
-        borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
-      ),
-      padding:
-          EdgeInsets.only(bottom: MediaQuery.of(context).viewInsets.bottom),
+      padding: EdgeInsets.only(bottom: MediaQuery.of(context).viewInsets.bottom),
       child: SafeArea(
         top: false,
         child: Column(
@@ -94,8 +87,7 @@ class _CastSheetState extends ConsumerState<_CastSheet> {
             const SizedBox(height: 10),
             if (cast.error != null)
               _Line(
-                icon: const Icon(Icons.error_outline_rounded,
-                    color: Color(0xFFFF6B75), size: 17),
+                icon: const Icon(Icons.error_outline_rounded, color: Color(0xFFFF6B75), size: 17),
                 text: cast.error!,
                 color: const Color(0xFFFF6B75),
               )
@@ -114,16 +106,12 @@ class _CastSheetState extends ConsumerState<_CastSheet> {
             // stops is not an explanation.
             else if (networkAdvice != null)
               _Line(
-                icon: const Icon(Icons.wifi_off_rounded,
-                    color: Color(0xFFFFB020), size: 17),
+                icon: const Icon(Icons.wifi_off_rounded, color: Color(0xFFFFB020), size: 17),
                 text: networkAdvice,
                 color: const Color(0xFFFFB020),
               ),
             const SizedBox(height: 8),
-            if (cast.isConnected)
-              _ConnectedRow(device: cast.device!)
-            else
-              const Flexible(child: _TelevisionList()),
+            if (cast.isConnected) _ConnectedRow(device: cast.device!) else const Flexible(child: _TelevisionList()),
             const Spacer(),
             Divider(color: p.border, height: 20),
             _FootRow(connected: cast.isConnected),
@@ -176,18 +164,15 @@ class _TelevisionList extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final found =
-        ref.watch(castTelevisionsProvider).valueOrNull ?? const <CastDevice>[];
+    final found = ref.watch(castTelevisionsProvider).valueOrNull ?? const <CastDevice>[];
     final last = ref.watch(lastCastDeviceProvider).valueOrNull;
-    final names = ref.watch(castDeviceNamesProvider).valueOrNull ??
-        const <String, String>{};
+    final names = ref.watch(castDeviceNamesProvider).valueOrNull ?? const <String, String>{};
 
     // Last time's screen first, then the rest as they were found. When it
     // has not answered yet it is listed anyway: a tap on it starts the
     // search-and-connect, the same as the automatic one.
     final rows = <CastDevice>[
-      if (last != null)
-        found.firstWhere((d) => d.id == last.id, orElse: () => last),
+      if (last != null) found.firstWhere((d) => d.id == last.id, orElse: () => last),
       for (final d in found)
         if (last == null || d.id != last.id) d,
     ];
@@ -260,22 +245,18 @@ class _DeviceRowState extends ConsumerState<_DeviceRow> {
   /// A long press renames the screen — «تلفاز الصالة» reads better than
   /// «[TV] Samsung 7 Series (55)» every evening.
   Future<void> _rename() async {
-    final controller =
-        TextEditingController(text: widget.customName ?? widget.device.name);
+    final controller = TextEditingController(text: widget.customName ?? widget.device.name);
     final p = AppPalette.of(context);
     final name = await showDialog<String>(
       context: context,
       builder: (context) => AlertDialog(
         backgroundColor: p.card,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        title: Text('اسم الشاشة',
-            style: TextStyle(
-                color: p.text, fontSize: 16, fontWeight: FontWeight.w900)),
+        title: Text('اسم الشاشة', style: TextStyle(color: p.text, fontSize: 16, fontWeight: FontWeight.w900)),
         content: TextField(
           controller: controller,
           autofocus: true,
-          style: TextStyle(
-              color: p.text, fontSize: 15, fontWeight: FontWeight.w700),
+          style: TextStyle(color: p.text, fontSize: 15, fontWeight: FontWeight.w700),
           decoration: InputDecoration(
             hintText: widget.device.name,
             hintStyle: TextStyle(color: p.textFaint),
@@ -315,9 +296,7 @@ class _DeviceRowState extends ConsumerState<_DeviceRow> {
     final p = AppPalette.of(context);
     final brand = CastBrand.of(widget.device);
     final title = widget.customName ?? widget.device.name;
-    final connecting = _busy ||
-        (widget.isLast &&
-            ref.watch(castControllerProvider).status == CastStatus.connecting);
+    final connecting = _busy || (widget.isLast && ref.watch(castControllerProvider).status == CastStatus.connecting);
 
     return ListTile(
       onTap: connecting ? null : _connect,
@@ -331,8 +310,7 @@ class _DeviceRowState extends ConsumerState<_DeviceRow> {
               title,
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
-              style: TextStyle(
-                  color: p.text, fontSize: 15, fontWeight: FontWeight.w800),
+              style: TextStyle(color: p.text, fontSize: 15, fontWeight: FontWeight.w800),
             ),
           ),
           if (widget.isLast) ...[
@@ -345,10 +323,7 @@ class _DeviceRowState extends ConsumerState<_DeviceRow> {
               ),
               child: const Text(
                 'آخر مرة',
-                style: TextStyle(
-                    color: Color(0xFFE50914),
-                    fontSize: 10.5,
-                    fontWeight: FontWeight.w800),
+                style: TextStyle(color: Color(0xFFE50914), fontSize: 10.5, fontWeight: FontWeight.w800),
               ),
             ),
           ],
@@ -356,9 +331,7 @@ class _DeviceRowState extends ConsumerState<_DeviceRow> {
       ),
       subtitle: Text(
         widget.seen
-            ? (widget.customName != null
-                ? widget.device.name
-                : widget.device.subtitle)
+            ? (widget.customName != null ? widget.device.name : widget.device.subtitle)
             : 'لم يظهر بعد — اضغط للبحث عنه والاتصال',
         maxLines: 1,
         overflow: TextOverflow.ellipsis,
@@ -368,8 +341,7 @@ class _DeviceRowState extends ConsumerState<_DeviceRow> {
           ? const SizedBox(
               width: 18,
               height: 18,
-              child: CircularProgressIndicator(
-                  color: Color(0xFFE50914), strokeWidth: 2),
+              child: CircularProgressIndicator(color: Color(0xFFE50914), strokeWidth: 2),
             )
           : Icon(Icons.cast_rounded, color: p.textMuted, size: 20),
     );
@@ -399,9 +371,7 @@ class _BrandBadge extends StatelessWidget {
           // A television found over UPnP and a Chromecast are different
           // things behind the scenes, and the picture is the only hint the
           // viewer gets that the list holds both.
-          transport == CastTransport.dlna
-              ? Icons.tv_rounded
-              : Icons.cast_rounded,
+          transport == CastTransport.dlna ? Icons.tv_rounded : Icons.cast_rounded,
           color: p.text,
           size: 21,
         ),
@@ -463,8 +433,7 @@ class _EmptyStateState extends ConsumerState<_EmptyState> {
   Widget build(BuildContext context) {
     final p = AppPalette.of(context);
     final connecting = widget.status == CastStatus.connecting;
-    final onWifi =
-        ref.watch(localNetworkProvider).valueOrNull == LocalNetworkStatus.wifi;
+    final onWifi = ref.watch(localNetworkProvider).valueOrNull == LocalNetworkStatus.wifi;
     return Padding(
       padding: const EdgeInsets.fromLTRB(20, 14, 20, 14),
       child: Column(
@@ -475,15 +444,12 @@ class _EmptyStateState extends ConsumerState<_EmptyState> {
               const SizedBox(
                 width: 18,
                 height: 18,
-                child: CircularProgressIndicator(
-                    color: Color(0xFFE50914), strokeWidth: 2),
+                child: CircularProgressIndicator(color: Color(0xFFE50914), strokeWidth: 2),
               ),
               const SizedBox(width: 12),
               Expanded(
                 child: Text(
-                  connecting
-                      ? 'جارٍ الاتصال…'
-                      : 'جارٍ البحث عن شاشات على الشبكة…',
+                  connecting ? 'جارٍ الاتصال…' : 'جارٍ البحث عن شاشات على الشبكة…',
                   style: TextStyle(color: p.textMuted, fontSize: 13.5),
                 ),
               ),
@@ -494,8 +460,7 @@ class _EmptyStateState extends ConsumerState<_EmptyState> {
               padding: EdgeInsets.only(top: 10),
               child: Text(
                 LocalNetwork.isolationAdvice,
-                style: TextStyle(
-                    color: Color(0xFFFFB020), fontSize: 12, height: 1.4),
+                style: TextStyle(color: Color(0xFFFFB020), fontSize: 12, height: 1.4),
               ),
             ),
         ],
@@ -511,8 +476,7 @@ class _ConnectedRow extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final p = AppPalette.of(context);
-    final names = ref.watch(castDeviceNamesProvider).valueOrNull ??
-        const <String, String>{};
+    final names = ref.watch(castDeviceNamesProvider).valueOrNull ?? const <String, String>{};
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 20),
       child: Row(
@@ -523,14 +487,12 @@ class _ConnectedRow extends ConsumerWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text('متصل بـ',
-                    style: TextStyle(color: p.textFaint, fontSize: 11.5)),
+                Text('متصل بـ', style: TextStyle(color: p.textFaint, fontSize: 11.5)),
                 Text(
                   names[device.id] ?? device.name,
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
-                  style: TextStyle(
-                      color: p.text, fontSize: 15, fontWeight: FontWeight.w800),
+                  style: TextStyle(color: p.text, fontSize: 15, fontWeight: FontWeight.w800),
                 ),
               ],
             ),
@@ -552,8 +514,7 @@ class _ConnectedRow extends ConsumerWidget {
                 child: SizedBox(
                   width: 42,
                   height: 42,
-                  child: Icon(Icons.link_off_rounded,
-                      color: Color(0xFFE50914), size: 22),
+                  child: Icon(Icons.link_off_rounded, color: Color(0xFFE50914), size: 22),
                 ),
               ),
             ),
@@ -678,12 +639,9 @@ class _QualityRow extends ConsumerWidget {
             borderRadius: BorderRadius.circular(16),
             clipBehavior: Clip.antiAlias,
             child: InkWell(
-              onTap: () => ref
-                  .read(castQualityProvider.notifier)
-                  .set(auto ? CastQuality.balanced : CastQuality.auto),
+              onTap: () => ref.read(castQualityProvider.notifier).set(auto ? CastQuality.balanced : CastQuality.auto),
               child: Padding(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
                 child: Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
@@ -711,8 +669,7 @@ class _QualityRow extends ConsumerWidget {
             initialValue: auto ? null : quality,
             color: p.card,
             tooltip: 'اختيار يدوي',
-            onSelected: (choice) =>
-                ref.read(castQualityProvider.notifier).set(choice),
+            onSelected: (choice) => ref.read(castQualityProvider.notifier).set(choice),
             itemBuilder: (context) => [
               for (final option in manual)
                 PopupMenuItem(
@@ -720,8 +677,7 @@ class _QualityRow extends ConsumerWidget {
                   child: Text(
                     '${option.label} · ${option.short}',
                     style: TextStyle(
-                      color:
-                          option == quality ? const Color(0xFFE50914) : p.text,
+                      color: option == quality ? const Color(0xFFE50914) : p.text,
                       fontSize: 13.5,
                       fontWeight: FontWeight.w800,
                     ),
@@ -839,9 +795,7 @@ class _PairingDialogState extends ConsumerState<_PairingDialog> {
       _error = null;
     });
     try {
-      await ref
-          .read(castControllerProvider.notifier)
-          .pairWithCode(_controller.text);
+      await ref.read(castControllerProvider.notifier).pairWithCode(_controller.text);
       if (mounted) Navigator.of(context).pop();
     } on CastException catch (e) {
       if (mounted) setState(() => _error = e.message);
@@ -858,8 +812,7 @@ class _PairingDialogState extends ConsumerState<_PairingDialog> {
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
       title: Text(
         'ربط شاشة',
-        style:
-            TextStyle(color: p.text, fontSize: 17, fontWeight: FontWeight.w900),
+        style: TextStyle(color: p.text, fontSize: 17, fontWeight: FontWeight.w900),
       ),
       content: Column(
         mainAxisSize: MainAxisSize.min,
@@ -883,8 +836,7 @@ class _PairingDialogState extends ConsumerState<_PairingDialog> {
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(14),
                 ),
-                textStyle: const TextStyle(
-                    fontSize: 14.5, fontWeight: FontWeight.w800),
+                textStyle: const TextStyle(fontSize: 14.5, fontWeight: FontWeight.w800),
               ),
             ),
           ),
@@ -930,9 +882,7 @@ class _PairingDialogState extends ConsumerState<_PairingDialog> {
           ),
           if (_error != null) ...[
             const SizedBox(height: 10),
-            Text(_error!,
-                style:
-                    const TextStyle(color: Color(0xFFFF6B75), fontSize: 12.5)),
+            Text(_error!, style: const TextStyle(color: Color(0xFFFF6B75), fontSize: 12.5)),
           ],
         ],
       ),
@@ -951,8 +901,7 @@ class _PairingDialogState extends ConsumerState<_PairingDialog> {
               ? const SizedBox(
                   width: 16,
                   height: 16,
-                  child: CircularProgressIndicator(
-                      color: Colors.white, strokeWidth: 2),
+                  child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2),
                 )
               : const Text('ربط'),
         ),

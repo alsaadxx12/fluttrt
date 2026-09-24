@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:youtube_downloader/core/constants/app_colors.dart';
 import 'package:youtube_downloader/core/constants/app_palette.dart';
 import 'package:youtube_downloader/core/network/image_cache.dart';
+import 'package:youtube_downloader/presentation/widgets/glass.dart';
 
 /// The one profile every title gets, whichever catalogue it came from.
 ///
@@ -268,9 +269,9 @@ class ProfileMeta extends StatelessWidget {
     Widget plain(String text) => Container(
           padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
           decoration: BoxDecoration(
-            color: p.isDark ? const Color(0xFF22222B) : p.card,
+            color: p.glassFill(),
             borderRadius: BorderRadius.circular(6),
-            border: p.isDark ? null : Border.all(color: p.border),
+            border: Border.all(color: p.glassFillEdge(), width: 0.8),
           ),
           child: Text(
             text,
@@ -337,9 +338,9 @@ class ProfileTags extends StatelessWidget {
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
             decoration: BoxDecoration(
-              color: p.isDark ? const Color(0xFF1E1E26) : p.card,
+              color: p.glassFill(),
               borderRadius: BorderRadius.circular(16),
-              border: Border.all(color: p.isDark ? const Color(0xFF2E2E3C) : p.border, width: 1),
+              border: Border.all(color: p.glassFillEdge(), width: 0.8),
             ),
             child: Text(tag, style: TextStyle(fontSize: 11.5, color: p.isDark ? Colors.white70 : Colors.black87)),
           ),
@@ -376,31 +377,40 @@ class _ProfileStoryState extends State<ProfileStory> {
           style: TextStyle(
               fontSize: 16, fontWeight: FontWeight.bold, color: p.isDark ? Colors.white : const Color(0xFF0F172A)),
         ),
-        const SizedBox(height: 6),
-        GestureDetector(
-          onTap: long ? () => setState(() => _open = !_open) : null,
-          child: Text(
-            text,
-            maxLines: _open || !long ? null : 5,
-            overflow: _open || !long ? null : TextOverflow.ellipsis,
-            style: TextStyle(
-              fontSize: 13.5,
-              height: 1.5,
-              color: p.isDark ? const Color(0xFFD0D0D8) : const Color(0xFF475569),
-            ),
+        const SizedBox(height: 8),
+        // The story on its own pane of glass.
+        GlassPanel(
+          padding: const EdgeInsets.fromLTRB(14, 12, 14, 12),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              GestureDetector(
+                onTap: long ? () => setState(() => _open = !_open) : null,
+                child: Text(
+                  text,
+                  maxLines: _open || !long ? null : 5,
+                  overflow: _open || !long ? null : TextOverflow.ellipsis,
+                  style: TextStyle(
+                    fontSize: 13.5,
+                    height: 1.5,
+                    color: p.isDark ? const Color(0xFFD0D0D8) : const Color(0xFF475569),
+                  ),
+                ),
+              ),
+              if (long)
+                GestureDetector(
+                  onTap: () => setState(() => _open = !_open),
+                  child: Padding(
+                    padding: const EdgeInsets.only(top: 6),
+                    child: Text(
+                      _open ? 'عرض أقل' : 'قراءة المزيد...',
+                      style: const TextStyle(color: AppColors.primary, fontSize: 12.5, fontWeight: FontWeight.bold),
+                    ),
+                  ),
+                ),
+            ],
           ),
         ),
-        if (long)
-          GestureDetector(
-            onTap: () => setState(() => _open = !_open),
-            child: Padding(
-              padding: const EdgeInsets.only(top: 4),
-              child: Text(
-                _open ? 'عرض أقل' : 'قراءة المزيد...',
-                style: const TextStyle(color: AppColors.primary, fontSize: 12.5, fontWeight: FontWeight.bold),
-              ),
-            ),
-          ),
       ],
     );
   }

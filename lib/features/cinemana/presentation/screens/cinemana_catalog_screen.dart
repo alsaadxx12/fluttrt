@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:youtube_downloader/presentation/widgets/glass.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:youtube_downloader/core/constants/app_colors.dart';
 import 'package:youtube_downloader/presentation/widgets/app_search_field.dart';
@@ -141,14 +142,12 @@ class _CinemanaCatalogScreenState extends ConsumerState<CinemanaCatalogScreen> {
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
-      backgroundColor: isDark ? Colors.black : Colors.white,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
-      ),
+      backgroundColor: Colors.transparent,
       builder: (ctx) {
         return StatefulBuilder(
           builder: (context, setModalState) {
-            return SafeArea(
+            return GlassSheet(
+                child: SafeArea(
               child: Container(
                 constraints: BoxConstraints(
                   maxHeight: MediaQuery.of(context).size.height * 0.85,
@@ -396,7 +395,7 @@ class _CinemanaCatalogScreenState extends ConsumerState<CinemanaCatalogScreen> {
                   ],
                 ),
               ),
-            );
+            ));
           },
         );
       },

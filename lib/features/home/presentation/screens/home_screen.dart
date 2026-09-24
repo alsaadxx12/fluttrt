@@ -679,14 +679,26 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                 // through a blur and a tint of the page colour.
                 builder: (context, scrolled, child) => ClipRect(
                   child: BackdropFilter(
-                    filter: ImageFilter.blur(sigmaX: 20, sigmaY: 20),
+                    filter: ImageFilter.blur(sigmaX: 26, sigmaY: 26),
                     child: Container(
                       decoration: BoxDecoration(
-                        color: _p.bg.withOpacity(scrolled ? 0.72 : 0.0),
+                        // A sheen over the page's tint, brighter at the
+                        // top, and a light edge where the pane ends.
+                        gradient: scrolled
+                            ? LinearGradient(
+                                begin: Alignment.topCenter,
+                                end: Alignment.bottomCenter,
+                                colors: [
+                                  Color.alphaBlend(_p.glassTop, _p.bg)
+                                      .withOpacity(0.72),
+                                  _p.bg.withOpacity(0.58),
+                                ],
+                              )
+                            : null,
                         border: scrolled
                             ? Border(
                                 bottom: BorderSide(
-                                    color: _p.border,
+                                    color: _p.glassEdge,
                                     width: 0.6))
                             : null,
                       ),
