@@ -193,13 +193,17 @@ class _TelevisionList extends ConsumerWidget {
       child: ListView.builder(
         shrinkWrap: true,
         padding: EdgeInsets.zero,
-        itemCount: rows.length,
-        itemBuilder: (_, i) => _DeviceRow(
-          device: rows[i],
-          isLast: last != null && rows[i].id == last.id,
-          customName: names[rows[i].id],
-          seen: found.any((d) => d.id == rows[i].id),
-        ),
+        // When the only row is last time's screen and nothing has answered,
+        // the search is as empty as an empty list: say why, under it.
+        itemCount: rows.length + (found.isEmpty ? 1 : 0),
+        itemBuilder: (_, i) => i == rows.length
+            ? _EmptyState(status: ref.watch(castControllerProvider).status)
+            : _DeviceRow(
+                device: rows[i],
+                isLast: last != null && rows[i].id == last.id,
+                customName: names[rows[i].id],
+                seen: found.any((d) => d.id == rows[i].id),
+              ),
       ),
     );
   }
