@@ -44,6 +44,7 @@ import 'package:youtube_downloader/features/update/presentation/update_controlle
 import 'package:youtube_downloader/features/subscription/presentation/providers/subscription_provider.dart';
 import 'package:youtube_downloader/features/asia2tv/presentation/providers/asia2tv_providers.dart';
 import 'package:youtube_downloader/features/asia2tv/presentation/open_catalogue_item.dart';
+import 'package:youtube_downloader/features/qitv/presentation/qitv_widgets.dart';
 import 'package:youtube_downloader/presentation/widgets/house_notice.dart';
 
 class HomeScreen extends ConsumerStatefulWidget {
@@ -553,6 +554,9 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
         ),
 
     (_) => const SizedBox(height: 24),
+
+    // ── Qi TV: Iraqi originals, showcase, and live channels ──
+    (_) => const RepaintBoundary(child: QiTvHomeSection()),
 
     // TV-series universes (spin-offs and sequels together).
     (_) => const RepaintBoundary(
