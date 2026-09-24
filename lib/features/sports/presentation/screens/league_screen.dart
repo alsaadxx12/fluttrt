@@ -93,7 +93,7 @@ class _LeagueScreenState extends ConsumerState<LeagueScreen> with SingleTickerPr
                           color: league.darkBadge ? const Color(0xFF0C1410) : Colors.white,
                           borderRadius: BorderRadius.circular(26),
                         ),
-                        child: CachedNetworkImage(imageUrl: league.logoUrl, fit: BoxFit.contain),
+                        child: CachedNetworkImage(imageUrl: league.logoUrl, memCacheWidth: 160, fit: BoxFit.contain),
                       ),
                     ),
                   ),
@@ -289,6 +289,7 @@ class _FixtureRow extends StatelessWidget {
 
   Widget _team(LeagueTeam t, AppPalette p, {required bool alignEnd}) {
     final crest = CachedNetworkImage(
+      memCacheWidth: 128,
       imageUrl: t.crestUrl,
       width: 34,
       height: 34,
@@ -408,6 +409,7 @@ class _StandingsTab extends ConsumerWidget {
         children: [
           SizedBox(width: 24, child: Text('${r.position}', style: TextStyle(color: p.text, fontSize: 12, fontWeight: FontWeight.w900))),
           CachedNetworkImage(
+            memCacheWidth: 96,
             imageUrl: r.team.crestUrl,
             width: 22,
             height: 22,

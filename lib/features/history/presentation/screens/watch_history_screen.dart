@@ -286,6 +286,7 @@ class _HistoryRow extends StatelessWidget {
                           child: Icon(Icons.movie_rounded, color: p.textFaint),
                         )
                       : CachedNetworkImage(
+                        memCacheWidth: 320,
                           imageUrl: item.bestPosterUrl,
                           cacheManager: appImageCache,
                           fit: BoxFit.cover,

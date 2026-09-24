@@ -520,6 +520,7 @@ class _ShowcaseRow extends StatelessWidget {
               controller: controller,
               padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
               scrollDirection: Axis.horizontal,
+              cacheExtent: 900,
               physics: const BouncingScrollPhysics(),
               itemCount: itemCount,
               separatorBuilder: (_, __) => const SizedBox(width: 14),

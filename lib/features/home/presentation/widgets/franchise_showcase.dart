@@ -556,6 +556,7 @@ class _FranchiseFilmTileState extends State<FranchiseFilmTile> {
     final thumb = film.imgThumbUrl ?? '';
     Widget standIn() => thumb.isNotEmpty && thumb != posterUrl
         ? CachedNetworkImage(
+          memCacheWidth: 520,
             imageUrl: thumb,
             cacheManager: appImageCache,
             fit: BoxFit.cover,

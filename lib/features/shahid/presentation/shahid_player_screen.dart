@@ -674,6 +674,7 @@ class _ShahidPlayerScreenState extends ConsumerState<ShahidPlayerScreen> {
                         height: 30,
                         width: 110,
                         child: CachedNetworkImage(
+                          memCacheWidth: 320,
                           imageUrl: logo,
                           fit: BoxFit.contain,
                           // RTL page: the logo sits at the start, i.e. the right.

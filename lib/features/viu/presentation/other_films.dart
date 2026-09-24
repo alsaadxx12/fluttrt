@@ -193,6 +193,7 @@ class OtherFilmsSection extends ConsumerWidget {
                 controller: controller,
                 padding: const EdgeInsets.symmetric(horizontal: 16),
                 scrollDirection: Axis.horizontal,
+                cacheExtent: 900,
                 physics: films.isEmpty
                     ? const NeverScrollableScrollPhysics()
                     : const ClampingScrollPhysics(),

@@ -218,6 +218,7 @@ class _ExclusiveCategoryScreenState extends ConsumerState<ExclusiveCategoryScree
                     children: [
                       if (item.posterUrl.isNotEmpty)
                         CachedNetworkImage(
+                          memCacheWidth: 400,
                           imageUrl: item.posterUrl,
                           fit: BoxFit.cover,
                           errorWidget: (_, __, ___) => Container(color: const Color(0xFF0E1322)),

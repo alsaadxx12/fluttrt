@@ -316,6 +316,7 @@ class _SpotlightPage extends ConsumerWidget {
                 ColoredBox(color: p.skeleton),
                 if ((backdrop ?? fallback).isNotEmpty)
                   CachedNetworkImage(
+                    memCacheWidth: 1080,
                     key: ValueKey(backdrop ?? fallback),
                     imageUrl: backdrop ?? fallback,
                     cacheManager: appImageCache,
@@ -396,6 +397,7 @@ class _SpotlightPage extends ConsumerWidget {
               ? ListView.separated(
                   padding: const EdgeInsets.symmetric(horizontal: 16),
                   scrollDirection: Axis.horizontal,
+                  cacheExtent: 900,
                   physics: const NeverScrollableScrollPhysics(),
                   itemCount: 4,
                   separatorBuilder: (_, __) => const SizedBox(width: 12),
@@ -412,6 +414,7 @@ class _SpotlightPage extends ConsumerWidget {
                     controller: controller,
                     padding: const EdgeInsets.symmetric(horizontal: 16),
                     scrollDirection: Axis.horizontal,
+                    cacheExtent: 900,
                     physics: const ClampingScrollPhysics(),
                     itemCount: films.length,
                     separatorBuilder: (_, __) => const SizedBox(width: 12),

@@ -1,5 +1,3 @@
-import 'dart:ui' show ImageFilter;
-
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:youtube_downloader/core/constants/app_colors.dart';
@@ -159,7 +157,7 @@ class _Card extends StatelessWidget {
         ),
         child: ClipRRect(
           borderRadius: BorderRadius.circular(12),
-          clipBehavior: Clip.antiAliasWithSaveLayer,
+          clipBehavior: Clip.antiAlias,
           child: Stack(
             fit: StackFit.expand,
             children: [
@@ -191,50 +189,47 @@ class _Card extends StatelessWidget {
                   ),
                 ),
               ),
-              // The frosted strip.
+              // The glazed strip: a dark glaze the number reads on, under
+              // the bright line where the light catches the pane's edge.
               Positioned(
                 left: 0,
                 right: 0,
                 bottom: 0,
                 child: ClipRect(
-                  child: BackdropFilter(
-                    filter: ImageFilter.blur(sigmaX: 18, sigmaY: 18),
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 6),
-                      decoration: BoxDecoration(
-                        gradient: LinearGradient(
-                          begin: Alignment.topCenter,
-                          end: Alignment.bottomCenter,
-                          colors: [
-                            Colors.white.withOpacity(p.isDark ? 0.22 : 0.70),
-                            Colors.white.withOpacity(p.isDark ? 0.10 : 0.55),
-                          ],
-                        ),
-                        border: Border(top: BorderSide(color: p.glassHighlight, width: 0.8)),
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 6),
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(
+                        begin: Alignment.topCenter,
+                        end: Alignment.bottomCenter,
+                        colors: p.isDark
+                            ? [Colors.black.withOpacity(0.38), Colors.black.withOpacity(0.62)]
+                            : [Colors.white.withOpacity(0.72), Colors.white.withOpacity(0.86)],
                       ),
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          Flexible(
-                            child: Text(
-                              tile.label,
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                              style: TextStyle(
-                                fontSize: 12.5,
-                                fontWeight: FontWeight.w800,
-                                color: p.isDark ? Colors.white : p.text,
-                                shadows: p.isDark ? const [Shadow(color: Colors.black45, blurRadius: 4)] : null,
-                              ),
+                      border: Border(top: BorderSide(color: p.glassHighlight, width: 0.8)),
+                    ),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Flexible(
+                          child: Text(
+                            tile.label,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: TextStyle(
+                              fontSize: 12.5,
+                              fontWeight: FontWeight.w800,
+                              color: p.isDark ? Colors.white : p.text,
+                              shadows: p.isDark ? const [Shadow(color: Colors.black45, blurRadius: 4)] : null,
                             ),
                           ),
-                          if (tile.note != null && tile.note!.isNotEmpty)
-                            Text(
-                              tile.note!,
-                              style: TextStyle(fontSize: 10, color: p.isDark ? Colors.white70 : p.textMuted),
-                            ),
-                        ],
-                      ),
+                        ),
+                        if (tile.note != null && tile.note!.isNotEmpty)
+                          Text(
+                            tile.note!,
+                            style: TextStyle(fontSize: 10, color: p.isDark ? Colors.white70 : p.textMuted),
+                          ),
+                      ],
                     ),
                   ),
                 ),

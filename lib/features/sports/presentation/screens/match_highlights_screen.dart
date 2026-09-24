@@ -186,6 +186,7 @@ class _MatchCard extends StatelessWidget {
                   Padding(
                     padding: const EdgeInsetsDirectional.only(end: 5),
                     child: CachedNetworkImage(
+                      memCacheWidth: 64,
                         imageUrl: match.leagueLogo!, width: 15, height: 15, errorWidget: (_, __, ___) => const SizedBox.shrink()),
                   ),
                 Expanded(
@@ -242,6 +243,7 @@ class _MatchCard extends StatelessWidget {
             height: 40,
             child: (logo ?? '').isNotEmpty
                 ? CachedNetworkImage(
+                  memCacheWidth: 400,
                     imageUrl: logo!,
                     fit: BoxFit.contain,
                     errorWidget: (_, __, ___) => Icon(Icons.shield_rounded, color: p.textFaint, size: 30),
@@ -287,6 +289,7 @@ class _HitCard extends StatelessWidget {
                 children: [
                   if ((hit.thumbUrl ?? '').isNotEmpty)
                     CachedNetworkImage(
+                      memCacheWidth: 800,
                       imageUrl: hit.thumbUrl!,
                       fit: BoxFit.cover,
                       errorWidget: (_, __, ___) => ColoredBox(color: p.skeleton),

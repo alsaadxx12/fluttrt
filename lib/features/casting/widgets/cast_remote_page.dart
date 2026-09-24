@@ -90,6 +90,7 @@ class CastRemotePage extends ConsumerWidget {
                             child: Icon(Icons.movie_rounded, color: p.textFaint, size: 48),
                           )
                         : CachedNetworkImage(
+                          memCacheWidth: 600,
                             imageUrl: media.posterUrl,
                             cacheManager: appImageCache,
                             width: 200,

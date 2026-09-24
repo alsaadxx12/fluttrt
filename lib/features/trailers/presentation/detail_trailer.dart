@@ -126,6 +126,7 @@ class _DetailTrailerState extends ConsumerState<DetailTrailer> {
         children: [
           if ((widget.posterUrl ?? '').isNotEmpty)
             CachedNetworkImage(
+              memCacheWidth: 1000,
               imageUrl: widget.posterUrl!,
               fit: BoxFit.cover,
               filterQuality: FilterQuality.high,

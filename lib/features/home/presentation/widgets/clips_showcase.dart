@@ -150,6 +150,7 @@ class _ClipsShowcaseState extends ConsumerState<ClipsShowcase> {
             child: ListView.separated(
               padding: const EdgeInsets.symmetric(horizontal: 16),
               scrollDirection: Axis.horizontal,
+              cacheExtent: 900,
               physics: const BouncingScrollPhysics(),
               itemCount: clips.length,
               separatorBuilder: (_, __) => const SizedBox(width: 12),
@@ -215,6 +216,7 @@ class _ClipsShowcaseState extends ConsumerState<ClipsShowcase> {
         child: ListView.separated(
           padding: const EdgeInsets.symmetric(horizontal: 16),
           scrollDirection: Axis.horizontal,
+          cacheExtent: 900,
           physics: const NeverScrollableScrollPhysics(),
           itemCount: 3,
           separatorBuilder: (_, __) => const SizedBox(width: 12),

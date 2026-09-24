@@ -97,6 +97,7 @@ class AlkassChannelsRow extends ConsumerWidget {
               ? ListView.separated(
                   padding: const EdgeInsets.symmetric(horizontal: 16),
                   scrollDirection: Axis.horizontal,
+                  cacheExtent: 900,
                   physics: const NeverScrollableScrollPhysics(),
                   itemCount: 4,
                   separatorBuilder: (_, __) => const SizedBox(width: _gap),
@@ -112,6 +113,7 @@ class AlkassChannelsRow extends ConsumerWidget {
                     controller: controller,
                     padding: const EdgeInsets.symmetric(horizontal: 16),
                     scrollDirection: Axis.horizontal,
+                    cacheExtent: 900,
                     physics: const ClampingScrollPhysics(),
                     itemCount: items.length,
                     separatorBuilder: (_, __) => const SizedBox(width: _gap),
@@ -172,12 +174,10 @@ class _Tile extends ConsumerWidget {
           height: AlkassChannelsRow._tileH,
           child: ClipRRect(
             borderRadius: BorderRadius.circular(6),
-            clipBehavior: Clip.antiAliasWithSaveLayer,
-            // Glass, like the match card: a deep blur under a white sheen
-            // and a thin light edge, with the mark across it.
-            child: BackdropFilter(
-              filter: ImageFilter.blur(sigmaX: 24, sigmaY: 24),
-              child: Container(
+            clipBehavior: Clip.antiAlias,
+            // Glass, like the match card: a white sheen and a thin light
+            // edge, with the mark across it.
+            child: Container(
                 decoration: BoxDecoration(
                   gradient: LinearGradient(
                     begin: Alignment.topLeft,
@@ -215,7 +215,6 @@ class _Tile extends ConsumerWidget {
                         ),
                       ),
               ),
-            ),
           ),
         ),
       ),

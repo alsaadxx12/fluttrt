@@ -3,6 +3,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:youtube_downloader/core/network/image_cache.dart';
+import 'package:youtube_downloader/core/prefetch/prefetcher.dart';
+import 'package:youtube_downloader/presentation/widgets/shader_warm_up.dart';
 import 'package:youtube_downloader/core/tv/tv_mode.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:youtube_downloader/features/cinemana/data/models/cinemana_models.dart';
@@ -89,6 +91,12 @@ class _SplashScreenState extends ConsumerState<SplashScreen>
       if (mounted && movies.isNotEmpty) _precacheFirstHeroSlide(movies.first);
     }).catchError((_) {});
 
+    // And everything else the viewer is about to look at - every row's
+    // pictures, the crests, the spotlight, the catalogues' first pages -
+    // is fetched to disk from here on, four at a time, behind the hero.
+    final container = ProviderScope.containerOf(context, listen: false);
+    heroSettled.whenComplete(() => Prefetcher.start(container));
+
     // Leave once the logo has had its 900 ms and the hero has answered
     // (success or error), but never later than 1600 ms in total.
     Future.any<void>([
@@ -153,6 +161,9 @@ class _SplashScreenState extends ConsumerState<SplashScreen>
       body: Stack(
         fit: StackFit.expand,
         children: [
+          // Drawn once, unseen, so the renderer's programs are compiled
+          // here and not in the first swipe of the home page.
+          const ShaderPrimer(),
           // Ambient Crimson Background Glow
           Center(
             child: Container(

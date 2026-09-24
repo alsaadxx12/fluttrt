@@ -2,7 +2,6 @@ import 'dart:async';
 
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:dio/dio.dart';
-import 'dart:ui' show ImageFilter;
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -260,14 +259,12 @@ class _ResultTile extends StatelessWidget {
       onTap: () => Navigator.of(context, rootNavigator: true).push(
         MaterialPageRoute(builder: (_) => CinemanaDetailScreen(item: item)),
       ),
-      // Glass, like the cards on the home page: the page shows through a
-      // deep blur and a faint white sheen, under a thin light edge.
+      // Glass, like the cards on the home page: a faint white sheen under
+      // a thin light edge.
       child: ClipRRect(
         borderRadius: BorderRadius.circular(6),
-        clipBehavior: Clip.antiAliasWithSaveLayer,
-        child: BackdropFilter(
-          filter: ImageFilter.blur(sigmaX: 24, sigmaY: 24),
-          child: Container(
+        clipBehavior: Clip.antiAlias,
+        child: Container(
             height: 85,
             padding: const EdgeInsets.all(8),
             decoration: BoxDecoration(
@@ -354,7 +351,6 @@ class _ResultTile extends StatelessWidget {
               ],
             ),
           ),
-        ),
       ),
     );
   }

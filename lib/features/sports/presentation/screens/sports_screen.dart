@@ -1,5 +1,4 @@
 import 'dart:async';
-import 'dart:ui' show ImageFilter;
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -907,10 +906,8 @@ class _SportsScreenState extends ConsumerState<SportsScreen> {
       padding: const EdgeInsets.symmetric(vertical: 6),
       child: ClipRRect(
         borderRadius: BorderRadius.circular(18),
-        clipBehavior: Clip.antiAliasWithSaveLayer,
-        child: BackdropFilter(
-          filter: ImageFilter.blur(sigmaX: 24, sigmaY: 24),
-          child: Container(
+        clipBehavior: Clip.antiAlias,
+        child: Container(
       decoration: BoxDecoration(
         gradient: LinearGradient(
           begin: Alignment.topLeft,
@@ -1114,7 +1111,6 @@ class _SportsScreenState extends ConsumerState<SportsScreen> {
         ),
       ),
     ),
-          ),
         ),
       );
   }

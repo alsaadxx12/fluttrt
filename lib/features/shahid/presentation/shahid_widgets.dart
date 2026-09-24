@@ -196,6 +196,7 @@ class ShahidChannelCard extends StatelessWidget {
                 padding: const EdgeInsets.fromLTRB(12, 20, 12, 12),
                 child: logo != null
                     ? CachedNetworkImage(
+                      memCacheWidth: 320,
                         imageUrl: logo,
                         fit: BoxFit.contain,
                         fadeInDuration: const Duration(milliseconds: 120),
@@ -267,6 +268,7 @@ class ShahidPosterCard extends StatelessWidget {
                 children: [
                   if (poster != null)
                     CachedNetworkImage(
+                      memCacheWidth: 520,
                       imageUrl: poster,
                       fit: BoxFit.cover,
                       fadeInDuration: const Duration(milliseconds: 120),

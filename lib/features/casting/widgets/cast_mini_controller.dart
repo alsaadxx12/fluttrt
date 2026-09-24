@@ -57,6 +57,7 @@ class CastMiniController extends ConsumerWidget {
                               child: Icon(Icons.movie_rounded, color: p.textFaint, size: 18),
                             )
                           : CachedNetworkImage(
+                            memCacheWidth: 200,
                               imageUrl: media.posterUrl,
                               cacheManager: appImageCache,
                               fit: BoxFit.cover,

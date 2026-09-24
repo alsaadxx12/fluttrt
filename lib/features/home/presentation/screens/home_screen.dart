@@ -608,7 +608,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                 child: CustomScrollView(
                   key: const PageStorageKey('home'),
                   physics: kAppDefaultScrollPhysics,
-                  cacheExtent: 600,
+                  cacheExtent: 1200,
                   slivers: [
                     // 1. Full-Bleed Hero Movie Section (Screen-filling, Crystal
                     // Clear, Latest 20, Interactive & Pausable). Its own Consumer:
@@ -1428,6 +1428,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
               key: const PageStorageKey('row-sports'),
               padding: const EdgeInsets.symmetric(horizontal: 16),
               scrollDirection: Axis.horizontal,
+              cacheExtent: 900,
               physics: const ClampingScrollPhysics(),
               itemCount: matches.length,
               separatorBuilder: (_, __) => const SizedBox(width: 12),
@@ -1518,17 +1519,13 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
           ),
         );
       },
-      // Glass: the page shows through a deep blur and a faint white sheen
-      // that brightens towards the top-left, under a thin light edge.
+      // Glass, still: the sheen, the edge and the light are the pane;
+      // the blur behind it went, because on a page this dark there was
+      // nothing to blur and each card cost a layer and a readback.
       child: ClipRRect(
         borderRadius: BorderRadius.circular(6),
-        // One layer, then the clip: the picture and its shading are
-        // composited before the rounded edge is applied, so the
-        // half-pixel bottom row is shaded like every other row.
-        clipBehavior: Clip.antiAliasWithSaveLayer,
-        child: BackdropFilter(
-          filter: ImageFilter.blur(sigmaX: 24, sigmaY: 24),
-          child: Container(
+        clipBehavior: Clip.antiAlias,
+        child: Container(
           width: 250,
           decoration: BoxDecoration(
             gradient: LinearGradient(
@@ -1681,7 +1678,6 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
               ),
             ],
           ),
-        ),
         ),
       ),
     );
@@ -1843,6 +1839,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                 controller: controller,
                 padding: const EdgeInsets.symmetric(horizontal: 16),
                 scrollDirection: Axis.horizontal,
+                cacheExtent: 900,
                 physics: const ClampingScrollPhysics(),
                 itemCount: items.length,
                 separatorBuilder: (_, __) => const SizedBox(width: 12),
@@ -1868,6 +1865,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
             child: ListView.separated(
               padding: const EdgeInsets.symmetric(horizontal: 16),
               scrollDirection: Axis.horizontal,
+              cacheExtent: 900,
               physics: const NeverScrollableScrollPhysics(),
               itemCount: 4,
               separatorBuilder: (_, __) => const SizedBox(width: 12),
@@ -2097,6 +2095,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                 controller: controller,
                 padding: const EdgeInsets.symmetric(horizontal: 16),
                 scrollDirection: Axis.horizontal,
+                cacheExtent: 900,
                 physics: const ClampingScrollPhysics(),
                 itemCount: items.length,
                 separatorBuilder: (_, __) => const SizedBox(width: 12),
@@ -2121,6 +2120,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
             child: ListView.separated(
               padding: const EdgeInsets.symmetric(horizontal: 16),
               scrollDirection: Axis.horizontal,
+              cacheExtent: 900,
               physics: const NeverScrollableScrollPhysics(),
               itemCount: 3,
               separatorBuilder: (_, __) => const SizedBox(width: 14),
