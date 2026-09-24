@@ -6,14 +6,14 @@ import 'package:youtube_downloader/core/network/image_cache.dart';
 import '../data/viu_models.dart';
 import 'viu_category_screen.dart';
 import 'viu_providers.dart';
-import 'viu_watch_screen.dart';
+import 'viu_details_screen.dart';
 import '../../../core/constants/app_palette.dart';
 import '../../../presentation/widgets/card_motion.dart';
 import '../../../presentation/widgets/reveal.dart';
 
 void openViuShow(BuildContext context, ViuShow show) {
   Navigator.of(context, rootNavigator: true).push(
-    MaterialPageRoute(builder: (_) => ViuWatchScreen(show: show)),
+    MaterialPageRoute(builder: (_) => ViuDetailsScreen(show: show)),
   );
 }
 

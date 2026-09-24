@@ -2,6 +2,7 @@ import 'dart:async';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:youtube_downloader/presentation/widgets/episode_row.dart';
+import 'package:youtube_downloader/presentation/widgets/title_profile.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:youtube_downloader/core/constants/app_colors.dart';
 import 'package:youtube_downloader/core/constants/app_palette.dart';
@@ -176,28 +177,11 @@ class _CinemanaDetailScreenState extends ConsumerState<CinemanaDetailScreen> {
           CustomScrollView(
         slivers: [
           // Collapsible Hero App Bar with Poster
-          SliverAppBar(
-            // The whole portrait poster at full width (2:3), never cropped.
-            expandedHeight: () {
-              final maxH = MediaQuery.of(context).size.height * 0.68;
-              final minH = maxH < 300.0 ? (maxH > 150.0 ? maxH * 0.8 : maxH) : 300.0;
-              final target = MediaQuery.of(context).size.width * 1.5;
-              if (minH >= maxH) return maxH;
-              return target.clamp(minH, maxH);
-            }(),
-            pinned: true,
-            backgroundColor: palette.bg,
-            leading: IconButton(
-              icon: Container(
-                padding: const EdgeInsets.all(6),
-                decoration: BoxDecoration(
-                  color: Colors.black.withOpacity(0.6),
-                  shape: BoxShape.circle,
-                ),
-                child: const Icon(Icons.arrow_back_rounded, color: Colors.white, size: 20),
-              ),
-              onPressed: () => Navigator.pop(context),
-            ),
+          ProfileHeader(
+            posterUrl: item.bestPosterUrl.isNotEmpty ? item.bestPosterUrl : item.bestBackdropUrl,
+            onPlay: _watchItem,
+            busy: _casting,
+            tooltip: item.isSeries ? 'مشاهدة المسلسل' : 'شاهد الآن',
             actions: [
               Consumer(
                 builder: (context, ref, _) {
@@ -227,68 +211,7 @@ class _CinemanaDetailScreenState extends ConsumerState<CinemanaDetailScreen> {
                   );
                 },
               ),
-              const SizedBox(width: 6),
             ],
-            flexibleSpace: FlexibleSpaceBar(
-              background: Stack(
-                fit: StackFit.expand,
-                children: [
-                  // The artwork, its bottom edge curved around the play
-                  // button below.
-                  ClipPath(
-                    clipper: const _PosterNotchClipper(),
-                    child: Stack(
-                      fit: StackFit.expand,
-                      children: [
-                  if (item.bestPosterUrl.isNotEmpty || item.bestBackdropUrl.isNotEmpty)
-                    CachedNetworkImage(
-                      imageUrl: item.bestPosterUrl.isNotEmpty ? item.bestPosterUrl : item.bestBackdropUrl,
-                      // contain: the full picture always shows, whatever its shape.
-                      fit: BoxFit.contain,
-                      alignment: Alignment.topCenter,
-                      filterQuality: FilterQuality.high,
-                      memCacheWidth:
-                          (MediaQuery.of(context).size.width * MediaQuery.of(context).devicePixelRatio).round(),
-                      placeholder: (_, __) => Container(color: isDark ? Colors.black26 : palette.skeleton),
-                      errorWidget: (_, __, ___) => Container(color: isDark ? Colors.black26 : palette.skeleton),
-                    )
-                  else
-                    Container(color: isDark ? Colors.black26 : palette.skeleton),
-                  // A scrim at the very top only, so the back and favourite
-                  // buttons read over a bright poster. The picture used to
-                  // fade into the page across its lower half; the edge is
-                  // what the curve is cut into now, so it has to stay.
-                  const DecoratedBox(
-                    decoration: BoxDecoration(
-                      gradient: LinearGradient(
-                        colors: [Color(0x73000000), Colors.transparent],
-                        stops: [0, 0.28],
-                        begin: Alignment.topCenter,
-                        end: Alignment.bottomCenter,
-                      ),
-                    ),
-                  ),
-                      ],
-                    ),
-                  ),
-
-                  // The play button, its centre on the edge the curve is cut
-                  // into: half of it over the artwork, half over the page.
-                  Positioned(
-                    left: 0,
-                    right: 0,
-                    bottom: _kEdgeInset - _RoundPlayButton.diameter / 2,
-                    child: Center(
-                      child: _RoundPlayButton(
-                        onTap: _watchItem,
-                        busy: _casting,
-                        tooltip: item.isSeries ? 'مشاهدة المسلسل' : 'شاهد الآن',
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ),
           ),
 
           // Content
@@ -298,143 +221,16 @@ class _CinemanaDetailScreenState extends ConsumerState<CinemanaDetailScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  // Title
-                  Text(
+                  ProfileTitle(
                     item.displayTitle,
-                    style: TextStyle(
-                      fontSize: 22,
-                      fontWeight: FontWeight.w900,
-                      color: isDark ? Colors.white : const Color(0xFF111115),
-                    ),
+                    subtitle: item.enTitle.isNotEmpty && item.arTitle.isNotEmpty ? item.enTitle : null,
                   ),
-                  if (item.enTitle.isNotEmpty && item.arTitle.isNotEmpty) ...[
-                    const SizedBox(height: 2),
-                    Text(
-                      item.enTitle,
-                      style: TextStyle(
-                        fontSize: 14,
-                        color: isDark ? AppColors.darkTextSecondary : AppColors.lightTextSecondary,
-                      ),
-                    ),
-                  ],
-
                   const SizedBox(height: 12),
-
-                  // Metadata Badges Row (Rating, Year, Type, Likes)
-                  Row(
-                    children: [
-                      Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                        decoration: BoxDecoration(
-                          color: Colors.amber.withOpacity(0.18),
-                          borderRadius: BorderRadius.circular(6),
-                          border: Border.all(color: Colors.amber.withOpacity(0.4), width: 1),
-                        ),
-                        child: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            const Icon(Icons.star_rounded, size: 16, color: Colors.amber),
-                            const SizedBox(width: 4),
-                            Text(
-                              item.stars,
-                              style: const TextStyle(
-                                color: Colors.amber,
-                                fontWeight: FontWeight.bold,
-                                fontSize: 13,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                      if (item.year.isNotEmpty) ...[
-                        const SizedBox(width: 10),
-                        Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                          decoration: BoxDecoration(
-                            color: isDark ? const Color(0xFF22222B) : palette.card,
-                            borderRadius: BorderRadius.circular(6),
-                            border: isDark ? null : Border.all(color: palette.border),
-                          ),
-                          child: Text(
-                            item.year,
-                            style: TextStyle(
-                              fontSize: 12,
-                              fontWeight: FontWeight.w600,
-                              color: isDark ? Colors.white70 : Colors.black87,
-                            ),
-                          ),
-                        ),
-                      ],
-                      const SizedBox(width: 10),
-                      Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                        decoration: BoxDecoration(
-                          color: AppColors.primary.withOpacity(0.15),
-                          borderRadius: BorderRadius.circular(6),
-                        ),
-                        child: Text(
-                          item.isSeries ? 'مسلسل' : 'فيلم',
-                          style: const TextStyle(
-                            fontSize: 12,
-                            fontWeight: FontWeight.bold,
-                            color: AppColors.primary,
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-
+                  ProfileMeta(rating: item.stars, year: item.year, kind: item.isSeries ? 'مسلسل' : 'فيلم'),
                   const SizedBox(height: 14),
-
-                  // Categories Chips
-                  if (item.categories.isNotEmpty)
-                    Wrap(
-                      spacing: 8,
-                      runSpacing: 8,
-                      children: item.categories.map((cat) {
-                        return Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                          decoration: BoxDecoration(
-                            color: isDark ? const Color(0xFF1E1E26) : palette.card,
-                            borderRadius: BorderRadius.circular(16),
-                            border: Border.all(
-                              color: isDark ? const Color(0xFF2E2E3C) : palette.border,
-                              width: 1,
-                            ),
-                          ),
-                          child: Text(
-                            cat,
-                            style: TextStyle(
-                              fontSize: 11.5,
-                              color: isDark ? Colors.white70 : Colors.black87,
-                            ),
-                          ),
-                        );
-                      }).toList(),
-                    ),
-
+                  ProfileTags(item.categories),
                   const SizedBox(height: 4),
-
-                  // Description Section
-                  Text(
-                    'القصة والنبذة',
-                    style: TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.bold,
-                      color: isDark ? Colors.white : const Color(0xFF0F172A),
-                    ),
-                  ),
-                  const SizedBox(height: 6),
-                  Text(
-                    item.arContent.isNotEmpty
-                        ? item.arContent
-                        : (item.enContent.isNotEmpty ? item.enContent : 'لا يوجد وصف متاح لهذا المحتوى.'),
-                    style: TextStyle(
-                      fontSize: 13.5,
-                      height: 1.5,
-                      color: isDark ? const Color(0xFFD0D0D8) : const Color(0xFF475569),
-                    ),
-                  ),
+                  ProfileStory(item.arContent.isNotEmpty ? item.arContent : item.enContent),
 
                   // The title's own trailer, played in place. Phone only.
                   DetailTrailer(
@@ -447,21 +243,11 @@ class _CinemanaDetailScreenState extends ConsumerState<CinemanaDetailScreen> {
                   // Episodes section if series
                   if (item.isSeries) ...[
                     const SizedBox(height: 24),
-                    Row(
-                      children: [
-                        const Icon(Icons.video_library_rounded, color: AppColors.primary, size: 20),
-                        const SizedBox(width: 8),
-                        Text(
-                          _selectedSeason != null
-                              ? 'حلقات الموسم $_selectedSeason (${_seasons[_selectedSeason]?.length ?? 0})'
-                              : 'حلقات العمل (${_allEpisodes.length})',
-                          style: TextStyle(
-                            fontSize: 16,
-                            fontWeight: FontWeight.bold,
-                            color: isDark ? Colors.white : const Color(0xFF0F172A),
-                          ),
-                        ),
-                      ],
+                    ProfileSectionTitle(
+                      Icons.video_library_rounded,
+                      _selectedSeason != null
+                          ? 'حلقات الموسم $_selectedSeason (${_seasons[_selectedSeason]?.length ?? 0})'
+                          : 'حلقات العمل (${_allEpisodes.length})',
                     ),
                     const SizedBox(height: 12),
 
@@ -681,81 +467,3 @@ class _CinemanaDetailScreenState extends ConsumerState<CinemanaDetailScreen> {
 }
 
 
-/// How far the artwork stops short of the bottom of its box.
-///
-/// The lower half of the play button stands in that gap, over the page's own
-/// colour. The button cannot hang outside the box — the collapsing app bar
-/// clips whatever its background draws — so the artwork gives up the room
-/// instead.
-const double _kEdgeInset = 36;
-
-/// The artwork's outline: a rectangle whose bottom edge dips smoothly around
-/// the play button, so the button sits in a bite taken out of the picture.
-///
-/// The curve is Flutter's own [CircularNotchedRectangle] — the shape a
-/// floating action button makes in a bottom bar. Drawing the dip by hand as
-/// a half-circle against a straight edge left a sharp corner where the two
-/// met; this eases in and out of the circle instead. It notches the top edge,
-/// so the path is flipped to put the bite at the foot.
-class _PosterNotchClipper extends CustomClipper<Path> {
-  const _PosterNotchClipper();
-
-  /// The bite's radius: the button, plus a little air all round it.
-  static const double notchRadius = _RoundPlayButton.diameter / 2 + 9;
-
-  @override
-  Path getClip(Size size) {
-    final w = size.width;
-    final edge = size.height - _kEdgeInset;
-    final notched = const CircularNotchedRectangle().getOuterPath(
-      Rect.fromLTWH(0, 0, w, edge),
-      Rect.fromCircle(center: Offset(w / 2, 0), radius: notchRadius),
-    );
-    // (x, y) -> (x, edge - y): the notch moves from the top edge to the foot.
-    final flip = Matrix4.identity()
-      ..translate(0.0, edge)
-      ..scale(1.0, -1.0);
-    return notched.transform(flip.storage);
-  }
-
-  @override
-  bool shouldReclip(_PosterNotchClipper oldClipper) => false;
-}
-
-/// The round play button that sits in the artwork's curve.
-class _RoundPlayButton extends StatelessWidget {
-  const _RoundPlayButton({required this.onTap, required this.tooltip, this.busy = false});
-
-  final VoidCallback onTap;
-  final String tooltip;
-
-  /// A stream is being resolved for a connected screen.
-  final bool busy;
-
-  static const double diameter = 64;
-
-  @override
-  Widget build(BuildContext context) {
-    return Tooltip(
-      message: tooltip,
-      child: Material(
-        color: AppColors.primary,
-        shape: const CircleBorder(),
-        clipBehavior: Clip.antiAlias,
-        child: InkWell(
-          onTap: onTap,
-          child: SizedBox(
-            width: diameter,
-            height: diameter,
-            child: busy
-                ? const Padding(
-                    padding: EdgeInsets.all(20),
-                    child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2.5),
-                  )
-                : const Icon(Icons.play_arrow_rounded, color: Colors.white, size: 38),
-          ),
-        ),
-      ),
-    );
-  }
-}

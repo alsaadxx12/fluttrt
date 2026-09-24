@@ -22,7 +22,15 @@ import 'package:window_manager/window_manager.dart';
 class ViuWatchScreen extends ConsumerStatefulWidget {
   final ViuShow show;
 
-  const ViuWatchScreen({super.key, required this.show});
+  /// The version (original or dubbed) the profile page chose, by its id;
+  /// null lets the player pick the kind chosen last time.
+  final String? versionId;
+
+  /// The episode to start playing at once, by number; null shows the cover
+  /// and waits for a tap.
+  final int? startEpisode;
+
+  const ViuWatchScreen({super.key, required this.show, this.versionId, this.startEpisode});
 
   @override
   ConsumerState<ViuWatchScreen> createState() => _ViuWatchScreenState();
@@ -72,7 +80,11 @@ class _ViuWatchScreenState extends ConsumerState<ViuWatchScreen> {
   /// Several versions: start with the kind (dubbed or not) chosen last time.
   Future<void> _pickVersionThenLoad() async {
     final versions = widget.show.versions;
-    if (versions.length > 1) {
+    final chosen = widget.versionId;
+    if (chosen != null && versions.any((v) => v.seriesId == chosen)) {
+      // The profile page already asked.
+      setState(() => _show = versions.firstWhere((v) => v.seriesId == chosen));
+    } else if (versions.length > 1) {
       var preferDubbed = true;
       try {
         preferDubbed =
@@ -84,6 +96,12 @@ class _ViuWatchScreenState extends ConsumerState<ViuWatchScreen> {
       if (mounted) setState(() => _show = pick);
     }
     await _loadEpisodes();
+    // Sent here to watch a particular episode: start it without a tap.
+    final start = widget.startEpisode;
+    final eps = _episodes;
+    if (start != null && mounted && eps != null && eps.isNotEmpty) {
+      _playEpisode(eps.firstWhere((e) => e.number == start, orElse: () => eps.first));
+    }
   }
 
   Future<void> _loadEpisodes() async {
