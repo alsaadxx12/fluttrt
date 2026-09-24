@@ -15,9 +15,13 @@ class SectionTitle extends StatelessWidget {
     this.leading,
     this.trailing,
     this.padding = const EdgeInsets.symmetric(horizontal: 16),
+    this.fontFamily,
   });
 
   final String title;
+
+  /// A display face for the heading, in place of the app's own.
+  final String? fontFamily;
 
   /// Opens the row's own page; the pill shows only when this is set.
   final VoidCallback? onViewAll;
@@ -59,10 +63,11 @@ class SectionTitle extends StatelessWidget {
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
               style: TextStyle(
+                fontFamily: fontFamily,
                 color: p.text,
-                fontSize: 15,
+                fontSize: fontFamily == null ? 15 : 16,
                 fontWeight: FontWeight.w900,
-                letterSpacing: -0.3,
+                letterSpacing: fontFamily == null ? -0.3 : 0,
               ),
             ),
           ),

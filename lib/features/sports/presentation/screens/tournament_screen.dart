@@ -16,6 +16,10 @@ import '../providers/sports_provider.dart';
 import 'league_screen.dart' show FixtureRowData, leagueFixturesProvider;
 import 'sports_player_screen.dart';
 
+/// The sports display face (see pubspec): competition names, tabs, ranks
+/// and scores are set in it.
+const kSportFont = 'Changa';
+
 final tournamentServiceProvider = Provider<TournamentService>((ref) => TournamentService());
 
 final tournamentStandingsProvider = FutureProvider.family<TournamentStandings, int>(
@@ -198,16 +202,17 @@ class _TournamentBanner extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final p = AppPalette.of(context);
     final inset = MediaQuery.of(context).padding.top;
     final light = Color(tournament.accent);
     final dark = Color(tournament.accent2 ?? tournament.accent).withOpacity(1);
+    final deep = Color.lerp(dark, Colors.black, 0.45)!;
     return Container(
       decoration: BoxDecoration(
         gradient: LinearGradient(
-          begin: AlignmentDirectional.centerStart,
-          end: AlignmentDirectional.centerEnd,
-          colors: [dark, Color.lerp(dark, light, 0.55)!],
+          begin: AlignmentDirectional.topStart,
+          end: AlignmentDirectional.bottomEnd,
+          colors: [deep, dark, Color.lerp(dark, light, 0.6)!],
+          stops: const [0, 0.42, 1],
         ),
       ),
       child: Stack(
@@ -215,24 +220,36 @@ class _TournamentBanner extends StatelessWidget {
         children: [
           // A wash of the brand's light behind the emblem.
           PositionedDirectional(
-            start: -50,
-            top: inset - 70,
+            start: -60,
+            top: inset - 80,
             child: Container(
-              width: 320,
-              height: 320,
+              width: 360,
+              height: 360,
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
-                gradient: RadialGradient(colors: [light.withOpacity(0.55), light.withOpacity(0.0)]),
+                gradient: RadialGradient(colors: [light.withOpacity(0.7), light.withOpacity(0.0)]),
               ),
             ),
           ),
-          // The sheen of the app's glass over the colours.
+          // Shade gathering at the far end and the foot, so the name and
+          // the counter sit on something darker.
+          DecoratedBox(
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                begin: AlignmentDirectional.centerStart,
+                end: AlignmentDirectional.centerEnd,
+                colors: [Colors.transparent, Colors.black.withOpacity(0.28)],
+                stops: const [0.45, 1],
+              ),
+            ),
+          ),
           DecoratedBox(
             decoration: BoxDecoration(
               gradient: LinearGradient(
                 begin: Alignment.topCenter,
                 end: Alignment.bottomCenter,
-                colors: [Colors.white.withOpacity(0.10), Colors.black.withOpacity(0.18)],
+                colors: [Colors.white.withOpacity(0.12), Colors.transparent, Colors.black.withOpacity(0.30)],
+                stops: const [0, 0.35, 1],
               ),
             ),
           ),
@@ -240,19 +257,37 @@ class _TournamentBanner extends StatelessWidget {
             padding: EdgeInsetsDirectional.fromSTEB(22, inset + 18, 22, 26),
             child: Row(
               children: [
-                // The emblem, large, on nothing.
+                // The emblem, large, on a pool of shadow.
                 SizedBox(
-                  width: 156,
-                  height: 156,
-                  child: CachedNetworkImage(
-                    imageUrl: tournament.logoUrl,
-                    cacheManager: appImageCache,
-                    memCacheWidth: 480,
-                    fit: BoxFit.contain,
-                    errorWidget: (_, __, ___) => const Icon(Icons.emoji_events_rounded, color: Colors.white, size: 84),
+                  width: 160,
+                  height: 160,
+                  child: Stack(
+                    alignment: Alignment.center,
+                    children: [
+                      Container(
+                        width: 150,
+                        height: 150,
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          boxShadow: [
+                            BoxShadow(color: Colors.black.withOpacity(0.35), blurRadius: 40, spreadRadius: -6),
+                          ],
+                        ),
+                      ),
+                      CachedNetworkImage(
+                        imageUrl: tournament.logoUrl,
+                        cacheManager: appImageCache,
+                        memCacheWidth: 480,
+                        width: 156,
+                        height: 156,
+                        fit: BoxFit.contain,
+                        errorWidget: (_, __, ___) =>
+                            const Icon(Icons.emoji_events_rounded, color: Colors.white, size: 84),
+                      ),
+                    ],
                   ),
                 ),
-                const SizedBox(width: 20),
+                const SizedBox(width: 18),
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
@@ -263,45 +298,43 @@ class _TournamentBanner extends StatelessWidget {
                         maxLines: 2,
                         overflow: TextOverflow.ellipsis,
                         style: const TextStyle(
+                          fontFamily: kSportFont,
                           color: Colors.white,
-                          fontSize: 23,
-                          fontWeight: FontWeight.w900,
-                          height: 1.2,
-                          shadows: [Shadow(color: Colors.black38, blurRadius: 6)],
+                          fontSize: 27,
+                          fontWeight: FontWeight.w800,
+                          height: 1.15,
+                          shadows: [Shadow(color: Colors.black45, blurRadius: 10, offset: Offset(0, 2))],
                         ),
                       ),
-                      const SizedBox(height: 8),
-                      Row(
-                        children: [
-                          Icon(Icons.swipe_rounded, color: Colors.white.withOpacity(0.7), size: 14),
-                          const SizedBox(width: 5),
-                          Text(
-                            position,
-                            style: TextStyle(
-                                color: Colors.white.withOpacity(0.8), fontSize: 11.5, fontWeight: FontWeight.w700),
-                          ),
-                        ],
+                      const SizedBox(height: 10),
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 3),
+                        decoration: BoxDecoration(
+                          color: Colors.black.withOpacity(0.22),
+                          borderRadius: BorderRadius.circular(20),
+                          border: Border.all(color: Colors.white.withOpacity(0.18), width: 0.8),
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(Icons.swipe_rounded, color: Colors.white.withOpacity(0.85), size: 13),
+                            const SizedBox(width: 6),
+                            Text(
+                              position,
+                              style: const TextStyle(
+                                  fontFamily: kSportFont,
+                                  color: Colors.white,
+                                  fontSize: 12.5,
+                                  fontWeight: FontWeight.w700,
+                                  height: 1.2),
+                            ),
+                          ],
+                        ),
                       ),
                     ],
                   ),
                 ),
               ],
-            ),
-          ),
-          // The banner's foot fades into the page.
-          Positioned(
-            left: 0,
-            right: 0,
-            bottom: 0,
-            height: 40,
-            child: DecoratedBox(
-              decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  begin: Alignment.topCenter,
-                  end: Alignment.bottomCenter,
-                  colors: [p.bg.withOpacity(0), p.bg],
-                ),
-              ),
             ),
           ),
         ],
@@ -333,8 +366,12 @@ class _Chip extends StatelessWidget {
           Icon(icon, size: 13, color: accent ? AppColors.primary : p.textMuted),
           const SizedBox(width: 4),
           Text(text,
-              style:
-                  TextStyle(color: accent ? AppColors.primary : p.text, fontSize: 11.5, fontWeight: FontWeight.w700)),
+              style: TextStyle(
+                  fontFamily: kSportFont,
+                  color: accent ? AppColors.primary : p.text,
+                  fontSize: 12.5,
+                  fontWeight: FontWeight.w700,
+                  height: 1.2)),
         ],
       ),
     );
@@ -381,9 +418,11 @@ class _Tabs extends StatelessWidget {
                       labels[i],
                       textAlign: TextAlign.center,
                       style: TextStyle(
+                        fontFamily: kSportFont,
                         color: i == index ? p.text : p.onGlassMuted,
-                        fontSize: 13,
-                        fontWeight: i == index ? FontWeight.w900 : FontWeight.w600,
+                        fontSize: 14,
+                        fontWeight: i == index ? FontWeight.w800 : FontWeight.w700,
+                        height: 1.2,
                       ),
                     ),
                   ),
@@ -440,7 +479,7 @@ class _GroupTable extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         if (group.name.isNotEmpty) ...[
-          SectionTitle(group.name, padding: EdgeInsets.zero),
+          SectionTitle(group.name, padding: EdgeInsets.zero, fontFamily: kSportFont),
           const SizedBox(height: 10),
         ],
         GlassPanel(
@@ -588,6 +627,7 @@ class _FixturesSliver extends ConsumerWidget {
             child: SectionTitle(
               title,
               padding: EdgeInsets.zero,
+              fontFamily: kSportFont,
               leading: live
                   ? Container(
                       width: 9,
@@ -795,34 +835,40 @@ class _ScorerCard extends StatelessWidget {
     final p = AppPalette.of(context);
     final s = scorer;
     return GlassPanel(
-      radius: 14,
-      padding: const EdgeInsets.fromLTRB(12, 10, 12, 10),
+      radius: 16,
+      padding: const EdgeInsets.fromLTRB(12, 8, 10, 8),
       child: Row(
         children: [
           SizedBox(
-            width: 24,
+            width: 26,
             child: Text('$rank',
                 style: TextStyle(
-                    color: rank == 1 ? AppColors.primary : p.text, fontSize: 14, fontWeight: FontWeight.w900)),
+                    fontFamily: kSportFont,
+                    color: rank == 1 ? AppColors.primary : p.text,
+                    fontSize: 17,
+                    fontWeight: FontWeight.w800,
+                    height: 1.2)),
           ),
           Container(
-            width: 44,
-            height: 44,
+            width: 64,
+            height: 64,
             decoration: BoxDecoration(
               shape: BoxShape.circle,
               color: p.glassFill(),
-              border: Border.all(color: p.glassFillEdge(), width: 0.8),
+              border: Border.all(
+                  color: rank == 1 ? const Color(0xFFFFB800) : p.glassFillEdge(), width: rank == 1 ? 1.6 : 0.8),
+              boxShadow: p.glassShadow,
             ),
             clipBehavior: Clip.antiAlias,
             child: CachedNetworkImage(
               imageUrl: s.photoUrl,
               cacheManager: appImageCache,
-              memCacheWidth: 132,
+              memCacheWidth: 192,
               fit: BoxFit.cover,
-              errorWidget: (_, __, ___) => Icon(Icons.person_rounded, color: p.textFaint, size: 26),
+              errorWidget: (_, __, ___) => Icon(Icons.person_rounded, color: p.textFaint, size: 34),
             ),
           ),
-          const SizedBox(width: 10),
+          const SizedBox(width: 12),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -831,16 +877,17 @@ class _ScorerCard extends StatelessWidget {
                 Text(s.name,
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
-                    style: TextStyle(color: p.text, fontSize: 13, fontWeight: FontWeight.w800)),
-                const SizedBox(height: 3),
+                    style: TextStyle(
+                        fontFamily: kSportFont, color: p.text, fontSize: 15, fontWeight: FontWeight.w700, height: 1.2)),
+                const SizedBox(height: 2),
                 Row(
                   children: [
                     CachedNetworkImage(
                       imageUrl: s.crestUrl,
                       cacheManager: appImageCache,
                       memCacheWidth: 64,
-                      width: 14,
-                      height: 14,
+                      width: 16,
+                      height: 16,
                       fit: BoxFit.contain,
                       errorWidget: (_, __, ___) => const SizedBox.shrink(),
                     ),
@@ -859,8 +906,16 @@ class _ScorerCard extends StatelessWidget {
           Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Text('${s.goals}', style: TextStyle(color: p.text, fontSize: 20, fontWeight: FontWeight.w900, height: 1)),
-              Text('هدف', style: TextStyle(color: p.textMuted, fontSize: 10, fontWeight: FontWeight.w700)),
+              Text('${s.goals}',
+                  style: TextStyle(
+                      fontFamily: kSportFont, color: p.text, fontSize: 26, fontWeight: FontWeight.w800, height: 1)),
+              Text('هدف',
+                  style: TextStyle(
+                      fontFamily: kSportFont,
+                      color: p.textMuted,
+                      fontSize: 11,
+                      fontWeight: FontWeight.w700,
+                      height: 1.2)),
             ],
           ),
           if (s.assists > 0) ...[
@@ -869,8 +924,19 @@ class _ScorerCard extends StatelessWidget {
               mainAxisSize: MainAxisSize.min,
               children: [
                 Text('${s.assists}',
-                    style: TextStyle(color: p.textMuted, fontSize: 16, fontWeight: FontWeight.w900, height: 1)),
-                Text('صناعة', style: TextStyle(color: p.textMuted, fontSize: 10, fontWeight: FontWeight.w700)),
+                    style: TextStyle(
+                        fontFamily: kSportFont,
+                        color: p.textMuted,
+                        fontSize: 20,
+                        fontWeight: FontWeight.w800,
+                        height: 1)),
+                Text('صناعة',
+                    style: TextStyle(
+                        fontFamily: kSportFont,
+                        color: p.textMuted,
+                        fontSize: 11,
+                        fontWeight: FontWeight.w700,
+                        height: 1.2)),
               ],
             ),
           ],
@@ -914,7 +980,7 @@ class _ScorerRace extends StatelessWidget {
               const Icon(Icons.emoji_events_rounded, color: Color(0xFFFFB800), size: 18),
               const SizedBox(width: 6),
               Text('السباق إلى كأس الهداف',
-                  style: TextStyle(color: p.text, fontSize: 13.5, fontWeight: FontWeight.w900)),
+                  style: TextStyle(fontFamily: kSportFont, color: p.text, fontSize: 15, fontWeight: FontWeight.w800)),
             ],
           ),
           const SizedBox(height: 12),
@@ -1100,7 +1166,8 @@ class _Runner extends StatelessWidget {
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
             textAlign: TextAlign.center,
-            style: TextStyle(color: p.text, fontSize: 10, fontWeight: FontWeight.w800),
+            style: TextStyle(
+                fontFamily: kSportFont, color: p.text, fontSize: 11, fontWeight: FontWeight.w700, height: 1.2),
           ),
         ],
       ),
