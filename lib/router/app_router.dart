@@ -13,6 +13,7 @@ import '../features/reels/presentation/screens/reels_screen.dart';
 import '../features/settings/presentation/screens/settings_screen.dart';
 import '../features/watch/presentation/screens/watch_screen.dart';
 import '../features/sports/presentation/screens/sports_screen.dart';
+import '../features/sports/presentation/screens/tournament_screen.dart';
 import '../presentation/screens/main_scaffold.dart';
 
 import '../features/splash/presentation/screens/splash_screen.dart';
@@ -228,6 +229,11 @@ final appRouter = GoRouter(
       // left by swiping from the edge — start-edge, mirrored for RTL — the
       // way the user asked, without fighting the page's horizontal lists.
       pageBuilder: (context, state) => CupertinoPage(key: state.pageKey, child: const SportsScreen()),
+    ),
+    GoRoute(
+      path: '/tournaments',
+      parentNavigatorKey: _rootNavigatorKey,
+      pageBuilder: (context, state) => CupertinoPage(key: state.pageKey, child: const TournamentScreen()),
     ),
     GoRoute(
       path: '/sports-activation',

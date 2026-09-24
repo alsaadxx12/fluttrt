@@ -372,6 +372,15 @@ class _AppDrawerState extends ConsumerState<AppDrawer> {
                         },
                       ),
                       _DrawerItem(
+                        icon: Icons.emoji_events_rounded,
+                        title: 'البطولات',
+                        isSelected: currentPath == '/tournaments',
+                        onTap: () {
+                          Navigator.pop(context);
+                          context.push('/tournaments');
+                        },
+                      ),
+                      _DrawerItem(
                         icon: Icons.smart_display_rounded,
                         title: 'يوتيوب',
                         isSelected: currentPath == '/youtube_cinematic',
