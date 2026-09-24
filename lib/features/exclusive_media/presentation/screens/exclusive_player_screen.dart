@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
+import 'package:youtube_downloader/presentation/widgets/episode_row.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:video_player/video_player.dart';
@@ -21,6 +22,9 @@ class ExclusivePlayerScreen extends ConsumerStatefulWidget {
   final List<ExclusiveEpisode>? allEpisodes;
   final int? currentEpisodeNumber;
 
+  /// A picture for each episode number, when the details page found some.
+  final Map<int, String>? stills;
+
   const ExclusivePlayerScreen({
     super.key,
     this.item,
@@ -28,11 +32,11 @@ class ExclusivePlayerScreen extends ConsumerStatefulWidget {
     required this.title,
     this.allEpisodes,
     this.currentEpisodeNumber,
+    this.stills,
   });
 
   @override
-  ConsumerState<ExclusivePlayerScreen> createState() =>
-      _ExclusivePlayerScreenState();
+  ConsumerState<ExclusivePlayerScreen> createState() => _ExclusivePlayerScreenState();
 }
 
 class _ExclusivePlayerScreenState extends ConsumerState<ExclusivePlayerScreen> {
@@ -140,8 +144,7 @@ class _ExclusivePlayerScreenState extends ConsumerState<ExclusivePlayerScreen> {
     }
   }
 
-  Future<void> _startPlayback(String streamUrl,
-      {required int token, Duration? startAt}) async {
+  Future<void> _startPlayback(String streamUrl, {required int token, Duration? startAt}) async {
     _closeController();
     setState(() {
       _isLoading = true;
@@ -217,10 +220,8 @@ class _ExclusivePlayerScreenState extends ConsumerState<ExclusivePlayerScreen> {
 
   void _playNextEpisode() {
     final episodes = widget.allEpisodes;
-    if (episodes == null || episodes.isEmpty || _currentEpNumber == null)
-      return;
-    final nextIdx =
-        episodes.indexWhere((e) => e.number == _currentEpNumber! + 1);
+    if (episodes == null || episodes.isEmpty || _currentEpNumber == null) return;
+    final nextIdx = episodes.indexWhere((e) => e.number == _currentEpNumber! + 1);
     if (nextIdx != -1) {
       final nextEp = episodes[nextIdx];
       setState(() {
@@ -234,10 +235,8 @@ class _ExclusivePlayerScreenState extends ConsumerState<ExclusivePlayerScreen> {
 
   void _playPreviousEpisode() {
     final episodes = widget.allEpisodes;
-    if (episodes == null || episodes.isEmpty || _currentEpNumber == null)
-      return;
-    final prevIdx =
-        episodes.indexWhere((e) => e.number == _currentEpNumber! - 1);
+    if (episodes == null || episodes.isEmpty || _currentEpNumber == null) return;
+    final prevIdx = episodes.indexWhere((e) => e.number == _currentEpNumber! - 1);
     if (prevIdx != -1) {
       final prevEp = episodes[prevIdx];
       setState(() {
@@ -253,10 +252,8 @@ class _ExclusivePlayerScreenState extends ConsumerState<ExclusivePlayerScreen> {
   Widget build(BuildContext context) {
     final palette = AppPalette.of(context);
     final episodes = widget.allEpisodes ?? const [];
-    final hasPrev = _currentEpNumber != null &&
-        episodes.any((e) => e.number == _currentEpNumber! - 1);
-    final hasNext = _currentEpNumber != null &&
-        episodes.any((e) => e.number == _currentEpNumber! + 1);
+    final hasPrev = _currentEpNumber != null && episodes.any((e) => e.number == _currentEpNumber! - 1);
+    final hasNext = _currentEpNumber != null && episodes.any((e) => e.number == _currentEpNumber! + 1);
 
     if (_isFullscreen) {
       return Scaffold(
@@ -319,24 +316,20 @@ class _ExclusivePlayerScreenState extends ConsumerState<ExclusivePlayerScreen> {
                   padding: const EdgeInsets.fromLTRB(16, 16, 16, 24),
                   children: [
                     // Episode navigation bar
-                    if (widget.allEpisodes != null &&
-                        widget.allEpisodes!.isNotEmpty) ...[
+                    if (widget.allEpisodes != null && widget.allEpisodes!.isNotEmpty) ...[
                       Row(
                         children: [
                           Expanded(
                             child: OutlinedButton.icon(
                               onPressed: hasPrev ? _playPreviousEpisode : null,
-                              icon: const Icon(Icons.skip_previous_rounded,
-                                  size: 18),
+                              icon: const Icon(Icons.skip_previous_rounded, size: 18),
                               label: const Text('الحلقة السابقة'),
                               style: OutlinedButton.styleFrom(
                                 foregroundColor: Colors.white,
                                 side: BorderSide(
-                                  color:
-                                      hasPrev ? Colors.white24 : Colors.white10,
+                                  color: hasPrev ? Colors.white24 : Colors.white10,
                                 ),
-                                shape: RoundedRectangleBorder(
-                                    borderRadius: BorderRadius.circular(8)),
+                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
                               ),
                             ),
                           ),
@@ -344,16 +337,12 @@ class _ExclusivePlayerScreenState extends ConsumerState<ExclusivePlayerScreen> {
                           Expanded(
                             child: ElevatedButton.icon(
                               onPressed: hasNext ? _playNextEpisode : null,
-                              icon:
-                                  const Icon(Icons.skip_next_rounded, size: 18),
+                              icon: const Icon(Icons.skip_next_rounded, size: 18),
                               label: const Text('الحلقة التالية'),
                               style: ElevatedButton.styleFrom(
-                                backgroundColor: hasNext
-                                    ? AppColors.primary
-                                    : Colors.white10,
+                                backgroundColor: hasNext ? AppColors.primary : Colors.white10,
                                 foregroundColor: Colors.white,
-                                shape: RoundedRectangleBorder(
-                                    borderRadius: BorderRadius.circular(8)),
+                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
                               ),
                             ),
                           ),
@@ -361,58 +350,39 @@ class _ExclusivePlayerScreenState extends ConsumerState<ExclusivePlayerScreen> {
                       ),
                       const SizedBox(height: 18),
 
-                      // Episodes quick list
+                      // Every source's episodes in one row, the one
+                      // playing ringed in red.
                       Text(
                         'كافة الحلقات (${widget.allEpisodes!.length})',
-                        style: const TextStyle(
-                          color: Colors.white,
+                        style: TextStyle(
+                          color: AppPalette.of(context).text,
                           fontSize: 16,
                           fontWeight: FontWeight.w800,
                         ),
                       ),
                       const SizedBox(height: 10),
-                      SizedBox(
-                        height: 48,
-                        child: ListView.separated(
-                          scrollDirection: Axis.horizontal,
-                          itemCount: widget.allEpisodes!.length,
-                          separatorBuilder: (_, __) => const SizedBox(width: 8),
-                          itemBuilder: (context, idx) {
-                            final ep = widget.allEpisodes![idx];
-                            final isCurrent = ep.number == _currentEpNumber;
-                            return ActionChip(
-                              label: Text('حلقة ${ep.number}'),
-                              labelStyle: TextStyle(
-                                color:
-                                    isCurrent ? Colors.white : Colors.white70,
-                                fontWeight: isCurrent
-                                    ? FontWeight.w900
-                                    : FontWeight.w600,
-                                fontSize: 12.5,
-                              ),
-                              backgroundColor: isCurrent
-                                  ? AppColors.primary
-                                  : const Color(0xFF141926),
-                              side: BorderSide(
-                                color: isCurrent
-                                    ? AppColors.primary
-                                    : Colors.white12,
-                                width: 1,
-                              ),
-                              shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(8)),
-                              onPressed: () {
-                                if (isCurrent) return;
-                                setState(() {
-                                  _currentWatchUrl = ep.url;
-                                  _currentTitle = ep.title;
-                                  _currentEpNumber = ep.number;
-                                });
-                                _loadAndPlayStream(ep.url);
-                              },
-                            );
-                          },
-                        ),
+                      EpisodeRow(
+                        tiles: [
+                          for (final ep in widget.allEpisodes!)
+                            EpisodeTile(
+                              label: 'الحلقة ${ep.number}',
+                              image:
+                                  (ep.thumbnailUrl?.isNotEmpty ?? false) ? ep.thumbnailUrl : widget.stills?[ep.number],
+                              note: ep.date,
+                            ),
+                        ],
+                        fallbackImage: widget.item?.posterUrl ?? '',
+                        currentIndex: widget.allEpisodes!.indexWhere((e) => e.number == _currentEpNumber),
+                        onTap: (i) {
+                          final ep = widget.allEpisodes![i];
+                          if (ep.number == _currentEpNumber) return;
+                          setState(() {
+                            _currentWatchUrl = ep.url;
+                            _currentTitle = ep.title;
+                            _currentEpNumber = ep.number;
+                          });
+                          _loadAndPlayStream(ep.url);
+                        },
                       ),
                     ],
                   ],

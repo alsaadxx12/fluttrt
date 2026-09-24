@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:youtube_downloader/presentation/widgets/episode_row.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:video_player/video_player.dart';
@@ -562,7 +563,8 @@ class _CinemanaWatchScreenState extends ConsumerState<CinemanaWatchScreen> {
 
                       const SizedBox(height: 10),
 
-                      // Episodes Carousel scrolling RTL (From Right to Left)
+                      // Every source's episodes in one row, the one
+                      // playing ringed in red and the row opened on it.
                       Builder(
                         builder: (context) {
                           final currentSeasonEpisodes =
@@ -570,140 +572,19 @@ class _CinemanaWatchScreenState extends ConsumerState<CinemanaWatchScreen> {
                                       _seasons.containsKey(_selectedSeason))
                                   ? _seasons[_selectedSeason]!
                                   : widget.episodes;
-
-                          return SizedBox(
-                            height: 120,
-                            child: Directionality(
-                              textDirection: TextDirection.rtl,
-                              child: ListView.separated(
-                                scrollDirection: Axis.horizontal,
-                                itemCount: currentSeasonEpisodes.length,
-                                separatorBuilder: (_, __) =>
-                                    const SizedBox(width: 10),
-                                itemBuilder: (context, index) {
-                                  final ep = currentSeasonEpisodes[index];
-                                  final isCurrent =
-                                      _currentEpisode?.id == ep.id;
-
-                                  return InkWell(
-                                    onTap: () => _selectEpisode(ep),
-                                    borderRadius: BorderRadius.circular(10),
-                                    child: Container(
-                                      width: 140,
-                                      decoration: BoxDecoration(
-                                        color: isDark
-                                            ? const Color(0xFF1E1E26)
-                                            : Colors.white,
-                                        borderRadius: BorderRadius.circular(10),
-                                        border: Border.all(
-                                          color: isCurrent
-                                              ? AppColors.primary
-                                              : (isDark
-                                                  ? Colors.transparent
-                                                  : AppPalette.of(context)
-                                                      .border),
-                                          width: 2,
-                                        ),
-                                      ),
-                                      child: Column(
-                                        crossAxisAlignment:
-                                            CrossAxisAlignment.start,
-                                        children: [
-                                          Expanded(
-                                            child: Stack(
-                                              fit: StackFit.expand,
-                                              children: [
-                                                ClipRRect(
-                                                  borderRadius:
-                                                      const BorderRadius
-                                                          .vertical(
-                                                          top: Radius.circular(
-                                                              8)),
-                                                  child: ep.imgUrl != null &&
-                                                          ep.imgUrl!.isNotEmpty
-                                                      ? Image.network(
-                                                          ep.imgUrl!,
-                                                          fit: BoxFit.cover,
-                                                          cacheWidth: 320,
-                                                          errorBuilder: (_, __,
-                                                                  ___) =>
-                                                              Container(
-                                                                  color: isDark
-                                                                      ? Colors
-                                                                          .black26
-                                                                      : AppPalette.of(
-                                                                              context)
-                                                                          .skeleton),
-                                                        )
-                                                      : Container(
-                                                          color: isDark
-                                                              ? Colors.black26
-                                                              : AppPalette.of(
-                                                                      context)
-                                                                  .skeleton),
-                                                ),
-                                                if (isCurrent)
-                                                  Container(
-                                                    decoration: BoxDecoration(
-                                                      color: AppColors.primary
-                                                          .withOpacity(0.35),
-                                                      borderRadius:
-                                                          const BorderRadius
-                                                              .vertical(
-                                                              top: Radius
-                                                                  .circular(8)),
-                                                    ),
-                                                    child: const Center(
-                                                      child: Icon(
-                                                          Icons
-                                                              .play_arrow_rounded,
-                                                          color: Colors.white,
-                                                          size: 32),
-                                                    ),
-                                                  ),
-                                              ],
-                                            ),
-                                          ),
-                                          Padding(
-                                            padding: const EdgeInsets.symmetric(
-                                                horizontal: 8, vertical: 6),
-                                            child: Row(
-                                              mainAxisAlignment:
-                                                  MainAxisAlignment
-                                                      .spaceBetween,
-                                              children: [
-                                                Text(
-                                                  'الحلقة ${ep.episodeNumber}',
-                                                  style: TextStyle(
-                                                    fontSize: 12,
-                                                    fontWeight: isCurrent
-                                                        ? FontWeight.bold
-                                                        : FontWeight.w600,
-                                                    color: isCurrent
-                                                        ? AppColors.primary
-                                                        : (isDark
-                                                            ? Colors.white
-                                                            : Colors.black87),
-                                                  ),
-                                                ),
-                                                if (ep.duration.isNotEmpty)
-                                                  Text(
-                                                    ep.duration,
-                                                    style: const TextStyle(
-                                                        fontSize: 10,
-                                                        color: AppColors
-                                                            .darkTextSecondary),
-                                                  ),
-                                              ],
-                                            ),
-                                          ),
-                                        ],
-                                      ),
-                                    ),
-                                  );
-                                },
-                              ),
-                            ),
+                          return EpisodeRow(
+                            tiles: [
+                              for (final ep in currentSeasonEpisodes)
+                                EpisodeTile(
+                                    label: 'الحلقة ${ep.episodeNumber}',
+                                    image: ep.imgUrl,
+                                    note: ep.duration),
+                            ],
+                            fallbackImage: widget.item.cardImageUrl,
+                            currentIndex: currentSeasonEpisodes
+                                .indexWhere((e) => e.id == _currentEpisode?.id),
+                            onTap: (i) =>
+                                _selectEpisode(currentSeasonEpisodes[i]),
                           );
                         },
                       ),

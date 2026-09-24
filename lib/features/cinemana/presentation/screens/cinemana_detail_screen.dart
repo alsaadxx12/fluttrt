@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
+import 'package:youtube_downloader/presentation/widgets/episode_row.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:youtube_downloader/core/constants/app_colors.dart';
 import 'package:youtube_downloader/core/constants/app_palette.dart';
@@ -520,29 +521,19 @@ class _CinemanaDetailScreenState extends ConsumerState<CinemanaDetailScreen> {
                         ),
                       )
                     else ...[
+                      // One row for every source: see EpisodeRow.
                       Builder(
                         builder: (context) {
                           final currentSeasonEpisodes = (_selectedSeason != null && _seasons.containsKey(_selectedSeason))
                               ? _seasons[_selectedSeason]!
                               : _allEpisodes;
-
-                          // Right-to-left row of episode cards, each with
-                          // its picture (the episode's own, else the show's).
-                          return SizedBox(
-                            // 150 for the cards plus the list's bottom padding.
-                            height: 160,
-                            child: Directionality(
-                              textDirection: TextDirection.rtl,
-                              child: ListView.separated(
-                                scrollDirection: Axis.horizontal,
-                                padding: const EdgeInsets.only(bottom: 10),
-                                physics: const BouncingScrollPhysics(),
-                                itemCount: currentSeasonEpisodes.length,
-                                separatorBuilder: (_, __) => const SizedBox(width: 10),
-                                itemBuilder: (context, index) =>
-                                    _buildEpisodeCard(currentSeasonEpisodes[index], item, isDark),
-                              ),
-                            ),
+                          return EpisodeRow(
+                            tiles: [
+                              for (final ep in currentSeasonEpisodes)
+                                EpisodeTile(label: 'الحلقة ${ep.episodeNumber}', image: ep.imgUrl, note: ep.duration),
+                            ],
+                            fallbackImage: item.cardImageUrl,
+                            onTap: (i) => _watchItem(episode: currentSeasonEpisodes[i]),
                           );
                         },
                       ),
@@ -559,74 +550,6 @@ class _CinemanaDetailScreenState extends ConsumerState<CinemanaDetailScreen> {
           ),
           const HouseNotice.snacks(),
         ],
-      ),
-    );
-  }
-
-  Widget _buildEpisodeCard(CinemanaEpisode ep, CinemanaItem show, bool isDark) {
-    final image = (ep.imgUrl != null && ep.imgUrl!.isNotEmpty) ? ep.imgUrl! : show.cardImageUrl;
-    final dpr = MediaQuery.of(context).devicePixelRatio;
-    final palette = AppPalette.of(context);
-    return InkWell(
-      onTap: () => _watchItem(episode: ep),
-      borderRadius: BorderRadius.circular(12),
-      child: Container(
-        width: 150,
-        decoration: BoxDecoration(
-          // Light mode: a flat white card on the white page, hairline border only.
-          color: isDark ? const Color(0xFF1B1B22) : palette.card,
-          borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: isDark ? const Color(0xFF2C2C38) : palette.border),
-        ),
-        clipBehavior: Clip.antiAlias,
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Expanded(
-              child: Stack(
-                fit: StackFit.expand,
-                children: [
-                  if (image.isNotEmpty)
-                    CachedNetworkImage(
-                      imageUrl: image,
-                      fit: BoxFit.cover,
-                      memCacheWidth: (150 * dpr).round(),
-                      placeholder: (_, __) => ColoredBox(color: isDark ? Colors.black26 : palette.skeleton),
-                      errorWidget: (_, __, ___) => ColoredBox(color: isDark ? Colors.black26 : palette.skeleton),
-                    )
-                  else
-                    ColoredBox(color: isDark ? Colors.black26 : palette.skeleton),
-                  const Center(
-                    child: Icon(
-                      Icons.play_circle_fill_rounded,
-                      color: Colors.white,
-                      size: 34,
-                      shadows: [Shadow(color: Colors.black54, blurRadius: 8)],
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Text(
-                    'الحلقة ${ep.episodeNumber}',
-                    style: TextStyle(
-                      fontSize: 12.5,
-                      fontWeight: FontWeight.bold,
-                      color: isDark ? Colors.white : const Color(0xFF0F172A),
-                    ),
-                  ),
-                  if (ep.duration.isNotEmpty)
-                    Text(ep.duration, style: const TextStyle(fontSize: 10, color: AppColors.darkTextSecondary)),
-                ],
-              ),
-            ),
-          ],
-        ),
       ),
     );
   }

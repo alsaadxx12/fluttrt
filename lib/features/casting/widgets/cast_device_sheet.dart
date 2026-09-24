@@ -577,8 +577,8 @@ class _CastMark extends StatelessWidget {
   final bool compact;
 
   /// The strip the animation is shown in.
-  static const double _full = 150;
-  static const double _small = 112;
+  static const double _full = 108;
+  static const double _small = 84;
 
   /// The Lottie draws its mark in the middle third of a square canvas and
   /// leaves the rest empty, so shown whole it is small. The canvas is

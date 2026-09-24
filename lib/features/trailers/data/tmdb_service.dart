@@ -213,6 +213,93 @@ class TmdbService {
     return null;
   }
 
+  /// A picture for each episode of [season] of the series called [title]:
+  /// episode number to still. Empty when TMDB does not know the series,
+  /// so a page can fall back to the show's own picture.
+  Future<Map<int, String>> episodeStills(
+    String title, {
+    int season = 1,
+    String? hint,
+    String? year,
+  }) async {
+    if (!TmdbConfig.isConfigured) return const {};
+    final cacheKey = '$title|$hint|$year|$season';
+    final cached = _stillsCache[cacheKey];
+    if (cached != null) return cached;
+    final id = await _seriesId(title, hint: hint, year: year);
+    final out = <int, String>{};
+    if (id != null) {
+      try {
+        final res = await _dio.get<Map<String, dynamic>>(
+          '/tv/$id/season/$season',
+          queryParameters: {'language': 'ar-SA'},
+        );
+        final episodes = (res.data?['episodes'] as List?) ?? const [];
+        for (final e in episodes.whereType<Map<String, dynamic>>()) {
+          final n = e['episode_number'];
+          final still = e['still_path'];
+          if (n is int && still is String && still.isNotEmpty) {
+            out[n] = 'https://image.tmdb.org/t/p/w400$still';
+          }
+        }
+      } catch (_) {}
+    }
+    _stillsCache[cacheKey] = out;
+    return out;
+  }
+
+  static final Map<String, Map<int, String>> _stillsCache = {};
+
+  /// TMDB's id for the series called [title], found the way
+  /// [backdropForTitle] finds its picture: the Arabic name, a name the
+  /// region knows it by, then the original name in [hint].
+  Future<int?> _seriesId(String title, {String? hint, String? year}) async {
+    final q = cleanTitle(title);
+    final arabic = RegExp(r'[؀-ۿ]').hasMatch(q);
+    final tries = <(String, String)>[];
+    final known = knownOriginals[q];
+    if (known != null) tries.add((known, 'en-US'));
+    if (q.isNotEmpty) tries.add((q, arabic ? 'ar-SA' : 'en-US'));
+    // The first of several other names, and only its Latin half.
+    var h = cleanTitle((hint ?? '').split(RegExp(r'[,/|،]')).first);
+    if (arabic) {
+      final latin = (h.isNotEmpty ? h : q)
+          .replaceAll(RegExp(r'[^A-Za-z0-9ÇĞİÖŞÜçğıöşü ]+'), ' ')
+          .replaceAll(RegExp(r'\s+'), ' ')
+          .trim();
+      if (latin.length >= 3) h = latin;
+    }
+    if (h.isNotEmpty && h.toLowerCase() != q.toLowerCase()) tries.add((h, 'en-US'));
+    for (final (query, lang) in tries) {
+      final id = await _searchSeriesId(query, lang, year: year);
+      if (id != null) return id;
+    }
+    return null;
+  }
+
+  Future<int?> _searchSeriesId(String query, String language, {String? year}) async {
+    for (final withYear in [true, false]) {
+      if (withYear && (year == null || year.isEmpty)) continue;
+      try {
+        final res = await _dio.get<Map<String, dynamic>>(
+          '/search/tv',
+          queryParameters: {
+            'query': query,
+            'language': language,
+            if (withYear) 'first_air_date_year': year,
+            'include_adult': false,
+          },
+        );
+        final results = (res.data?['results'] as List?) ?? const [];
+        for (final r in results.whereType<Map<String, dynamic>>()) {
+          final id = r['id'];
+          if (id is int) return id;
+        }
+      } catch (_) {}
+    }
+    return null;
+  }
+
   /// Arabic names of series the region watches, by the original names
   /// TMDB lists them under. Only the ones TMDB's Arabic translations do
   /// not cover; the rest are found by the Arabic name itself.
