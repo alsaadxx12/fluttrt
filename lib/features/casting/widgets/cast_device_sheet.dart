@@ -38,32 +38,10 @@ class _CastSheet extends ConsumerStatefulWidget {
 }
 
 class _CastSheetState extends ConsumerState<_CastSheet> {
-  @override
-  void initState() {
-    super.initState();
-    // Straight back to last time's screen, without a tap: the sheet opens,
-    // the remembered set is at the top of the list with its spinner
-    // already turning, and a moment later it is connected. Anyone who
-    // wants a different screen taps it; that connection takes over.
-    WidgetsBinding.instance.addPostFrameCallback((_) => _reconnectToLast());
-  }
-
-  Future<void> _reconnectToLast() async {
-    final controller = ref.read(castControllerProvider.notifier);
-    final state = ref.read(castControllerProvider);
-    if (state.isConnected || state.status == CastStatus.connecting) return;
-    final last = await ref.read(lastCastDeviceProvider.future);
-    if (last == null || !mounted) return;
-    // Only when the network can carry it: on mobile data the attempt
-    // would fail four times over, and the banner already says why.
-    final network = await ref.read(localNetworkProvider.future);
-    if (!mounted || network != LocalNetworkStatus.wifi) return;
-    try {
-      await controller.connectToLast(last);
-    } on CastException {
-      // The sheet shows the reason; the list is still there to pick from.
-    }
-  }
+  // No connecting on its own: the sheet used to reach for last time's
+  // screen the moment it opened, which got in the way of choosing another
+  // and kept knocking at a set that was off. Last time's screen still sits
+  // at the top of the list; a tap connects.
 
   @override
   Widget build(BuildContext context) {
