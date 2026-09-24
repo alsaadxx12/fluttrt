@@ -6,6 +6,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../../core/constants/app_palette.dart';
+import 'package:youtube_downloader/presentation/widgets/section_title.dart';
 import '../../../../core/network/image_cache.dart';
 import '../../../../presentation/widgets/card_motion.dart';
 import '../../../../presentation/widgets/reveal.dart';
@@ -60,36 +61,7 @@ class AlkassChannelsRow extends ConsumerWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 16),
-          child: Row(
-            children: [
-              // The same short brand bar every section's title hangs from.
-              Container(
-                width: 3.5,
-                height: 18,
-                margin: const EdgeInsetsDirectional.only(end: 9),
-                decoration: BoxDecoration(
-                  gradient: const LinearGradient(
-                    begin: Alignment.topCenter,
-                    end: Alignment.bottomCenter,
-                    colors: [Color(0xFFFF4757), Color(0xFFE50914)],
-                  ),
-                  borderRadius: BorderRadius.circular(3),
-                ),
-              ),
-              Text(
-                'قنوات',
-                style: TextStyle(
-                  color: Theme.of(context).brightness == Brightness.dark ? Colors.white : const Color(0xFF0F172A),
-                  fontSize: 15,
-                  fontWeight: FontWeight.w900,
-                  letterSpacing: -0.3,
-                ),
-              ),
-            ],
-          ),
-        ),
+        const SectionTitle('قنوات'),
         const SizedBox(height: 12),
         SizedBox(
           height: _tileH,

@@ -3,6 +3,7 @@ import 'dart:io';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/foundation.dart' show listEquals;
 import 'package:flutter/material.dart';
+import 'package:youtube_downloader/presentation/widgets/section_title.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -1140,8 +1141,16 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
       mainAxisSize: MainAxisSize.min,
       crossAxisAlignment: CrossAxisAlignment.center,
       children: [
-        // Metadata: ⭐ Stars • Genre • Year
-        Row(
+        // Metadata on one pill of dark glass: ⭐ Stars • Genre • Year
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
+          decoration: BoxDecoration(
+            color: Colors.black.withOpacity(0.38),
+            borderRadius: BorderRadius.circular(20),
+            border: Border.all(color: Colors.white.withOpacity(0.28), width: 0.8),
+          ),
+          child: Row(
+          mainAxisSize: MainAxisSize.min,
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             const Icon(Icons.star_rounded, color: Color(0xFFFFB800), size: 15),
@@ -1152,10 +1161,6 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                 color: Colors.white,
                 fontSize: 12,
                 fontWeight: FontWeight.w800,
-                shadows: [
-                  Shadow(color: Colors.black, blurRadius: 3),
-                  Shadow(color: Colors.black87, blurRadius: 10),
-                ],
               ),
             ),
             _buildMetaSeparator(),
@@ -1165,10 +1170,6 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                 color: Colors.white,
                 fontSize: 11.5,
                 fontWeight: FontWeight.w600,
-                shadows: [
-                  Shadow(color: Colors.black, blurRadius: 3),
-                  Shadow(color: Colors.black87, blurRadius: 10),
-                ],
               ),
             ),
             _buildMetaSeparator(),
@@ -1178,13 +1179,10 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                 color: Colors.white,
                 fontSize: 11.5,
                 fontWeight: FontWeight.w600,
-                shadows: [
-                  Shadow(color: Colors.black, blurRadius: 3),
-                  Shadow(color: Colors.black87, blurRadius: 10),
-                ],
               ),
             ),
           ],
+          ),
         ),
 
         const SizedBox(height: 8),
@@ -1306,75 +1304,25 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        // Section Header Row (NO "عرض الكل")
-        Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 16),
-          child: Row(
-            children: [
-              if (isLiveMode) ...[
-                Container(
+        SectionTitle(
+          title,
+          // Live: a pulsing red dot in place of the brand bar.
+          leading: isLiveMode
+              ? Container(
                   width: 9,
                   height: 9,
+                  margin: const EdgeInsetsDirectional.only(end: 9),
                   decoration: const BoxDecoration(
                     shape: BoxShape.circle,
                     color: Color(0xFFFF2A4A),
-                    boxShadow: [
-                      BoxShadow(
-                        color: Color(0xFFFF2A4A),
-                        blurRadius: 8,
-                        spreadRadius: 2,
-                      ),
-                    ],
+                    boxShadow: [BoxShadow(color: Color(0xFFFF2A4A), blurRadius: 8, spreadRadius: 2)],
                   ),
-                ),
-                const SizedBox(width: 8),
-              ] else ...[
-                Icon(Icons.sports_soccer_rounded,
-                    color: _p.icon, size: 19),
-                const SizedBox(width: 8),
-              ],
-
-              // Dynamic Title: "المباريات المباشرة" or "مباريات اليوم"
-              Text(
-                title,
-                style: TextStyle(
-                  color: _p.text,
-                  fontSize: 15,
-                  fontWeight: FontWeight.w900,
-                  letterSpacing: -0.3,
-                ),
-              ),
-              const Spacer(),
-              InkWell(
-                onTap: () {
-                  final isUnlocked = ref.read(isSportsUnlockedProvider);
-                  context.push(isUnlocked ? '/sports' : '/sports-activation');
-                },
-                borderRadius: BorderRadius.circular(8),
-                child: const Padding(
-                  padding: EdgeInsets.symmetric(horizontal: 6, vertical: 4),
-                  child: Row(
-                    children: [
-                      Text(
-                        'عرض الكل',
-                        style: TextStyle(
-                          color: Color(0xFFFF1744),
-                          fontSize: 12.5,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                      SizedBox(width: 2),
-                      Icon(
-                        Icons.arrow_forward_ios_rounded,
-                        color: Color(0xFFFF1744),
-                        size: 11,
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-            ],
-          ),
+                )
+              : null,
+          onViewAll: () {
+            final isUnlocked = ref.read(isSportsUnlockedProvider);
+            context.push(isUnlocked ? '/sports' : '/sports-activation');
+          },
         ),
         const SizedBox(height: 12),
 
@@ -1717,73 +1665,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        // Section Title with "عرض الكل"
-        Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 16),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Row(
-                children: [
-                  // A short brand bar anchors the title to the section.
-                  Container(
-                    width: 3.5,
-                    height: 18,
-                    margin: const EdgeInsetsDirectional.only(end: 9),
-                    decoration: BoxDecoration(
-                      gradient: const LinearGradient(
-                        begin: Alignment.topCenter,
-                        end: Alignment.bottomCenter,
-                        colors: [Color(0xFFFF4757), Color(0xFFE50914)],
-                      ),
-                      borderRadius: BorderRadius.circular(3),
-                    ),
-                  ),
-                  Text(
-                    title,
-                    style: TextStyle(
-                      color: Theme.of(context).brightness == Brightness.dark
-                          ? Colors.white
-                          : const Color(0xFF0F172A),
-                      fontSize: 15,
-                      fontWeight: FontWeight.w900,
-                      letterSpacing: -0.3,
-                    ),
-                  ),
-                ],
-              ),
-              if (onViewAll != null)
-                InkWell(
-                  onTap: onViewAll,
-                  borderRadius: BorderRadius.circular(20),
-                  child: Container(
-                    padding:
-                        const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-                    decoration: BoxDecoration(
-                      color: const Color(0xFFE50914).withOpacity(0.10),
-                      borderRadius: BorderRadius.circular(20),
-                    ),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        const Text(
-                          'عرض الكل',
-                          style: TextStyle(
-                            color: Color(0xFFE50914),
-                            fontSize: 12.5,
-                            fontWeight: FontWeight.w900,
-                          ),
-                        ),
-                        const SizedBox(width: 2),
-                        Icon(Icons.chevron_left_rounded,
-                            size: 17, color: AppPalette.of(context).icon),
-                      ],
-                    ),
-                  ),
-                ),
-            ],
-          ),
-        ),
+        SectionTitle(title, onViewAll: onViewAll),
         const SizedBox(height: 12),
 
         // Horizontal List of Movie Posters
@@ -1974,50 +1856,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        // Section Title
-        Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 16),
-          child: Row(
-            children: [
-              Text(
-                title,
-                style: TextStyle(
-                  color: Theme.of(context).brightness == Brightness.dark
-                      ? Colors.white
-                      : const Color(0xFF0F172A),
-                  fontSize: 15,
-                  fontWeight: FontWeight.w900,
-                  letterSpacing: -0.3,
-                ),
-              ),
-              const Spacer(),
-              if (onViewAll != null)
-                InkWell(
-                  onTap: onViewAll,
-                  borderRadius: BorderRadius.circular(8),
-                  child: Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        const Text(
-                          'عرض الكل',
-                          style: TextStyle(
-                            color: Color(0xFFE50914),
-                            fontSize: 13,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                        const SizedBox(width: 2),
-                        Icon(Icons.chevron_left_rounded,
-                            size: 18, color: AppPalette.of(context).icon),
-                      ],
-                    ),
-                  ),
-                ),
-            ],
-          ),
-        ),
+        SectionTitle(title, onViewAll: onViewAll),
         const SizedBox(height: 12),
 
         // Horizontal List of Wide Cards (224w x 138h)

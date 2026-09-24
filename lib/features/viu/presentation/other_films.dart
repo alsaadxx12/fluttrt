@@ -1,5 +1,6 @@
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
+import 'package:youtube_downloader/presentation/widgets/section_title.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:youtube_downloader/core/network/image_cache.dart';
 
@@ -134,54 +135,19 @@ class OtherFilmsSection extends ConsumerWidget {
     final async = ref.watch(otherFilmsHomeProvider);
     final films = async.valueOrNull ?? const <OtherFilm>[];
     if (!async.isLoading && films.isEmpty) return const SizedBox.shrink();
-    final isDark = Theme.of(context).brightness == Brightness.dark;
 
     return Padding(
       padding: const EdgeInsets.only(bottom: 24),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Text(
-                  ViuCategory.movies.title,
-                  style: TextStyle(
-                    color: isDark ? Colors.white : const Color(0xFF0F172A),
-                    fontSize: 15,
-                    fontWeight: FontWeight.w900,
-                    letterSpacing: -0.3,
-                  ),
-                ),
-                if (films.isNotEmpty)
-                  InkWell(
-                    onTap: () =>
-                        Navigator.of(context, rootNavigator: true).push(
-                      MaterialPageRoute(
-                          builder: (_) => const OtherFilmsScreen()),
+          SectionTitle(
+            ViuCategory.movies.title,
+            onViewAll: films.isEmpty
+                ? null
+                : () => Navigator.of(context, rootNavigator: true).push(
+                      MaterialPageRoute(builder: (_) => const OtherFilmsScreen()),
                     ),
-                    borderRadius: BorderRadius.circular(8),
-                    child: const Padding(
-                      padding: EdgeInsets.symmetric(horizontal: 6, vertical: 4),
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Text('عرض الكل',
-                              style: TextStyle(
-                                  color: Color(0xFFE50914),
-                                  fontSize: 13,
-                                  fontWeight: FontWeight.bold)),
-                          SizedBox(width: 2),
-                          Icon(Icons.chevron_left_rounded,
-                              size: 18, color: Color(0xFFE50914)),
-                        ],
-                      ),
-                    ),
-                  ),
-              ],
-            ),
           ),
           const SizedBox(height: 12),
           SizedBox(

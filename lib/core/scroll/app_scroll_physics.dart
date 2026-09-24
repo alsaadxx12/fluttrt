@@ -44,8 +44,15 @@ class AppScrollBehavior extends MaterialScrollBehavior {
 
   @override
   Widget buildOverscrollIndicator(BuildContext context, Widget child, ScrollableDetails details) {
-    // Disable unsightly Android glow/stretch effects in favor of clean edge physics
-    return child;
+    // At the end of a list the page stretches a little and settles, the
+    // way Android 12 and up draws it; no blue glow, and nothing on desktop.
+    switch (getPlatform(context)) {
+      case TargetPlatform.android:
+      case TargetPlatform.iOS:
+        return StretchingOverscrollIndicator(axisDirection: details.direction, child: child);
+      default:
+        return child;
+    }
   }
 
   @override

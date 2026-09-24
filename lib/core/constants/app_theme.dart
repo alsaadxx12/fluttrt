@@ -122,6 +122,30 @@ class AppTheme {
         surfaceTintColor: Colors.transparent,
         modalBackgroundColor: AppColors.lightCard,
       ),
+      // Pages slide in from the end and can be dragged back, the way a
+      // phone's own screens move: lighter on the eye and on the GPU than
+      // the zoom Android draws by default.
+      pageTransitionsTheme: const PageTransitionsTheme(
+        builders: {
+          TargetPlatform.android: CupertinoPageTransitionsBuilder(),
+          TargetPlatform.iOS: CupertinoPageTransitionsBuilder(),
+          TargetPlatform.windows: FadeUpwardsPageTransitionsBuilder(),
+          TargetPlatform.linux: FadeUpwardsPageTransitionsBuilder(),
+          TargetPlatform.macOS: FadeUpwardsPageTransitionsBuilder(),
+        },
+      ),
+      // One snackbar everywhere: a floating card of the page's glass.
+      snackBarTheme: SnackBarThemeData(
+        behavior: SnackBarBehavior.floating,
+        backgroundColor: AppColors.lightCard,
+        contentTextStyle: const TextStyle(color: AppColors.lightTextPrimary, fontSize: 13, fontWeight: FontWeight.w600),
+        actionTextColor: AppColors.primary,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(12),
+          side: const BorderSide(color: AppColors.lightBorder, width: 0.8),
+        ),
+        elevation: 6,
+      ),
       popupMenuTheme: const PopupMenuThemeData(
         color: AppColors.lightCard,
         surfaceTintColor: Colors.transparent,
@@ -261,6 +285,30 @@ class AppTheme {
         backgroundColor: AppColors.darkCard,
         surfaceTintColor: Colors.transparent,
         modalBackgroundColor: AppColors.darkCard,
+      ),
+      // Pages slide in from the end and can be dragged back, the way a
+      // phone's own screens move: lighter on the eye and on the GPU than
+      // the zoom Android draws by default.
+      pageTransitionsTheme: const PageTransitionsTheme(
+        builders: {
+          TargetPlatform.android: CupertinoPageTransitionsBuilder(),
+          TargetPlatform.iOS: CupertinoPageTransitionsBuilder(),
+          TargetPlatform.windows: FadeUpwardsPageTransitionsBuilder(),
+          TargetPlatform.linux: FadeUpwardsPageTransitionsBuilder(),
+          TargetPlatform.macOS: FadeUpwardsPageTransitionsBuilder(),
+        },
+      ),
+      // One snackbar everywhere: a floating card of the page's glass.
+      snackBarTheme: SnackBarThemeData(
+        behavior: SnackBarBehavior.floating,
+        backgroundColor: AppColors.darkCard,
+        contentTextStyle: const TextStyle(color: AppColors.darkTextPrimary, fontSize: 13, fontWeight: FontWeight.w600),
+        actionTextColor: AppColors.primary,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(12),
+          side: const BorderSide(color: AppColors.darkBorder, width: 0.8),
+        ),
+        elevation: 6,
       ),
       popupMenuTheme: const PopupMenuThemeData(
         color: AppColors.darkCard,

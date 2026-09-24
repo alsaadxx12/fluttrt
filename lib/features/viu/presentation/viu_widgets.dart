@@ -2,6 +2,7 @@ import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:youtube_downloader/core/network/image_cache.dart';
+import 'package:youtube_downloader/presentation/widgets/section_title.dart';
 
 import '../data/viu_models.dart';
 import 'viu_category_screen.dart';
@@ -82,7 +83,6 @@ class ViuHomeSection extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final async = ref.watch(viuHomeRowProvider(category));
-    final isDark = Theme.of(context).brightness == Brightness.dark;
     final shows = async.valueOrNull ?? const <ViuShow>[];
     if (!async.isLoading && shows.isEmpty) return const SizedBox.shrink();
 
@@ -91,50 +91,13 @@ class ViuHomeSection extends ConsumerWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Text(
-                  category.title,
-                  style: TextStyle(
-                    color: isDark ? Colors.white : const Color(0xFF0F172A),
-                    fontSize: 15,
-                    fontWeight: FontWeight.w900,
-                    letterSpacing: -0.3,
-                  ),
-                ),
-                if (shows.isNotEmpty)
-                  InkWell(
-                    onTap: () =>
-                        Navigator.of(context, rootNavigator: true).push(
-                      MaterialPageRoute(
-                          builder: (_) =>
-                              ViuCategoryScreen(category: category)),
+          SectionTitle(
+            category.title,
+            onViewAll: shows.isEmpty
+                ? null
+                : () => Navigator.of(context, rootNavigator: true).push(
+                      MaterialPageRoute(builder: (_) => ViuCategoryScreen(category: category)),
                     ),
-                    borderRadius: BorderRadius.circular(8),
-                    child: const Padding(
-                      padding: EdgeInsets.symmetric(horizontal: 6, vertical: 4),
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Text(
-                            'عرض الكل',
-                            style: TextStyle(
-                                color: Color(0xFFE50914),
-                                fontSize: 13,
-                                fontWeight: FontWeight.bold),
-                          ),
-                          SizedBox(width: 2),
-                          Icon(Icons.chevron_left_rounded,
-                              size: 18, color: Color(0xFFE50914)),
-                        ],
-                      ),
-                    ),
-                  ),
-              ],
-            ),
           ),
           const SizedBox(height: 12),
           SizedBox(

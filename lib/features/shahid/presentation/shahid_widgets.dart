@@ -1,5 +1,6 @@
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
+import 'package:youtube_downloader/presentation/widgets/section_title.dart';
 
 import '../data/shahid_models.dart';
 import 'shahid_player_screen.dart';
@@ -47,53 +48,7 @@ class ShahidSectionHeader extends StatelessWidget {
   const ShahidSectionHeader({super.key, required this.title, this.onViewAll});
 
   @override
-  Widget build(BuildContext context) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
-          Flexible(
-            child: Text(
-              title,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: TextStyle(
-                color: isDark ? Colors.white : const Color(0xFF0F172A),
-                fontSize: 18,
-                fontWeight: FontWeight.w900,
-                letterSpacing: -0.3,
-              ),
-            ),
-          ),
-          if (onViewAll != null)
-            InkWell(
-              onTap: onViewAll,
-              borderRadius: BorderRadius.circular(8),
-              child: const Padding(
-                padding: EdgeInsets.symmetric(horizontal: 6, vertical: 4),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Text(
-                      'عرض الكل',
-                      style: TextStyle(
-                        color: Color(0xFFE50914),
-                        fontSize: 13,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                    SizedBox(width: 2),
-                    Icon(Icons.chevron_left_rounded, size: 18, color: Color(0xFFE50914)),
-                  ],
-                ),
-              ),
-            ),
-        ],
-      ),
-    );
-  }
+  Widget build(BuildContext context) => SectionTitle(title, onViewAll: onViewAll);
 }
 
 /// Horizontal filter pills (all / free / genres).
