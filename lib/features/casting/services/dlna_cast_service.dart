@@ -4,6 +4,7 @@ import 'dart:io';
 import 'dart:typed_data';
 
 import 'package:flutter/foundation.dart';
+import 'package:flutter/services.dart' show MethodChannel;
 
 import '../models/cast_models.dart';
 import 'cast_service.dart';
@@ -170,68 +171,160 @@ class DlnaCastService implements CastService {
   static const List<String> _searchTargets = [
     'urn:schemas-upnp-org:device:MediaRenderer:1',
     'upnp:rootdevice',
+    // Everything: a set that answers neither of the above by name (some
+    // LG and Hisense sets answer only this) still turns up, and the
+    // description sorts the renderers from the routers.
+    'ssdp:all',
   ];
+
+  /// Android's multicast lock, held while a search runs: without it the
+  /// phone drops the multicast a set announces itself with.
+  static const MethodChannel _multicast = MethodChannel('cineball/multicast');
 
   /// Asks the network for media renderers and collects where they live.
   ///
   /// Sent more than once because this is UDP and a single packet going
   /// missing would mean a television that simply never appears.
   Future<Set<String>> _search({
-    Duration listenFor = const Duration(seconds: 4),
+    Duration listenFor = const Duration(seconds: 5),
   }) async {
     final locations = <String>{};
-    RawDatagramSocket? socket;
+    final sockets = <RawDatagramSocket>[];
+    var locked = false;
+
+    void take(Datagram? packet) {
+      if (packet == null) return;
+      final location = _headerValue(String.fromCharCodes(packet.data), 'location');
+      if (location != null && location.startsWith('http')) locations.add(location);
+    }
+
+    void listenOn(RawDatagramSocket socket) {
+      socket.listen((event) {
+        if (event == RawSocketEvent.read) take(socket.receive());
+      }, onError: (Object e) => debugPrint('[cast] ssdp: $e'));
+      sockets.add(socket);
+    }
 
     try {
-      socket = await RawDatagramSocket.bind(InternetAddress.anyIPv4, 0);
-      socket.broadcastEnabled = true;
+      try {
+        locked = await _multicast.invokeMethod<bool>('acquire') ?? false;
+      } catch (_) {
+        // Not Android, or an older build of the app's shell: carry on.
+      }
+
+      final interfaces = <NetworkInterface>[];
+      try {
+        interfaces.addAll(await NetworkInterface.list(
+          type: InternetAddressType.IPv4,
+          includeLinkLocal: false,
+          includeLoopback: false,
+        ));
+      } catch (e) {
+        debugPrint('[cast] interfaces: $e');
+      }
+
+      // One socket per address, so the question goes out of every door.
+      // Bound to «any», a phone with mobile data on sent it out that way
+      // and the television on the wifi never heard it.
+      final doors = <(RawDatagramSocket, InternetAddress)>[];
+      for (final iface in interfaces) {
+        for (final address in iface.addresses) {
+          try {
+            final socket = await RawDatagramSocket.bind(address, 0);
+            socket.broadcastEnabled = true;
+            try {
+              socket.multicastInterface = iface;
+            } catch (_) {}
+            listenOn(socket);
+            doors.add((socket, address));
+          } catch (e) {
+            debugPrint('[cast] ssdp on ${address.address}: $e');
+          }
+        }
+      }
+      if (doors.isEmpty) {
+        final socket = await RawDatagramSocket.bind(InternetAddress.anyIPv4, 0);
+        socket.broadcastEnabled = true;
+        listenOn(socket);
+        doors.add((socket, InternetAddress.anyIPv4));
+      }
+
+      // And an ear on the group itself, for a set that never answers a
+      // question but calls out on its own every so often.
+      try {
+        final ear = await RawDatagramSocket.bind(InternetAddress.anyIPv4, _port, reuseAddress: true, reusePort: true);
+        var joined = false;
+        for (final iface in interfaces) {
+          try {
+            ear.joinMulticast(InternetAddress(_group), iface);
+            joined = true;
+          } catch (_) {}
+        }
+        if (!joined) {
+          try {
+            ear.joinMulticast(InternetAddress(_group));
+          } catch (_) {}
+        }
+        listenOn(ear);
+      } catch (e) {
+        debugPrint('[cast] ssdp ear: $e');
+      }
 
       final messages = [
         for (final st in _searchTargets)
           'M-SEARCH * HTTP/1.1\r\n'
                   'HOST: $_group:$_port\r\n'
                   'MAN: "ssdp:discover"\r\n'
-                  'MX: 2\r\n'
+                  'MX: 3\r\n'
                   'ST: $st\r\n'
                   '\r\n'
               .codeUnits,
       ];
+      final group = InternetAddress(_group);
 
-      final target = InternetAddress(_group);
-      final done = Completer<void>();
-
-      socket.listen((event) {
-        if (event != RawSocketEvent.read) return;
-        final packet = socket?.receive();
-        if (packet == null) return;
-        final location = _headerValue(
-          String.fromCharCodes(packet.data),
-          'location',
-        );
-        if (location != null && location.startsWith('http')) {
-          locations.add(location);
+      // Asked three times, spaced out: this is UDP and a packet goes
+      // missing on a busy wifi all the time.
+      for (var round = 0; round < 3; round++) {
+        for (final (socket, _) in doors) {
+          for (final message in messages) {
+            try {
+              socket.send(message, group, _port);
+            } catch (_) {}
+          }
         }
-      }, onError: (Object e) => debugPrint('[cast] ssdp: $e'));
-
-      for (var i = 0; i < 3; i++) {
-        for (final message in messages) {
-          socket.send(message, target, _port);
-        }
-        await Future<void>.delayed(const Duration(milliseconds: 250));
+        await Future<void>.delayed(const Duration(milliseconds: 400));
       }
 
-      Timer(listenFor, () {
-        if (!done.isCompleted) done.complete();
-      });
-      await done.future;
+      // And every host on the wifi asked one by one: a router that filters
+      // multicast (many do, quietly) still lets a plain packet through, and
+      // a set answers the question the same whichever way it arrived.
+      for (final (socket, address) in doors) {
+        final parts = address.address.split('.');
+        if (parts.length != 4 || address == InternetAddress.anyIPv4) continue;
+        final prefix = '${parts[0]}.${parts[1]}.${parts[2]}.';
+        for (var host = 1; host < 255; host++) {
+          try {
+            socket.send(messages.first, InternetAddress('$prefix$host'), _port);
+          } catch (_) {}
+          if (host % 32 == 0) await Future<void>.delayed(const Duration(milliseconds: 15));
+        }
+      }
+
+      await Future<void>.delayed(listenFor);
     } catch (e) {
-      // A network that refuses multicast is a network with no televisions
-      // on it as far as this is concerned.
       debugPrint('[cast] ssdp search failed: $e');
     } finally {
-      socket?.close();
+      for (final socket in sockets) {
+        socket.close();
+      }
+      if (locked) {
+        try {
+          await _multicast.invokeMethod<void>('release');
+        } catch (_) {}
+      }
     }
 
+    debugPrint('[cast] ssdp: ${locations.length} descriptions to read');
     return locations;
   }
 

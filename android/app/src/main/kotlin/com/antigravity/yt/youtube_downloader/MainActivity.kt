@@ -38,6 +38,10 @@ class MainActivity : FlutterActivity() {
     /// The channel to Dart for the casting notification, kept so a button
     /// press on the notification can be sent back over it.
     private var castChannel: MethodChannel? = null
+
+    // Held while the app looks for televisions: without it Android drops
+    // the multicast a set announces itself with.
+    private var multicastLock: android.net.wifi.WifiManager.MulticastLock? = null
     private var castReceiver: BroadcastReceiver? = null
 
     /// Puts up, or updates, the line in the shade for a film playing on
@@ -185,6 +189,30 @@ class MainActivity : FlutterActivity() {
 
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
         super.configureFlutterEngine(flutterEngine)
+        MethodChannel(flutterEngine.dartExecutor.binaryMessenger, "cineball/multicast").setMethodCallHandler { call, result ->
+            when (call.method) {
+                "acquire" -> {
+                    try {
+                        if (multicastLock == null) {
+                            val wifi = applicationContext.getSystemService(Context.WIFI_SERVICE) as android.net.wifi.WifiManager
+                            multicastLock = wifi.createMulticastLock("cineball-ssdp").apply { setReferenceCounted(false) }
+                        }
+                        multicastLock?.acquire()
+                        result.success(true)
+                    } catch (e: Exception) {
+                        result.success(false)
+                    }
+                }
+                "release" -> {
+                    try {
+                        if (multicastLock?.isHeld == true) multicastLock?.release()
+                    } catch (_: Exception) {
+                    }
+                    result.success(true)
+                }
+                else -> result.notImplemented()
+            }
+        }
         // The notification for a film playing on another screen.
         val cast = MethodChannel(flutterEngine.dartExecutor.binaryMessenger, "cineball/cast_notification")
         castChannel = cast
